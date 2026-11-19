@@ -4,6 +4,7 @@
     <File Path="docker-compose.yml" />
     <File Path="dotnet-tools.json" />
     <File Path="global.json" />
+    <File Path="README.md" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="backend/TripWise.E2ETests/TripWise.E2ETests.csproj" />
