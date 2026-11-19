@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="TripWise.Api/TripWise.Api.csproj" />
-  <Project Path="TripWise.E2ETests/TripWise.E2ETests.csproj" />
-  <Project Path="TripWise.IntegrationTests/TripWise.IntegrationTests.csproj" />
-  <Project Path="TripWise.UnitTests/TripWise.UnitTests.csproj" />
-</Solution>

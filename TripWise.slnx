@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="docker-compose.yml" />
+    <File Path="dotnet-tools.json" />
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="backend/TripWise.E2ETests/TripWise.E2ETests.csproj" />
+    <Project Path="backend/TripWise.IntegrationTests/TripWise.IntegrationTests.csproj" />
+    <Project Path="backend/TripWise.UnitTests/TripWise.UnitTests.csproj" />
+  </Folder>
+  <Project Path="backend/TripWise.Api/TripWise.Api.csproj" />
+</Solution>
