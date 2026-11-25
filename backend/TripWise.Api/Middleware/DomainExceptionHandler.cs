@@ -12,7 +12,14 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
             return false;
         }
 
-        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        var (status, title) = exception switch
+        {
+            ActivityOverlapException => (StatusCodes.Status409Conflict, "Activity overlap"),
+            ActivityNotFoundException => (StatusCodes.Status404NotFound, "Activity not found"),
+            _ => (StatusCodes.Status400BadRequest, "Business rule violation"),
+        };
+
+        httpContext.Response.StatusCode = status;
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
@@ -20,9 +27,9 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
             Exception = exception,
             ProblemDetails =
             {
-                Title = "Business rule violation",
+                Title = title,
                 Detail = exception.Message,
-                Status = StatusCodes.Status400BadRequest,
+                Status = status,
             },
         });
     }

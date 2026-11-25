@@ -20,6 +20,13 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
             period.Property(range => range.End).HasColumnName("EndDate");
         });
 
-        builder.Ignore(trip => trip.Activities);
+        builder.HasMany(trip => trip.Activities)
+            .WithOne()
+            .HasForeignKey(ActivityConfiguration.TripIdColumn)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(trip => trip.Activities)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

@@ -23,6 +23,42 @@ namespace TripWise.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TripWise.Api.Domain.Activity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "TimeSlot", "TripWise.Api.Domain.Activity.TimeSlot#TimeSlot", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<TimeOnly>("End")
+                                .HasColumnType("time without time zone")
+                                .HasColumnName("EndTime");
+
+                            b1.Property<TimeOnly>("Start")
+                                .HasColumnType("time without time zone")
+                                .HasColumnName("StartTime");
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId", "Date");
+
+                    b.ToTable("Activities", (string)null);
+                });
+
             modelBuilder.Entity("TripWise.Api.Domain.Trip", b =>
                 {
                     b.Property<Guid>("Id")
@@ -50,6 +86,20 @@ namespace TripWise.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Trips");
+                });
+
+            modelBuilder.Entity("TripWise.Api.Domain.Activity", b =>
+                {
+                    b.HasOne("TripWise.Api.Domain.Trip", null)
+                        .WithMany("Activities")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TripWise.Api.Domain.Trip", b =>
+                {
+                    b.Navigation("Activities");
                 });
 #pragma warning restore 612, 618
         }

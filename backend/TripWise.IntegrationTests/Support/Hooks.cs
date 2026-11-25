@@ -25,5 +25,6 @@ public class Hooks(IObjectContainer container)
     public void RegisterHttpClient()
     {
         container.RegisterInstanceAs(_factory.CreateClient(), dispose: true);
+        container.RegisterInstanceAs(_factory);
     }
 }
