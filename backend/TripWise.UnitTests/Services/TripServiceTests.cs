@@ -1,7 +1,7 @@
 using NSubstitute;
-using TripWise.Api.Domain;
-using TripWise.Api.Dtos;
-using TripWise.Api.Services;
+using TripWise.Domain;
+using TripWise.Application.Dtos;
+using TripWise.Application.Services;
 
 namespace TripWise.UnitTests.Services;
 

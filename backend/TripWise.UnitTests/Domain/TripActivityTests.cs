@@ -1,4 +1,4 @@
-using TripWise.Api.Domain;
+using TripWise.Domain;
 
 namespace TripWise.UnitTests.Domain;
 

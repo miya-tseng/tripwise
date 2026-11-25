@@ -1,4 +1,4 @@
-using TripWise.Api.Dtos;
+using TripWise.Application.Dtos;
 
 namespace TripWise.IntegrationTests.Support;
 

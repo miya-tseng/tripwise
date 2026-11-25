@@ -81,7 +81,7 @@ jobs:
         run: |
           dotnet tool restore
           dotnet build backend/TripWise.Api
-          dotnet ef database update --project backend/TripWise.Api --no-build
+          dotnet ef database update --project backend/TripWise.Infrastructure --startup-project backend/TripWise.Api --no-build
 
       - name: Build E2E tests and install Playwright browser
         run: |

@@ -3,10 +3,10 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Reqnroll;
-using TripWise.Api.Data;
-using TripWise.Api.Data.Configurations;
-using TripWise.Api.Domain;
-using TripWise.Api.Dtos;
+using TripWise.Infrastructure.Data;
+using TripWise.Infrastructure.Data.Configurations;
+using TripWise.Domain;
+using TripWise.Application.Dtos;
 using TripWise.IntegrationTests.Support;
 
 namespace TripWise.IntegrationTests.StepDefinitions;

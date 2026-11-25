@@ -26,18 +26,27 @@ tripwise/
 ├── global.json                    # pins .NET SDK 10.x
 ├── docker-compose.yml             # local PostgreSQL
 ├── backend/
-│   ├── TripWise.Api/              # Web API
-│   │   ├── Controllers/           # HTTP endpoints
-│   │   ├── Domain/                # business rules (no dependencies)
-│   │   ├── Services/              # application logic
-│   │   ├── Data/                  # EF Core DbContext, migrations, repositories
-│   │   ├── Dtos/                  # request / response models
-│   │   └── Middleware/            # error handling
+│   ├── TripWise.Domain/           # entities, value objects, repository interfaces (no dependencies)
+│   ├── TripWise.Application/      # services and DTOs
+│   ├── TripWise.Infrastructure/   # EF Core DbContext, configurations, migrations, repositories
+│   ├── TripWise.Api/              # controllers, middleware, Program.cs
 │   ├── TripWise.UnitTests/
 │   ├── TripWise.IntegrationTests/
 │   └── TripWise.E2ETests/
 └── frontend/                      # Vue 3 + TypeScript
 ```
+
+### Layer dependencies
+
+Each layer is its own project, so the compiler enforces the dependency direction:
+
+```
+Api ──► Application ──► Domain
+ │                        ▲
+ └──► Infrastructure ─────┘ (also references Application)
+```
+
+`TripWise.Domain` has no package or project references. Infrastructure services are registered with `AddInfrastructure()` and application services with `AddApplication()`.
 
 ## Getting Started
 
@@ -55,7 +64,7 @@ docker compose up -d
 
 # 2. Restore tools and apply database migrations
 dotnet tool restore
-dotnet ef database update --project backend/TripWise.Api
+dotnet ef database update --project backend/TripWise.Infrastructure --startup-project backend/TripWise.Api
 
 # 3. Start the API (http://localhost:5022)
 dotnet run --project backend/TripWise.Api
@@ -67,6 +76,15 @@ npm run dev
 ```
 
 Check the API is connected to the database: http://localhost:5022/health should return `Healthy`.
+
+### Add a migration
+
+```bash
+dotnet ef migrations add <Name> \
+  --project backend/TripWise.Infrastructure \
+  --startup-project backend/TripWise.Api \
+  --output-dir Data/Migrations
+```
 
 ## Running Tests
 

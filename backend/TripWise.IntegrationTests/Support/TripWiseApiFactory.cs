@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
-using TripWise.Api.Data;
+using TripWise.Infrastructure.Data;
 
 namespace TripWise.IntegrationTests.Support;
 

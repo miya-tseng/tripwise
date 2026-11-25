@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using TripWise.Api.Dtos;
-using TripWise.Api.Services;
+using TripWise.Application.Dtos;
+using TripWise.Application.Services;
 
 namespace TripWise.Api.Controllers;
 

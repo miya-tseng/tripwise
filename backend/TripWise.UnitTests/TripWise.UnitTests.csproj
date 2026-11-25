@@ -22,7 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TripWise.Api\TripWise.Api.csproj" />
+    <ProjectReference Include="..\TripWise.Domain\TripWise.Domain.csproj" />
+    <ProjectReference Include="..\TripWise.Application\TripWise.Application.csproj" />
   </ItemGroup>
 
 </Project>

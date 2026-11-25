@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
-using TripWise.Api.Domain;
+using TripWise.Domain;
 
 namespace TripWise.Api.Middleware;
 
