@@ -46,7 +46,18 @@ watch(
         :aria-describedby="messageId"
         @keydown.esc="emit('cancel')"
       >
-        <div class="icon" aria-hidden="true">🗑️</div>
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M4.5 7h15M10 11v6m4-6v6M6 7l.8 11.2A2 2 0 0 0 8.8 20h6.4a2 2 0 0 0 2-1.8L18 7M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
         <h2 :id="titleId" class="title">{{ title }}</h2>
         <p :id="messageId" class="message">{{ message }}</p>
         <div class="actions">
@@ -81,8 +92,8 @@ watch(
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgb(15 23 42 / 0.45);
-  backdrop-filter: blur(2px);
+  background: rgb(22 30 40 / 0.42);
+  backdrop-filter: blur(4px);
 }
 
 .dialog {
@@ -91,8 +102,9 @@ watch(
   padding: 1.75rem;
   text-align: center;
   background: var(--color-surface);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgb(0 0 0 / 0.2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .icon {
@@ -101,13 +113,19 @@ watch(
   width: 3.5rem;
   height: 3.5rem;
   margin: 0 auto 1rem;
-  font-size: 1.6rem;
+  color: var(--color-danger);
   background: var(--color-danger-soft);
   border-radius: 50%;
 }
 
+.icon svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
 .title {
-  font-size: 1.2rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
   font-weight: 700;
 }
 

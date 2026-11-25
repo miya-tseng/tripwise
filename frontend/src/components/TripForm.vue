@@ -63,6 +63,7 @@ async function onSubmit() {
         name="name"
         type="text"
         placeholder="e.g. Tokyo"
+        autocomplete="off"
         required
         maxlength="100"
       />
@@ -92,55 +93,16 @@ async function onSubmit() {
 <style scoped>
 .trip-form {
   display: grid;
-  grid-template-columns: 1fr 1.4fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
   gap: 1rem;
   align-items: end;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.field-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-muted);
-}
-
-.field-hint {
-  font-weight: 500;
-  color: var(--color-primary);
-}
-
-.text-input {
-  width: 100%;
-  height: 2.75rem;
-  padding: 0 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--color-text);
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-
-.text-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.15);
-}
-
 .trip-form .btn {
-  height: 2.75rem;
+  min-width: 7rem;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .trip-form {
     grid-template-columns: 1fr;
   }

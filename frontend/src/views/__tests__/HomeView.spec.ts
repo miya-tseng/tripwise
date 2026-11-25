@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { fetchTrips } from '@/api/trips'
 import HomeView from '../HomeView.vue'
@@ -7,7 +7,9 @@ import HomeView from '../HomeView.vue'
 vi.mock('@/api/trips')
 
 function mountHomeView() {
-  return mount(HomeView, { global: { plugins: [createPinia()] } })
+  return mount(HomeView, {
+    global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+  })
 }
 
 describe('HomeView', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, RouterLinkStub } from '@vue/test-utils'
 import TripList from '../TripList.vue'
 import ConfirmDialog from '../ConfirmDialog.vue'
 import type { Trip } from '@/types/trip'
@@ -12,13 +12,15 @@ const tokyo: Trip = {
   days: 5,
 }
 
+const global = { stubs: { RouterLink: RouterLinkStub } }
+
 function mountList(deletingId: string | null = null) {
-  return mount(TripList, { props: { trips: [tokyo], deletingId } })
+  return mount(TripList, { props: { trips: [tokyo], deletingId }, global })
 }
 
 describe('TripList', () => {
   it('shows an empty state when there are no trips', () => {
-    const wrapper = mount(TripList, { props: { trips: [] } })
+    const wrapper = mount(TripList, { props: { trips: [] }, global })
 
     expect(wrapper.find('[data-testid="empty-state"]').text()).toBe('No trips yet.')
     expect(wrapper.findAll('[data-testid="trip-item"]')).toHaveLength(0)
@@ -31,6 +33,14 @@ describe('TripList', () => {
     expect(item.text()).toContain('Tokyo')
     expect(item.text()).toContain('Dec 1 – 5, 2026')
     expect(item.text()).toContain('5 days')
+  })
+
+  it('links the trip name to its schedule', () => {
+    const wrapper = mountList()
+
+    const link = wrapper.findComponent(RouterLinkStub)
+    expect(link.text()).toBe('Tokyo')
+    expect(link.props('to')).toEqual({ name: 'trip-schedule', params: { id: 'tokyo-id' } })
   })
 
   it('asks for confirmation before deleting', async () => {

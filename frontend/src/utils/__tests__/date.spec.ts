@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countDays, formatDateRange } from '../date'
+import { countDays, dateParts, formatDateRange, formatDayLabel } from '../date'
 
 describe('formatDateRange', () => {
   it('shows a single date for a one-day trip', () => {
@@ -30,5 +30,20 @@ describe('countDays', () => {
 
   it('counts across months and years', () => {
     expect(countDays('2026-12-30', '2027-01-02')).toBe(4)
+  })
+})
+
+describe('formatDayLabel', () => {
+  it.each([
+    ['2026-12-01', 'Tue, Dec 1'],
+    ['2027-01-02', 'Sat, Jan 2'],
+  ])('formats %s as %s', (date, expected) => {
+    expect(formatDayLabel(date)).toBe(expected)
+  })
+})
+
+describe('dateParts', () => {
+  it('splits a date into month, day and weekday', () => {
+    expect(dateParts('2027-01-02')).toEqual({ month: 'Jan', day: 2, weekday: 'Sat' })
   })
 })

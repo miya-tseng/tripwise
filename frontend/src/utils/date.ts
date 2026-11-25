@@ -14,6 +14,35 @@ export function formatDateRange(start: string, end: string): string {
   return dateFormatter.formatRange(parseIsoDate(start), parseIsoDate(end)).replace(/\s+/g, ' ')
 }
 
+const dayLabelFormatter = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+
+export function formatDayLabel(date: string): string {
+  return dayLabelFormatter.format(parseIsoDate(date))
+}
+
+const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' })
+const weekdayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' })
+
+export interface DateParts {
+  month: string
+  day: number
+  weekday: string
+}
+
+export function dateParts(date: string): DateParts {
+  const parsed = parseIsoDate(date)
+  return {
+    month: monthFormatter.format(parsed),
+    day: parsed.getUTCDate(),
+    weekday: weekdayFormatter.format(parsed),
+  }
+}
+
 const millisecondsPerDay = 24 * 60 * 60 * 1000
 
 export function countDays(start: string, end: string): number {
