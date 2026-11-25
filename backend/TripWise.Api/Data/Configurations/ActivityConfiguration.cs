@@ -28,7 +28,13 @@ public class ActivityConfiguration : IEntityTypeConfiguration<Activity>
             timeSlot.Property(slot => slot.End).HasColumnName("EndTime");
         });
 
-        builder.Ignore(activity => activity.Cost);
+        builder.ComplexProperty(activity => activity.Cost, cost =>
+        {
+            cost.Property(money => money.Amount)
+                .HasColumnName("Cost")
+                .HasPrecision(12, Money.DecimalPlaces)
+                .HasDefaultValue(0m);
+        });
 
         builder.HasIndex(TripIdColumn, nameof(Activity.Date));
     }

@@ -17,4 +17,6 @@ public class SaveActivityDto
 
     [Required]
     public TimeOnly? EndTime { get; set; }
+
+    public decimal? Cost { get; set; }
 }

@@ -159,4 +159,68 @@ public class ActivityServiceTests
 
         Assert.That(schedule, Is.Null);
     }
+
+    [Test]
+    public async Task AddAsync_WithCost_ReturnsCost()
+    {
+        var dto = Dto("Shibuya Sky", FirstDay, "17:00", "18:00");
+        dto.Cost = 2200.5m;
+
+        var result = await _sut.AddAsync(_trip.Id, dto);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Cost, Is.EqualTo(2200.5m));
+            Assert.That(_trip.Activities.Single().Cost, Is.EqualTo(new Money(2200.5m)));
+        });
+    }
+
+    [Test]
+    public async Task AddAsync_WithoutCost_UsesZero()
+    {
+        var result = await _sut.AddAsync(_trip.Id, Dto("Senso-ji", FirstDay, "10:00", "11:00"));
+
+        Assert.That(result!.Cost, Is.Zero);
+    }
+
+    [Test]
+    public async Task AddAsync_WithNegativeCost_ThrowsWithoutSaving()
+    {
+        var dto = Dto("Senso-ji", FirstDay, "10:00", "11:00");
+        dto.Cost = -1m;
+
+        Assert.ThrowsAsync<DomainException>(() => _sut.AddAsync(_trip.Id, dto));
+
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+        Assert.That(_trip.Activities, Is.Empty);
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithCost_UpdatesCost()
+    {
+        var activity = _trip.AddActivity("Shibuya Sky", FirstDay, Slot("17:00", "18:00"), new Money(2200m));
+        var dto = Dto("Shibuya Sky", FirstDay, "17:00", "18:00");
+        dto.Cost = 2500m;
+
+        var result = await _sut.UpdateAsync(_trip.Id, activity.Id, dto);
+
+        Assert.That(result!.Cost, Is.EqualTo(2500m));
+    }
+
+    [Test]
+    public async Task GetScheduleAsync_ReturnsDailyAndTripTotals()
+    {
+        _trip.AddActivity("Tsukiji", FirstDay, Slot("07:00", "08:00"), new Money(1500.5m));
+        _trip.AddActivity("Shibuya Sky", FirstDay, Slot("17:00", "18:00"), new Money(2200m));
+        _trip.AddActivity("teamLab", FirstDay.AddDays(2), Slot("13:00", "15:00"), new Money(3800.25m));
+
+        var schedule = await _sut.GetScheduleAsync(_trip.Id);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(schedule!.Days.Select(day => day.Total), Is.EqualTo(new[] { 3700.5m, 0m, 3800.25m }));
+            Assert.That(schedule.Total, Is.EqualTo(7500.75m));
+            Assert.That(schedule.Days[0].Activities.Select(activity => activity.Cost), Is.EqualTo(new[] { 1500.5m, 2200m }));
+        });
+    }
 }

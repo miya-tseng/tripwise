@@ -30,6 +30,63 @@ public class ActivityStepDefinitions(
         _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
     }
 
+    [Given("the trip has an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal}")]
+    public async Task GivenTheTripHasAnActivityCosting(string name, DateOnly date, TimeOnly start, TimeOnly end, decimal cost)
+    {
+        var created = await client.PostAsJsonAsync(ActivitiesUrl, NewActivity(name, date, start, end, cost));
+        created.EnsureSuccessStatusCode();
+        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
+    }
+
+    [When("I add an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal}")]
+    public async Task WhenIAddAnActivityCosting(string name, DateOnly date, TimeOnly start, TimeOnly end, decimal cost)
+    {
+        response.Message = await client.PostAsJsonAsync(ActivitiesUrl, NewActivity(name, date, start, end, cost));
+    }
+
+    [When("I change the cost of {string} to {decimal}")]
+    public async Task WhenIChangeTheCostOf(string name, decimal cost)
+    {
+        var activity = _activitiesByName[name];
+
+        response.Message = await client.PutAsJsonAsync(
+            $"{ActivitiesUrl}/{activity.Id}",
+            NewActivity(activity.Name, activity.Date, activity.StartTime, activity.EndTime, cost));
+    }
+
+    [Then("the response activity costs {decimal}")]
+    public async Task ThenTheResponseActivityCosts(decimal cost)
+    {
+        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+
+        Assert.That(activity.Cost, Is.EqualTo(cost));
+    }
+
+    [Then("the activity {string} costs {decimal} in the schedule")]
+    public async Task ThenTheActivityCostsInTheSchedule(string name, decimal cost)
+    {
+        var schedule = await GetScheduleAsync();
+        var activity = schedule.Days.SelectMany(day => day.Activities).Single(item => item.Name == name);
+
+        Assert.That(activity.Cost, Is.EqualTo(cost));
+    }
+
+    [Then("the schedule total is {decimal}")]
+    public async Task ThenTheScheduleTotalIs(decimal total)
+    {
+        var schedule = await GetScheduleAsync();
+
+        Assert.That(schedule.Total, Is.EqualTo(total));
+    }
+
+    [Then("the schedule total on {DateOnly} is {decimal}")]
+    public async Task ThenTheScheduleTotalOnDateIs(DateOnly date, decimal total)
+    {
+        var schedule = await GetScheduleAsync();
+
+        Assert.That(schedule.Days.Single(day => day.Date == date).Total, Is.EqualTo(total));
+    }
+
     [When("I add an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly}")]
     public async Task WhenIAddAnActivity(string name, DateOnly date, TimeOnly start, TimeOnly end)
     {
@@ -177,7 +234,12 @@ public class ActivityStepDefinitions(
     private static string[] SplitList(string value) =>
         value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static SaveActivityDto NewActivity(string name, DateOnly date, TimeOnly start, TimeOnly end)
+    private static SaveActivityDto NewActivity(
+        string name,
+        DateOnly date,
+        TimeOnly start,
+        TimeOnly end,
+        decimal? cost = null)
     {
         return new SaveActivityDto
         {
@@ -185,6 +247,7 @@ public class ActivityStepDefinitions(
             Date = date,
             StartTime = start,
             EndTime = end,
+            Cost = cost,
         };
     }
 }

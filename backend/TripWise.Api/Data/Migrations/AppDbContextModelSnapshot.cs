@@ -39,6 +39,18 @@ namespace TripWise.Api.Data.Migrations
                     b.Property<Guid>("TripId")
                         .HasColumnType("uuid");
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Cost", "TripWise.Api.Domain.Activity.Cost#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasDefaultValue(0m)
+                                .HasColumnName("Cost");
+                        });
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "TimeSlot", "TripWise.Api.Domain.Activity.TimeSlot#TimeSlot", b1 =>
                         {
                             b1.IsRequired();

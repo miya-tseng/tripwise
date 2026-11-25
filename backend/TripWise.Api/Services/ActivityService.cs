@@ -14,7 +14,7 @@ public class ActivityService(ITripRepository repository)
             return null;
         }
 
-        var activity = trip.AddActivity(dto.Name, dto.Date!.Value, ToTimeSlot(dto));
+        var activity = trip.AddActivity(dto.Name, dto.Date!.Value, ToTimeSlot(dto), ToCost(dto));
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(activity);
@@ -29,7 +29,7 @@ public class ActivityService(ITripRepository repository)
             return null;
         }
 
-        var activity = trip.UpdateActivity(activityId, dto.Name, dto.Date!.Value, ToTimeSlot(dto));
+        var activity = trip.UpdateActivity(activityId, dto.Name, dto.Date!.Value, ToTimeSlot(dto), ToCost(dto));
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(activity);
@@ -66,6 +66,7 @@ public class ActivityService(ITripRepository repository)
             .Select(date => new ScheduleDayDto
             {
                 Date = date,
+                Total = trip.GetDailyTotal(date).Amount,
                 Activities = activitiesByDate[date]
                     .OrderBy(activity => activity.TimeSlot.Start)
                     .Select(ToDto)
@@ -76,12 +77,16 @@ public class ActivityService(ITripRepository repository)
         return new ScheduleDto
         {
             TripId = trip.Id,
+            Total = trip.GetTotal().Amount,
             Days = days,
         };
     }
 
     private static TimeSlot ToTimeSlot(SaveActivityDto dto) =>
         new(dto.StartTime!.Value, dto.EndTime!.Value);
+
+    private static Money? ToCost(SaveActivityDto dto) =>
+        dto.Cost is { } amount ? new Money(amount) : null;
 
     private static ActivityDto ToDto(Activity activity)
     {
@@ -92,6 +97,7 @@ public class ActivityService(ITripRepository repository)
             Date = activity.Date,
             StartTime = activity.TimeSlot.Start,
             EndTime = activity.TimeSlot.End,
+            Cost = activity.Cost.Amount,
         };
     }
 }
