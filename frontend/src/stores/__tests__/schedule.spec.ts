@@ -23,6 +23,7 @@ const shibuya: Activity = {
   date: '2026-12-01',
   startTime: '15:00:00',
   endTime: '16:00:00',
+  cost: 0,
 }
 
 const sensoji: Activity = {
@@ -31,9 +32,16 @@ const sensoji: Activity = {
   date: '2026-12-01',
   startTime: '10:00:00',
   endTime: '11:00:00',
+  cost: 0,
 }
 
-const input = { name: 'Senso-ji', date: '2026-12-01', startTime: '10:00', endTime: '11:00' }
+const input = {
+  name: 'Senso-ji',
+  date: '2026-12-01',
+  startTime: '10:00',
+  endTime: '11:00',
+  cost: 0,
+}
 
 async function loadedStore() {
   vi.mocked(fetchTrip).mockResolvedValue(tokyo)

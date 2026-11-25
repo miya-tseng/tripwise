@@ -10,9 +10,16 @@ const sensoji: Activity = {
   date: '2026-12-01',
   startTime: '10:00:00',
   endTime: '11:00:00',
+  cost: 0,
 }
 
-const input = { name: 'Senso-ji', date: '2026-12-01', startTime: '10:00', endTime: '11:00' }
+const input = {
+  name: 'Senso-ji',
+  date: '2026-12-01',
+  startTime: '10:00',
+  endTime: '11:00',
+  cost: 0,
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

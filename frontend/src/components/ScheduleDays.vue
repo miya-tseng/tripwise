@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { Activity, ScheduleDay } from '@/types/activity'
 import { dateParts, formatDayLabel } from '@/utils/date'
+import { dayTotal, formatMoney } from '@/utils/money'
 import { formatTime } from '@/utils/schedule'
 
 withDefaults(
@@ -48,9 +49,13 @@ function confirmDelete() {
           <span class="eyebrow">Day {{ index + 1 }}</span>
           <h3 class="day-date" data-testid="day-date">{{ formatDayLabel(day.date) }}</h3>
         </div>
-        <span class="chip day-count" :class="{ empty: day.activities.length === 0 }">
-          {{ day.activities.length }} {{ day.activities.length === 1 ? 'activity' : 'activities' }}
-        </span>
+        <div class="day-summary">
+          <span class="day-total" data-testid="day-total">{{ formatMoney(dayTotal(day)) }}</span>
+          <span class="day-count">
+            {{ day.activities.length }}
+            {{ day.activities.length === 1 ? 'activity' : 'activities' }}
+          </span>
+        </div>
       </header>
 
       <p v-if="day.activities.length === 0" class="day-empty" data-testid="day-empty">
@@ -69,6 +74,13 @@ function confirmDelete() {
             {{ formatTime(activity.startTime) }} – {{ formatTime(activity.endTime) }}
           </span>
           <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
+          <span
+            class="activity-cost"
+            :class="{ free: activity.cost === 0 }"
+            data-testid="activity-cost"
+          >
+            {{ activity.cost === 0 ? 'Free' : formatMoney(activity.cost) }}
+          </span>
           <div class="activity-actions">
             <button
               type="button"
@@ -166,10 +178,25 @@ function confirmDelete() {
   letter-spacing: -0.01em;
 }
 
-.day-count.empty {
-  color: var(--color-muted);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
+.day-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  text-align: right;
+}
+
+.day-total {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.day-count {
+  font-size: 0.78rem;
+  color: var(--color-subtle);
 }
 
 .day-empty {
@@ -261,6 +288,21 @@ function confirmDelete() {
   white-space: nowrap;
 }
 
+.activity-cost {
+  flex-shrink: 0;
+  min-width: 5.5rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--color-accent);
+}
+
+.activity-cost.free {
+  font-weight: 500;
+  color: var(--color-subtle);
+}
+
 .activity-actions {
   display: flex;
   gap: 0.15rem;
@@ -308,10 +350,10 @@ function confirmDelete() {
 
   .activity {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'time actions'
-      'name actions';
+      'time cost actions'
+      'name cost actions';
     gap: 0.1rem 0.5rem;
     padding-left: 0.6rem;
   }
@@ -325,6 +367,11 @@ function confirmDelete() {
   .activity-name {
     grid-area: name;
     white-space: normal;
+  }
+
+  .activity-cost {
+    grid-area: cost;
+    min-width: 0;
   }
 
   .activity-actions {

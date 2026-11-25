@@ -3,7 +3,7 @@ import type { Activity, ScheduleDay } from '@/types/activity'
 import { formatTime, withActivity, withoutActivity } from '../schedule'
 
 function activity(id: string, date: string, startTime: string, endTime: string): Activity {
-  return { id, name: id, date, startTime, endTime }
+  return { id, name: id, date, startTime, endTime, cost: 0 }
 }
 
 const tsukiji = activity('tsukiji', '2026-12-01', '07:00:00', '08:00:00')

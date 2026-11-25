@@ -4,6 +4,7 @@ import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import TimePicker from '@/components/TimePicker.vue'
 import { MAX_ACTIVITY_NAME_LENGTH, type Activity, type SaveActivityInput } from '@/types/activity'
 import { formatDayLabel } from '@/utils/date'
+import { parseCost } from '@/utils/money'
 import { formatTime } from '@/utils/schedule'
 
 const props = withDefaults(
@@ -27,6 +28,7 @@ const name = ref(props.activity?.name ?? '')
 const date = ref(props.activity?.date ?? props.dates[0] ?? '')
 const startTime = ref(props.activity ? formatTime(props.activity.startTime) : '')
 const endTime = ref(props.activity ? formatTime(props.activity.endTime) : '')
+const cost = ref(props.activity && props.activity.cost > 0 ? props.activity.cost.toFixed(2) : '')
 const submitting = ref(false)
 
 const dateOptions = computed<SelectOption[]>(() =>
@@ -42,13 +44,19 @@ const endsAfterStart = computed(() => endTime.value > startTime.value)
 const timeError = computed(() =>
   timesAreFilled.value && !endsAfterStart.value ? 'End time must be later than start time.' : '',
 )
+const parsedCost = computed(() => parseCost(cost.value))
+const costError = computed(() => (parsedCost.value.ok ? '' : parsedCost.value.error))
 const canSubmit = computed(
   () =>
-    name.value.trim() !== '' && date.value !== '' && timesAreFilled.value && endsAfterStart.value,
+    name.value.trim() !== '' &&
+    date.value !== '' &&
+    timesAreFilled.value &&
+    endsAfterStart.value &&
+    parsedCost.value.ok,
 )
 
 async function onSubmit() {
-  if (!canSubmit.value) {
+  if (!canSubmit.value || !parsedCost.value.ok) {
     return
   }
 
@@ -59,6 +67,7 @@ async function onSubmit() {
     date: date.value,
     startTime: startTime.value,
     endTime: endTime.value,
+    cost: parsedCost.value.value,
   })
 
   submitting.value = false
@@ -67,6 +76,7 @@ async function onSubmit() {
     name.value = ''
     startTime.value = ''
     endTime.value = ''
+    cost.value = ''
   }
 }
 </script>
@@ -114,7 +124,27 @@ async function onSubmit() {
         <TimePicker v-model="endTime" name="endTime" label="End" align="end" />
       </div>
     </div>
-    <p v-if="timeError" class="time-error" data-testid="time-error">{{ timeError }}</p>
+    <p v-if="timeError" class="field-error" data-testid="time-error">{{ timeError }}</p>
+
+    <label class="field">
+      <span class="field-label">
+        Cost
+        <span class="field-optional">Optional</span>
+      </span>
+      <span class="cost-input" :class="{ invalid: costError }">
+        <input
+          v-model="cost"
+          class="text-input"
+          name="cost"
+          type="text"
+          inputmode="decimal"
+          placeholder="0.00"
+          autocomplete="off"
+          :aria-invalid="costError !== ''"
+        />
+      </span>
+    </label>
+    <p v-if="costError" class="field-error" data-testid="cost-error">{{ costError }}</p>
 
     <div class="actions">
       <button
@@ -160,10 +190,27 @@ async function onSubmit() {
   height: 1.1rem;
 }
 
-.time-error {
+.field-error {
   margin-top: -0.6rem;
   font-size: 0.85rem;
   color: var(--color-danger);
+}
+
+.field-optional {
+  font-weight: 500;
+  color: var(--color-subtle);
+}
+
+.cost-input .text-input {
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-input.invalid .text-input {
+  border-color: var(--color-danger);
+}
+
+.cost-input.invalid .text-input:focus {
+  box-shadow: 0 0 0 4px rgb(179 65 47 / 0.15);
 }
 
 .actions {

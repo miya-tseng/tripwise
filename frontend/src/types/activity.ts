@@ -4,6 +4,7 @@ export interface Activity {
   date: string
   startTime: string
   endTime: string
+  cost: number
 }
 
 export interface SaveActivityInput {
@@ -11,6 +12,7 @@ export interface SaveActivityInput {
   date: string
   startTime: string
   endTime: string
+  cost: number
 }
 
 export interface ScheduleDay {
@@ -24,3 +26,5 @@ export interface Schedule {
 }
 
 export const MAX_ACTIVITY_NAME_LENGTH = 100
+
+export const MAX_COST = 9_999_999_999.99

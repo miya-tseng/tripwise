@@ -16,6 +16,7 @@ const shibuya: Activity = {
   date: '2026-12-01',
   startTime: '15:00:00',
   endTime: '16:00:00',
+  cost: 2200,
 }
 
 function mockLoadedTrip() {
@@ -61,11 +62,14 @@ async function pickTime(wrapper: VueWrapper, name: 'startTime' | 'endTime', time
 
 async function submitActivity(
   wrapper: Awaited<ReturnType<typeof mountView>>,
-  values: { name: string; startTime: string; endTime: string },
+  values: { name: string; startTime: string; endTime: string; cost?: string },
 ) {
   await wrapper.find('input[name="name"]').setValue(values.name)
   await pickTime(wrapper, 'startTime', values.startTime)
   await pickTime(wrapper, 'endTime', values.endTime)
+  if (values.cost !== undefined) {
+    await wrapper.find('input[name="cost"]').setValue(values.cost)
+  }
   await wrapper.find('form').trigger('submit')
   await flushPromises()
 }
@@ -118,18 +122,58 @@ describe('TripScheduleView', () => {
       date: '2026-12-01',
       startTime: '10:00:00',
       endTime: '11:00:00',
+      cost: 500.25,
     })
     const wrapper = await mountView()
 
-    await submitActivity(wrapper, { name: 'Senso-ji', startTime: '10:00', endTime: '11:00' })
+    await submitActivity(wrapper, {
+      name: 'Senso-ji',
+      startTime: '10:00',
+      endTime: '11:00',
+      cost: '500.25',
+    })
 
     expect(addActivity).toHaveBeenCalledWith('tokyo-id', {
       name: 'Senso-ji',
       date: '2026-12-01',
       startTime: '10:00',
       endTime: '11:00',
+      cost: 500.25,
     })
     expect(activityNames(wrapper)).toEqual(['Senso-ji', 'Shibuya'])
+  })
+
+  it('shows the trip budget and day subtotals', async () => {
+    mockLoadedTrip()
+
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('2,200.00')
+    const dayTotals = wrapper.findAll('[data-testid="day-total"]').map((item) => item.text())
+    expect(dayTotals).toEqual(['2,200.00', '0.00'])
+  })
+
+  it('updates the budget after adding an activity with a cost', async () => {
+    mockLoadedTrip()
+    vi.mocked(addActivity).mockResolvedValue({
+      id: 'senso-ji-id',
+      name: 'Senso-ji',
+      date: '2026-12-01',
+      startTime: '10:00:00',
+      endTime: '11:00:00',
+      cost: 500.25,
+    })
+    const wrapper = await mountView()
+
+    await submitActivity(wrapper, {
+      name: 'Senso-ji',
+      startTime: '10:00',
+      endTime: '11:00',
+      cost: '500.25',
+    })
+
+    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('2,700.25')
+    expect(wrapper.find('[data-testid="day-total"]').text()).toBe('2,700.25')
   })
 
   it('shows the overlap error from the server', async () => {
@@ -162,6 +206,7 @@ describe('TripScheduleView', () => {
       date: '2026-12-01',
       startTime: '15:00',
       endTime: '16:00',
+      cost: 2200,
     })
     expect(activityNames(wrapper)).toEqual(['Shibuya Sky'])
     expect(wrapper.find('.section-title').text()).toBe('Add activity')

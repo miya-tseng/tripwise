@@ -11,6 +11,7 @@ const sensoji: Activity = {
   date: '2026-12-02',
   startTime: '10:00:00',
   endTime: '11:30:00',
+  cost: 2200.5,
 }
 
 type Submit = (input: SaveActivityInput) => Promise<boolean>
@@ -102,6 +103,7 @@ describe('ActivityForm', () => {
       startTime: '10:00',
       endTime: '11:00',
     })
+    await wrapper.find('input[name="cost"]').setValue('2,200.5')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
@@ -110,10 +112,39 @@ describe('ActivityForm', () => {
       date: '2026-12-02',
       startTime: '10:00',
       endTime: '11:00',
+      cost: 2200.5,
     })
     expect((wrapper.find('input[name="name"]').element as HTMLInputElement).value).toBe('')
     expect((wrapper.find('input[name="startTime"]').element as HTMLInputElement).value).toBe('')
+    expect((wrapper.find('input[name="cost"]').element as HTMLInputElement).value).toBe('')
   })
+
+  it('submits a zero cost when the cost is left empty', async () => {
+    const submit = vi.fn<Submit>().mockResolvedValue(true)
+    const wrapper = mountForm(submit)
+
+    await fill(wrapper, { name: 'Senso-ji', startTime: '10:00', endTime: '11:00' })
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({ cost: 0 }))
+  })
+
+  it.each(['-5', '12.345', 'abc'])(
+    'shows an error and disables submit for the cost %j',
+    async (cost) => {
+      const wrapper = mountForm()
+
+      await fill(wrapper, { name: 'Senso-ji', startTime: '10:00', endTime: '11:00' })
+      await wrapper.find('input[name="cost"]').setValue(cost)
+
+      expect(wrapper.find('[data-testid="cost-error"]').text()).toBe(
+        'Cost must be a positive amount with up to 2 decimal places.',
+      )
+      expect(wrapper.find('input[name="cost"]').attributes('aria-invalid')).toBe('true')
+      expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+    },
+  )
 
   it('keeps the values when adding fails', async () => {
     const wrapper = mountForm(vi.fn<Submit>().mockResolvedValue(false))
@@ -134,7 +165,14 @@ describe('ActivityForm', () => {
       '10:00',
     )
     expect((wrapper.find('input[name="endTime"]').element as HTMLInputElement).value).toBe('11:30')
+    expect((wrapper.find('input[name="cost"]').element as HTMLInputElement).value).toBe('2200.50')
     expect(submitButton(wrapper).text()).toBe('Save')
+  })
+
+  it('leaves the cost empty when editing a free activity', () => {
+    const wrapper = mountForm(undefined, { ...sensoji, cost: 0 })
+
+    expect((wrapper.find('input[name="cost"]').element as HTMLInputElement).value).toBe('')
   })
 
   it('emits cancel when editing is cancelled', async () => {

@@ -7,6 +7,7 @@ import ScheduleDays from '@/components/ScheduleDays.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 import { formatDateRange } from '@/utils/date'
+import { formatMoney, tripTotal } from '@/utils/money'
 
 const props = defineProps<{
   id: string
@@ -18,6 +19,7 @@ const { trip, days, loading, loadError, error, deletingId } = storeToRefs(store)
 const editing = ref<Activity | null>(null)
 
 const dates = computed(() => days.value.map((day) => day.date))
+const budget = computed(() => formatMoney(tripTotal(days.value)))
 const activityCount = computed(() =>
   days.value.reduce((total, day) => total + day.activities.length, 0),
 )
@@ -105,6 +107,10 @@ async function removeActivity(id: string) {
           <div class="stat">
             <dt>{{ activityCount === 1 ? 'Activity' : 'Activities' }}</dt>
             <dd data-testid="activity-count">{{ activityCount }}</dd>
+          </div>
+          <div class="stat stat-budget">
+            <dt>Budget</dt>
+            <dd data-testid="trip-total">{{ budget }}</dd>
           </div>
         </dl>
       </header>
@@ -269,6 +275,11 @@ h1 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgb(255 255 255 / 0.7);
+}
+
+.stat-budget {
+  background: rgb(255 255 255 / 0.16);
+  border-color: rgb(243 201 179 / 0.45);
 }
 
 .stat dd {

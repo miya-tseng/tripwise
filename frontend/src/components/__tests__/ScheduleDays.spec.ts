@@ -4,13 +4,19 @@ import ScheduleDays from '../ScheduleDays.vue'
 import ConfirmDialog from '../ConfirmDialog.vue'
 import type { Activity, ScheduleDay } from '@/types/activity'
 
-function activity(id: string, date: string, startTime: string, endTime: string): Activity {
-  return { id, name: id, date, startTime, endTime }
+function activity(
+  id: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  cost = 0,
+): Activity {
+  return { id, name: id, date, startTime, endTime, cost }
 }
 
-const tsukiji = activity('Tsukiji', '2026-12-01', '07:00:00', '08:00:00')
+const tsukiji = activity('Tsukiji', '2026-12-01', '07:00:00', '08:00:00', 1500.5)
 const sensoji = activity('Senso-ji', '2026-12-01', '09:00:00', '10:30:00')
-const tower = activity('Tokyo Tower', '2026-12-03', '18:00:00', '19:00:00')
+const tower = activity('Tokyo Tower', '2026-12-03', '18:00:00', '19:00:00', 0.1)
 
 const days: ScheduleDay[] = [
   { date: '2026-12-01', activities: [tsukiji, sensoji] },
@@ -43,6 +49,20 @@ describe('ScheduleDays', () => {
     expect(names).toEqual(['Tsukiji', 'Senso-ji'])
     expect(times).toEqual(['07:00 – 08:00', '09:00 – 10:30'])
     expect(firstDay.text()).toContain('2 activities')
+  })
+
+  it('shows the cost of each activity with two decimals or Free', () => {
+    const wrapper = mountDays()
+
+    const costs = wrapper.findAll('[data-testid="activity-cost"]').map((item) => item.text())
+    expect(costs).toEqual(['1,500.50', 'Free', '0.10'])
+  })
+
+  it('shows the subtotal of each day', () => {
+    const wrapper = mountDays()
+
+    const totals = wrapper.findAll('[data-testid="day-total"]').map((item) => item.text())
+    expect(totals).toEqual(['1,500.50', '0.00', '0.10'])
   })
 
   it('shows an empty message for a day without activities', () => {
