@@ -14,23 +14,28 @@ public class Trip
 
     private Trip() { }
 
-    public Activity AddActivity(string name, DateOnly date, TimeSlot timeSlot)
+    public Activity AddActivity(string name, DateOnly date, TimeSlot timeSlot, Money? cost = null)
     {
         var normalizedName = Activity.NormalizeName(name);
         EnsureActivityFits(date, timeSlot, excludedActivityId: null);
 
-        var activity = Activity.Create(normalizedName, date, timeSlot);
+        var activity = Activity.Create(normalizedName, date, timeSlot, cost ?? Money.Zero);
         _activities.Add(activity);
         return activity;
     }
 
-    public Activity UpdateActivity(Guid activityId, string name, DateOnly date, TimeSlot timeSlot)
+    public Activity UpdateActivity(
+        Guid activityId,
+        string name,
+        DateOnly date,
+        TimeSlot timeSlot,
+        Money? cost = null)
     {
         var activity = FindActivity(activityId);
         var normalizedName = Activity.NormalizeName(name);
         EnsureActivityFits(date, timeSlot, excludedActivityId: activityId);
 
-        activity.Update(normalizedName, date, timeSlot);
+        activity.Update(normalizedName, date, timeSlot, cost ?? Money.Zero);
         return activity;
     }
 
@@ -38,6 +43,11 @@ public class Trip
     {
         _activities.Remove(FindActivity(activityId));
     }
+
+    public Money GetDailyTotal(DateOnly date) =>
+        Money.Sum(_activities.Where(activity => activity.Date == date).Select(activity => activity.Cost));
+
+    public Money GetTotal() => Money.Sum(_activities.Select(activity => activity.Cost));
 
     private Activity FindActivity(Guid activityId) =>
         _activities.FirstOrDefault(activity => activity.Id == activityId)
