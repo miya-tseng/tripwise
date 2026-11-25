@@ -1,5 +1,7 @@
 # TripWise
 
+[![CI](https://github.com/miya-tseng/tripwise/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/miya-tseng/tripwise/actions/workflows/ci.yml)
+
 A trip planner built to practice **unit, integration and E2E testing** in .NET.
 
 Plan a trip day by day: add activities with time slots, prevent overlapping schedules, and keep track of your budget.
