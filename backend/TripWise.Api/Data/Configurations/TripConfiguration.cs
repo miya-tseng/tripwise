@@ -19,5 +19,7 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
             period.Property(range => range.Start).HasColumnName("StartDate");
             period.Property(range => range.End).HasColumnName("EndDate");
         });
+
+        builder.Ignore(trip => trip.Activities);
     }
 }
