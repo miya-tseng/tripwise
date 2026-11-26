@@ -73,6 +73,34 @@ public class Trip
 
     public static Trip Create(string name, DateOnly start, DateOnly end)
     {
+        return new Trip
+        {
+            Id = Guid.CreateVersion7(),
+            Name = NormalizeName(name),
+            Period = CreatePeriod(start, end),
+        };
+    }
+
+    public void Rename(string name)
+    {
+        Name = NormalizeName(name);
+    }
+
+    public void Reschedule(DateOnly start, DateOnly end)
+    {
+        var period = CreatePeriod(start, end);
+        var activitiesOutside = _activities.Count(activity => !period.Contains(activity.Date));
+
+        if (activitiesOutside > 0)
+        {
+            throw new TripDatesConflictException(activitiesOutside);
+        }
+
+        Period = period;
+    }
+
+    private static string NormalizeName(string name)
+    {
         var trimmedName = name?.Trim();
 
         if (string.IsNullOrEmpty(trimmedName))
@@ -85,6 +113,11 @@ public class Trip
             throw new DomainException($"Trip name cannot exceed {MaxNameLength} characters.");
         }
 
+        return trimmedName;
+    }
+
+    private static DateRange CreatePeriod(DateOnly start, DateOnly end)
+    {
         var period = new DateRange(start, end);
 
         if (period.Days > MaxDays)
@@ -92,11 +125,6 @@ public class Trip
             throw new DomainException($"A trip cannot be longer than {MaxDays} days.");
         }
 
-        return new Trip
-        {
-            Id = Guid.CreateVersion7(),
-            Name = trimmedName,
-            Period = period,
-        };
+        return period;
     }
 }
