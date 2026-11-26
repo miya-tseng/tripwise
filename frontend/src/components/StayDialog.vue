@@ -621,4 +621,14 @@ async function onConfirmDelete() {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+@media (max-width: 720px) {
+  .actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0.2rem -0.25rem 0;
+    padding: 0.75rem 0.25rem calc(0.25rem + env(safe-area-inset-bottom));
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0) 0, var(--color-surface) 0.75rem);
+  }
+}
 </style>

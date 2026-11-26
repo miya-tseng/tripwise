@@ -283,7 +283,7 @@ describe('ScheduleDays', () => {
 
       const directions = wrapper.findAll('[data-testid="directions-link"]')
       expect(directions).toHaveLength(1)
-      expect(directions[0]!.text()).toBe('Directions from Tsukiji ↗')
+      expect(directions[0]!.find('.directions-full').text()).toBe('Directions from Tsukiji')
       const url = new URL(directions[0]!.attributes('href')!)
       expect(url.searchParams.get('origin_place_id')).toBe('Tsukiji')
       expect(url.searchParams.get('destination_place_id')).toBe('Tokyo Tower')
@@ -561,5 +561,21 @@ describe('ScheduleDays stays', () => {
     const wrapper = mount(ScheduleDays, { props: { days, today: '2027-01-01' } })
 
     expect(wrapper.findAll('.is-today')).toHaveLength(0)
+  })
+
+  it('opens an activity when its row is tapped', async () => {
+    const wrapper = mountDays()
+
+    await wrapper.find('[data-testid="activity-name"]').trigger('click')
+
+    expect(wrapper.emitted('edit')).toEqual([[tsukiji]])
+  })
+
+  it('does not open the activity when a button or link in the row is used', async () => {
+    const wrapper = mountDays()
+
+    await wrapper.find('[data-testid="delete-activity"]').trigger('click')
+
+    expect(wrapper.emitted('edit')).toBeUndefined()
   })
 })

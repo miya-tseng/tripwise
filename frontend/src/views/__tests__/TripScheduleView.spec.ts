@@ -4,6 +4,7 @@ import { routerKey, type Router } from 'vue-router'
 import { createPinia } from 'pinia'
 import {
   addActivity,
+  deleteActivity,
   fetchSchedule,
   fetchSuggestions,
   moveActivity,
@@ -739,6 +740,73 @@ describe('TripScheduleView', () => {
       ['tab-overview', { name: 'trip-overview', params: { id: 'tokyo-id' } }],
       ['tab-checklist', { name: 'trip-checklist', params: { id: 'tokyo-id' } }],
     ])
+  })
+
+  describe('phone layout', () => {
+    it('jumps to a day from the day strip', async () => {
+      mockLoadedTrip()
+      const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>()
+      Element.prototype.scrollIntoView = scrollIntoView
+      const wrapper = mount(TripScheduleView, {
+        props: { id: 'tokyo-id', today: '2030-01-01' },
+        global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+        attachTo: document.body,
+      })
+      await flushPromises()
+
+      await wrapper.findAll('[data-testid="day-chip"]')[1]!.trigger('click')
+
+      expect(scrollIntoView.mock.contexts).toContain(
+        wrapper.findAll('[data-testid="schedule-day"]')[1]!.element,
+      )
+      expect(wrapper.findAll('[data-testid="day-chip"]')[1]!.classes()).toContain('active')
+      wrapper.unmount()
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    })
+
+    it('adds an activity to the day in view from the floating button', async () => {
+      mockLoadedTrip()
+      Element.prototype.scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>()
+      const wrapper = mount(TripScheduleView, {
+        props: { id: 'tokyo-id', today: '2030-01-01' },
+        global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+        attachTo: document.body,
+      })
+      await flushPromises()
+      await wrapper.findAll('[data-testid="day-chip"]')[1]!.trigger('click')
+
+      await wrapper.find('[data-testid="fab"]').trigger('click')
+      await wrapper.find('[data-testid="fab-add-activity"]').trigger('click')
+
+      expect(wrapper.findComponent(ActivityDialog).props('open')).toBe(true)
+      expect(wrapper.findComponent(ActivityDialog).props('initialDate')).toBe('2026-12-02')
+      expect(wrapper.find('[data-testid="fab-menu"]').exists()).toBe(false)
+      wrapper.unmount()
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    })
+
+    it('adds a stay from the floating button', async () => {
+      mockLoadedTrip()
+      const wrapper = await mountView()
+
+      await wrapper.find('[data-testid="fab"]').trigger('click')
+      await wrapper.find('[data-testid="fab-add-stay"]').trigger('click')
+
+      expect(wrapper.findComponent(StayDialog).props('open')).toBe(true)
+      expect(wrapper.findComponent(StayDialog).props('initialCheckIn')).toBe('2026-12-01')
+    })
+
+    it('deletes an activity from its dialog', async () => {
+      mockLoadedTrip()
+      vi.mocked(deleteActivity).mockResolvedValue()
+      const wrapper = await mountView()
+
+      await wrapper.find('[data-testid="activity-name"]').trigger('click')
+      const remove = wrapper.findComponent(ActivityDialog).props('remove')!
+
+      expect(await remove('shibuya-id')).toBe(true)
+      expect(deleteActivity).toHaveBeenCalledWith('tokyo-id', 'shibuya-id')
+    })
   })
 
   describe('quick stays', () => {

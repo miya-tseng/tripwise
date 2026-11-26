@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ActivityDialog from '../ActivityDialog.vue'
 import ActivityForm from '../ActivityForm.vue'
+import ConfirmDialog from '../ConfirmDialog.vue'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 
 type Submit = (input: SaveActivityInput) => Promise<boolean>
@@ -98,5 +99,38 @@ describe('ActivityDialog', () => {
     await wrapper.find('[data-testid="cancel-edit"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(2)
+  })
+
+  it('deletes the activity being edited after confirming', async () => {
+    const remove = vi.fn<(id: string) => Promise<boolean>>().mockResolvedValue(true)
+    const wrapper = mountDialog({ activity, remove })
+
+    await wrapper.find('[data-testid="dialog-delete-activity"]').trigger('click')
+    const confirm = wrapper.findComponent(ConfirmDialog)
+    expect(confirm.props('open')).toBe(true)
+    expect(confirm.props('message')).toContain('Senso-ji')
+
+    confirm.vm.$emit('confirm')
+    await flushPromises()
+
+    expect(remove).toHaveBeenCalledWith('a')
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  it('stays open when deleting fails', async () => {
+    const remove = vi.fn<(id: string) => Promise<boolean>>().mockResolvedValue(false)
+    const wrapper = mountDialog({ activity, remove })
+
+    await wrapper.find('[data-testid="dialog-delete-activity"]').trigger('click')
+    wrapper.findComponent(ConfirmDialog).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(wrapper.emitted('close')).toBeUndefined()
+  })
+
+  it('offers no delete when adding', () => {
+    const wrapper = mountDialog({ remove: vi.fn<(id: string) => Promise<boolean>>() })
+
+    expect(wrapper.find('[data-testid="dialog-delete-activity"]').exists()).toBe(false)
   })
 })

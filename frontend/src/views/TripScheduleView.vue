@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, routerKey } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import ActivityDialog from '@/components/ActivityDialog.vue'
 import type { ActivityPrefill } from '@/components/ActivityForm.vue'
 import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
+import DayStrip from '@/components/DayStrip.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import StayDialog from '@/components/StayDialog.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
@@ -85,6 +86,13 @@ const bookingFilter = ref<BookingStatus | null>(null)
 const movingId = ref<string | null>(null)
 const defaultCurrency = ref(lastUsedCurrency(props.id))
 const stayDialogOpen = ref(false)
+const tripBar = ref<HTMLElement | null>(null)
+const headerOffset = ref(0)
+const activeDayIndex = ref(0)
+const fabOpen = ref(false)
+const staysOpen = ref(false)
+let headerObserver: ResizeObserver | undefined
+let scrollFrame = 0
 const editingStay = ref<Stay | null>(null)
 const stayCheckIn = ref<string | null>(null)
 const stayCheckOut = ref<string | null>(null)
@@ -215,6 +223,76 @@ watch(
   },
   { immediate: true },
 )
+
+function dayElements(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-testid="schedule-day"]'))
+}
+
+function updateActiveDay() {
+  scrollFrame = 0
+  const days = dayElements()
+
+  if (days.length === 0) {
+    return
+  }
+
+  const line = headerOffset.value + 24
+  const passed = days.filter((element) => element.getBoundingClientRect().top <= line).length
+  activeDayIndex.value = Math.max(0, passed - 1)
+}
+
+function onScroll() {
+  if (!scrollFrame) {
+    scrollFrame = requestAnimationFrame(updateActiveDay)
+  }
+}
+
+function jumpToDay(index: number) {
+  activeDayIndex.value = index
+  dayElements()[index]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+}
+
+function observeHeader(element: HTMLElement | null) {
+  headerObserver?.disconnect()
+
+  if (!element || typeof ResizeObserver === 'undefined') {
+    return
+  }
+
+  headerObserver = new ResizeObserver(() => {
+    headerOffset.value = element.offsetHeight
+  })
+  headerObserver.observe(element)
+}
+
+watch(tripBar, observeHeader)
+
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
+  headerObserver?.disconnect()
+  cancelAnimationFrame(scrollFrame)
+})
+
+const currentDayDate = computed(() => dates.value[activeDayIndex.value] ?? dates.value[0])
+
+function fabAddActivity() {
+  fabOpen.value = false
+  addToDay(currentDayDate.value)
+}
+
+function fabAddStay() {
+  fabOpen.value = false
+  openStayDialog({ checkIn: currentDayDate.value })
+}
+
+async function removeActivityFromDialog(id: string): Promise<boolean> {
+  await removeActivity(id)
+  return !error.value
+}
 
 function openDialog(options: { activity?: Activity; date?: string; prefill?: ActivityPrefill }) {
   store.clearError()
@@ -353,7 +431,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
 </script>
 
 <template>
-  <main class="page">
+  <main class="page" :style="{ '--header-offset': `${headerOffset}px` }">
     <div v-if="loading" class="status" aria-busy="true">
       <p class="loading">Loading...</p>
     </div>
@@ -364,7 +442,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
     </div>
 
     <template v-else-if="trip">
-      <header class="trip-bar" data-testid="trip-bar">
+      <header ref="tripBar" class="trip-bar" data-testid="trip-bar">
         <div class="bar-inner">
           <div class="bar-top">
             <RouterLink to="/" class="back-link" aria-label="All trips" data-testid="back-link">
@@ -405,15 +483,17 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
             <div class="bar-actions">
               <button
                 type="button"
-                class="btn btn-secondary btn-small"
+                class="btn btn-secondary btn-small edit-trip"
+                aria-label="Edit trip"
                 data-testid="edit-trip"
                 @click="openTripEditor"
               >
-                Edit trip
+                <span class="edit-trip-icon" aria-hidden="true">✎</span>
+                <span class="edit-trip-label">Edit trip</span>
               </button>
               <button
                 type="button"
-                class="btn btn-primary btn-small"
+                class="btn btn-primary btn-small add-activity"
                 data-testid="add-activity"
                 @click="addToDay()"
               >
@@ -471,6 +551,14 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
               </button>
             </div>
           </div>
+          <DayStrip
+            v-if="scheduleView === 'timeline' && dates.length > 1"
+            class="day-strip-row"
+            :dates="dates"
+            :active-index="activeDayIndex"
+            :today="today"
+            @jump="jumpToDay"
+          />
         </div>
       </header>
 
@@ -504,19 +592,30 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         <section class="stays" aria-label="Stays" data-testid="stays-section">
           <div class="stays-head">
             <h2 class="stays-title">Stays</h2>
+            <button
+              v-if="stays.length > 0"
+              type="button"
+              class="stays-toggle"
+              :aria-expanded="staysOpen"
+              data-testid="stays-toggle"
+              @click="staysOpen = !staysOpen"
+            >
+              🛏 {{ stays.length }} {{ stays.length === 1 ? 'stay' : 'stays' }}
+              <span class="stays-toggle-hint">{{ staysOpen ? 'Hide' : 'Show' }}</span>
+            </button>
             <span v-if="nightsWithoutStay > 0" class="stays-hint" data-testid="nights-without-stay">
               {{ nightsLabel(nightsWithoutStay) }} without a stay
             </span>
             <button
               type="button"
-              class="btn btn-secondary btn-small"
+              class="btn btn-secondary btn-small add-stay"
               data-testid="add-stay"
               @click="openStayDialog({})"
             >
               + Add stay
             </button>
           </div>
-          <ul v-if="stays.length > 0" class="stay-cards">
+          <ul v-if="stays.length > 0" class="stay-cards" :class="{ collapsed: !staysOpen }">
             <li v-for="stay in stays" :key="stay.id">
               <button
                 type="button"
@@ -584,9 +683,44 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         </aside>
       </Transition>
 
+      <div class="fab" :class="{ open: fabOpen }" data-testid="fab-area">
+        <div v-if="fabOpen" class="fab-menu" role="menu" data-testid="fab-menu">
+          <button
+            type="button"
+            role="menuitem"
+            class="fab-option"
+            data-testid="fab-add-activity"
+            @click="fabAddActivity"
+          >
+            🗓 Activity
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            class="fab-option"
+            data-testid="fab-add-stay"
+            @click="fabAddStay"
+          >
+            🛏 Stay
+          </button>
+        </div>
+        <button
+          type="button"
+          class="fab-button"
+          :aria-expanded="fabOpen"
+          aria-haspopup="menu"
+          :aria-label="fabOpen ? 'Close add menu' : 'Add to the trip'"
+          data-testid="fab"
+          @click="fabOpen = !fabOpen"
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      </div>
+
       <ActivityDialog
         :open="dialogOpen"
         :form-key="formKey"
+        :remove="removeActivityFromDialog"
         :dates="dates"
         :activity="editing"
         :prefill="prefill"
@@ -937,19 +1071,97 @@ h1 {
   color: var(--color-muted);
 }
 
+.edit-trip-icon {
+  display: none;
+}
+
+.day-strip-row {
+  margin-top: 0.1rem;
+}
+
+.stays-toggle {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.stays-toggle-hint {
+  font-size: 0.78rem;
+  color: var(--color-primary);
+}
+
+.fab {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  z-index: 55;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.fab-button {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(140deg, #2a6b5f 0%, #1a4f4a 100%);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 10px 24px -8px rgb(31 92 86 / 0.7);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.fab.open .fab-button {
+  transform: rotate(45deg);
+}
+
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.fab-option {
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .bar-inner {
-    padding: 0.6rem 0.9rem 0.55rem;
+    padding: 0.5rem 0.75rem 0.5rem;
     gap: 0.45rem;
   }
 
   .bar-top {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      'back title budget'
-      'actions actions actions';
-    gap: 0.4rem 0.6rem;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: 'back title budget actions';
+    gap: 0.5rem;
   }
 
   .back-link {
@@ -958,30 +1170,52 @@ h1 {
 
   .trip-title {
     grid-area: title;
+    min-width: 0;
   }
 
   h1 {
-    font-size: 1.2rem;
+    overflow: hidden;
+    font-size: 1.1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .trip-meta {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+  }
+
+  .trip-meta > :nth-child(n + 2) {
+    display: none;
   }
 
   .budget {
     grid-area: budget;
   }
 
+  .budget-label {
+    font-size: 0.6rem;
+  }
+
   .budget-value {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .bar-actions {
     grid-area: actions;
   }
 
-  .bar-actions .btn {
-    flex: 1;
+  .bar-actions .add-activity,
+  .edit-trip-label {
+    display: none;
+  }
+
+  .edit-trip {
+    width: 2.25rem;
+    padding: 0;
+  }
+
+  .edit-trip-icon {
+    display: inline;
   }
 
   .bar-bottom {
@@ -990,18 +1224,43 @@ h1 {
     scrollbar-width: none;
   }
 
+  .bar-bottom::-webkit-scrollbar {
+    display: none;
+  }
+
   .category-filter {
     flex-wrap: nowrap;
   }
 
   .filter-chip,
-  .view-toggle {
+  .view-toggle,
+  .booking-filter {
     flex-shrink: 0;
   }
 
   .rates-note {
-    align-self: stretch;
-    font-size: 0.72rem;
+    display: none;
+  }
+
+  .stays-title,
+  .add-stay {
+    display: none;
+  }
+
+  .stays {
+    margin-bottom: 0.9rem;
+  }
+
+  .stays-toggle {
+    display: inline-flex;
+  }
+
+  .stay-cards.collapsed {
+    display: none;
+  }
+
+  .fab {
+    display: flex;
   }
 }
 </style>

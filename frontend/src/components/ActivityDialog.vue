@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ActivityForm, { type ActivityPrefill } from '@/components/ActivityForm.vue'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { ExchangeRates } from '@/types/currency'
@@ -19,6 +20,7 @@ const props = withDefaults(
     near?: GeoPoint | null
     error?: string | null
     formKey?: string
+    remove?: (activityId: string) => Promise<boolean>
   }>(),
   {
     activity: null,
@@ -29,6 +31,7 @@ const props = withDefaults(
     near: null,
     error: null,
     formKey: 'activity',
+    remove: undefined,
   },
 )
 
@@ -38,6 +41,23 @@ const emit = defineEmits<{
 }>()
 
 const titleId = useId()
+const confirmingDelete = ref(false)
+
+watch(
+  () => props.open,
+  () => {
+    confirmingDelete.value = false
+  },
+)
+
+async function onConfirmDelete() {
+  const activity = props.activity
+  confirmingDelete.value = false
+
+  if (activity && props.remove && (await props.remove(activity.id))) {
+    emit('close')
+  }
+}
 
 const title = computed(() => (props.activity ? `Edit "${props.activity.name}"` : 'Add activity'))
 const subtitle = computed(() => {
@@ -107,6 +127,15 @@ async function save(input: SaveActivityInput): Promise<boolean> {
             show-cancel
             @cancel="emit('close')"
           />
+          <button
+            v-if="activity && remove"
+            type="button"
+            class="btn btn-ghost btn-small delete-activity"
+            data-testid="dialog-delete-activity"
+            @click="confirmingDelete = true"
+          >
+            Delete this activity
+          </button>
           <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">
             <span>{{ error }}</span>
             <button
@@ -123,6 +152,15 @@ async function save(input: SaveActivityInput): Promise<boolean> {
       </section>
     </div>
   </Transition>
+
+  <ConfirmDialog
+    :open="confirmingDelete"
+    title="Delete activity?"
+    :message="activity ? `Delete &quot;${activity.name}&quot; from your trip?` : ''"
+    confirm-label="Delete"
+    @confirm="onConfirmDelete"
+    @cancel="confirmingDelete = false"
+  />
 </template>
 
 <style scoped>
@@ -198,5 +236,14 @@ async function save(input: SaveActivityInput): Promise<boolean> {
     max-height: 92vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
+}
+.delete-activity {
+  align-self: flex-start;
+  margin-top: 0.75rem;
+  color: var(--color-danger);
+}
+
+.delete-activity:hover {
+  background: var(--color-danger-soft);
 }
 </style>

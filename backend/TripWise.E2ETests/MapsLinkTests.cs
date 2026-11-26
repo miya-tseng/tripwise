@@ -37,7 +37,9 @@ public class MapsLinkTests : SchedulePageTest
         await AddPlaceAsync("ueno", "Ueno Park", day: 1, "16:00", "17:00");
 
         var directions = ScheduleDay(1).GetByTestId("directions-link");
-        await Expect(directions).ToHaveTextAsync(["Directions from Senso-ji ↗", "Directions from Tokyo Skytree ↗"]);
+        await Expect(directions).ToHaveTextAsync(
+            ["Directions from Senso-ji ↗", "Directions from Tokyo Skytree ↗"],
+            new() { UseInnerText = true });
 
         var first = await QueryOfAsync(directions.First);
         Assert.Multiple(() =>

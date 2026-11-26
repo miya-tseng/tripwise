@@ -85,6 +85,16 @@ async function selectFromMap(activityId: string) {
     ?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
 }
 
+function onActivityClick(event: MouseEvent, activity: Activity) {
+  const target = event.target as HTMLElement
+
+  if (target.closest('a, button, input, label')) {
+    return
+  }
+
+  emit('edit', activity)
+}
+
 function directionsFor(activities: Activity[], index: number): string | null {
   const place = activities[index]?.place
   const previous = previousPlaceOf(activities, index)
@@ -220,7 +230,10 @@ function confirmDelete() {
               rel="noopener noreferrer"
               data-testid="directions-link"
             >
-              Directions from {{ previousPlaceName(day.activities, activityIndex) }} ↗
+              <span class="directions-full"
+                >Directions from {{ previousPlaceName(day.activities, activityIndex) }}</span
+              >
+              <span class="directions-short">🧭 Directions</span> ↗
             </a>
           </li>
           <li
@@ -234,6 +247,7 @@ function confirmDelete() {
             ]"
             :data-activity-id="activity.id"
             data-testid="activity-item"
+            @click="onActivityClick($event, activity)"
           >
             <span class="dot" aria-hidden="true" />
             <span class="activity-time" data-testid="activity-time">
@@ -328,8 +342,10 @@ function confirmDelete() {
                 class="btn btn-ghost btn-small ideas"
                 data-testid="suggest-activity"
                 @click="emit('suggest', activity)"
+                :aria-label="`Ideas near ${activity.name}`"
               >
-                Ideas
+                <span class="action-icon" aria-hidden="true">💡</span>
+                <span class="action-label">Ideas</span>
               </button>
               <button
                 type="button"
@@ -561,7 +577,7 @@ function confirmDelete() {
 }
 
 .day {
-  scroll-margin-top: 8.5rem;
+  scroll-margin-top: calc(var(--header-offset, 7.5rem) + 0.75rem);
   padding: 1.25rem 1.4rem 1.35rem;
 }
 
@@ -931,6 +947,15 @@ function confirmDelete() {
   background: var(--color-danger-soft);
 }
 
+.activity {
+  cursor: pointer;
+}
+
+.action-icon,
+.directions-short {
+  display: none;
+}
+
 @media (hover: none) {
   .activity-actions {
     opacity: 1;
@@ -945,9 +970,7 @@ function confirmDelete() {
   .day-header {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      'tile heading summary'
-      'add add add';
+    grid-template-areas: 'tile heading summary';
     gap: 0.6rem 0.75rem;
   }
 
@@ -974,8 +997,7 @@ function confirmDelete() {
   }
 
   .add-to-day {
-    grid-area: add;
-    width: 100%;
+    display: none;
   }
 
   .timeline {
@@ -1022,10 +1044,41 @@ function confirmDelete() {
     min-width: 0;
   }
 
+  .activity {
+    grid-template-areas:
+      'time cost'
+      'name actions';
+  }
+
   .activity-actions {
     grid-area: actions;
+    align-self: end;
     justify-content: flex-end;
     opacity: 1;
+  }
+
+  .activity-actions [data-testid='edit-activity'],
+  .activity-actions [data-testid='delete-activity'],
+  .action-label,
+  .directions-full {
+    display: none;
+  }
+
+  .action-icon,
+  .directions-short {
+    display: inline;
+  }
+
+  .activity-actions .ideas {
+    width: 2.25rem;
+    padding: 0;
+  }
+
+  .activity-notes {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
   }
 }
 </style>
