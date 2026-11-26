@@ -244,4 +244,13 @@ describe('BoardView', () => {
     expect(wrapper.emitted('add')).toEqual([['2026-12-03']])
     wrapper.unmount()
   })
+
+  it('highlights the column for today', () => {
+    const wrapper = mount(BoardView, { props: { days, today: '2026-12-03' } })
+    const columns = wrapper.findAll('[data-testid="board-column"]')
+
+    expect(columns[2]!.classes()).toContain('is-today')
+    expect(columns[2]!.find('[data-testid="today-badge"]').text()).toBe('Today')
+    expect(wrapper.findAll('[data-testid="today-badge"]')).toHaveLength(1)
+  })
 })

@@ -17,9 +17,11 @@ const props = withDefaults(
   defineProps<{
     days: ScheduleDay[]
     movingId?: string | null
+    today?: string | null
   }>(),
   {
     movingId: null,
+    today: null,
   },
 )
 
@@ -139,7 +141,7 @@ function toggleMenu(activityId: string) {
       v-for="(day, dayIndex) in days"
       :key="day.date"
       class="column"
-      :class="{ 'drop-target': dropDate === day.date }"
+      :class="{ 'drop-target': dropDate === day.date, 'is-today': day.date === today }"
       :data-date="day.date"
       data-testid="board-column"
       :aria-label="`Day ${dayIndex + 1}, ${formatDayLabel(day.date)}`"
@@ -152,7 +154,12 @@ function toggleMenu(activityId: string) {
         @drop="onDrop($event, day)"
       >
         <span class="column-day">
-          <span class="eyebrow">Day {{ dayIndex + 1 }}</span>
+          <span class="eyebrow">
+            Day {{ dayIndex + 1 }}
+            <span v-if="day.date === today" class="today-badge" data-testid="today-badge"
+              >Today</span
+            >
+          </span>
           <span class="column-date"
             >{{ dateParts(day.date).weekday }}, {{ dateParts(day.date).month }}
             {{ dateParts(day.date).day }}</span
@@ -518,5 +525,20 @@ function toggleMenu(activityId: string) {
   color: var(--color-subtle);
   border: 1.5px dashed var(--color-border);
   border-radius: 10px;
+}
+.column.is-today {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.today-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: 999px;
 }
 </style>

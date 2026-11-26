@@ -525,4 +525,21 @@ describe('ScheduleDays stays', () => {
 
     expect(wrapper.emitted('editStay')).toEqual([[hotel]])
   })
+
+  it('highlights today', () => {
+    const wrapper = mount(ScheduleDays, { props: { days, today: '2026-12-02' } })
+    const dayItems = wrapper.findAll('[data-testid="schedule-day"]')
+
+    expect(dayItems[1]!.classes()).toContain('is-today')
+    expect(dayItems[1]!.attributes('aria-current')).toBe('date')
+    expect(dayItems[1]!.find('[data-testid="today-badge"]').text()).toBe('Today')
+    expect(wrapper.findAll('[data-testid="today-badge"]')).toHaveLength(1)
+    expect(dayItems[0]!.classes()).not.toContain('is-today')
+  })
+
+  it('highlights nothing when today is outside the trip', () => {
+    const wrapper = mount(ScheduleDays, { props: { days, today: '2027-01-01' } })
+
+    expect(wrapper.findAll('.is-today')).toHaveLength(0)
+  })
 })

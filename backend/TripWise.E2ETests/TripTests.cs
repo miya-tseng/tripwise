@@ -96,6 +96,8 @@ public class TripTests : PageTest
 
         await Expect(Page).ToHaveURLAsync(new Regex(@"/trips/[^/?]+\?day=2$"));
         await Expect(Page.GetByTestId("schedule-day").Nth(1)).ToBeInViewportAsync();
+        await Expect(Page.GetByTestId("schedule-day").Nth(1).GetByTestId("today-badge")).ToHaveTextAsync("Today");
+        await Expect(Page.GetByTestId("today-badge")).ToHaveCountAsync(1);
     }
 
     [Test]

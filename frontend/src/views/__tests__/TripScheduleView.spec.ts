@@ -513,6 +513,41 @@ describe('TripScheduleView', () => {
     Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
   })
 
+  it('scrolls to today and highlights it when the trip is under way', async () => {
+    mockLoadedTrip()
+    const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const wrapper = mount(TripScheduleView, {
+      props: { id: 'tokyo-id', today: '2026-12-02' },
+      global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const today = wrapper.findAll('[data-testid="schedule-day"]')[1]!
+    expect(today.classes()).toContain('is-today')
+    expect(scrollIntoView.mock.contexts[0]).toBe(today.element)
+    wrapper.unmount()
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+  })
+
+  it('does not scroll when today is the first day', async () => {
+    mockLoadedTrip()
+    const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const wrapper = mount(TripScheduleView, {
+      props: { id: 'tokyo-id', today: '2026-12-01' },
+      global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    wrapper.unmount()
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+  })
+
   describe('suggestions', () => {
     const shibuyaWithPlace: Activity = {
       ...shibuya,

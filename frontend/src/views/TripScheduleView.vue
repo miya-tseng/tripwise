@@ -29,12 +29,17 @@ import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
 import { slotAfter } from '@/utils/schedule'
 import { firstFreeNight, nextCheckInAfter, nightsLabel, stayRangeLabel } from '@/utils/stays'
 import { addDays } from '@/utils/date'
+import { todayIso } from '@/utils/trips'
 import { bookingStatusMeta } from '@/utils/activityDetails'
 
-const props = defineProps<{
-  id: string
-  day?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    id: string
+    day?: string
+    today?: string
+  }>(),
+  { day: undefined, today: () => todayIso() },
+)
 
 const store = useScheduleStore()
 const {
@@ -130,9 +135,11 @@ watch(
 watch(
   () => loading.value || !trip.value,
   async (notReady) => {
-    const dayNumber = Number(props.day)
+    const dayNumber = props.day ? Number(props.day) : dates.value.indexOf(props.today) + 1
 
-    if (notReady || !Number.isInteger(dayNumber) || dayNumber < 1) {
+    const minimumDay = props.day ? 1 : 2
+
+    if (notReady || !Number.isInteger(dayNumber) || dayNumber < minimumDay) {
       return
     }
 
@@ -463,6 +470,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         <ScheduleDays
           v-if="scheduleView === 'timeline'"
           :days="visibleDays"
+          :today="today"
           :editing-id="editing?.id ?? null"
           :deleting-id="deletingId"
           @add="addToDay"
@@ -475,6 +483,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         <BoardView
           v-else
           :days="visibleDays"
+          :today="today"
           :moving-id="movingId"
           @add="addToDay"
           @move="moveActivity"

@@ -31,10 +31,12 @@ withDefaults(
     days: ScheduleDay[]
     editingId?: string | null
     deletingId?: string | null
+    today?: string | null
   }>(),
   {
     editingId: null,
     deletingId: null,
+    today: null,
   },
 )
 
@@ -115,14 +117,26 @@ function confirmDelete() {
 
 <template>
   <ol class="days">
-    <li v-for="(day, index) in days" :key="day.date" class="card day" data-testid="schedule-day">
+    <li
+      v-for="(day, index) in days"
+      :key="day.date"
+      class="card day"
+      :class="{ 'is-today': day.date === today }"
+      :aria-current="day.date === today ? 'date' : undefined"
+      data-testid="schedule-day"
+    >
       <header class="day-header">
         <div class="date-tile" aria-hidden="true">
           <span class="tile-month">{{ dateParts(day.date).month }}</span>
           <span class="tile-day">{{ dateParts(day.date).day }}</span>
         </div>
         <div class="day-heading">
-          <span class="eyebrow">Day {{ index + 1 }}</span>
+          <span class="eyebrow">
+            Day {{ index + 1 }}
+            <span v-if="day.date === today" class="today-badge" data-testid="today-badge"
+              >Today</span
+            >
+          </span>
           <h3 class="day-date" data-testid="day-date">{{ formatDayLabel(day.date) }}</h3>
         </div>
         <button
@@ -457,8 +471,32 @@ function confirmDelete() {
   gap: 1.1rem;
 }
 
+.day.is-today {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 0 0 3px var(--color-primary-ring),
+    var(--shadow-lg);
+}
+
+.day.is-today .date-tile {
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.today-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: 999px;
+  vertical-align: 1px;
+}
+
 .day {
-  scroll-margin-top: 6.5rem;
+  scroll-margin-top: 8.5rem;
   padding: 1.25rem 1.4rem 1.35rem;
 }
 
