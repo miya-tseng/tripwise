@@ -10,10 +10,17 @@ public class Activity
     public TimeSlot TimeSlot { get; private set; } = null!;
     public Money Cost { get; private set; } = Money.Zero;
     public Place? Place { get; private set; }
+    public ActivityDetails Details { get; private set; } = ActivityDetails.Default;
 
     private Activity() { }
 
-    internal static Activity Create(string name, DateOnly date, TimeSlot timeSlot, Money cost, Place? place) => new()
+    internal static Activity Create(
+        string name,
+        DateOnly date,
+        TimeSlot timeSlot,
+        Money cost,
+        Place? place,
+        ActivityDetails details) => new()
     {
         Id = Guid.CreateVersion7(),
         Name = name,
@@ -21,15 +28,17 @@ public class Activity
         TimeSlot = timeSlot,
         Cost = cost,
         Place = place,
+        Details = details,
     };
 
-    internal void Update(string name, DateOnly date, TimeSlot timeSlot, Money cost, Place? place)
+    internal void Update(string name, DateOnly date, TimeSlot timeSlot, Money cost, Place? place, ActivityDetails details)
     {
         Name = name;
         Date = date;
         TimeSlot = timeSlot;
         Cost = cost;
         Place = place;
+        Details = details;
     }
 
     internal void MoveTo(DateOnly date, TimeSlot timeSlot)

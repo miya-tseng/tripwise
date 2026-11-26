@@ -60,6 +60,48 @@ namespace TripWise.Infrastructure.Data.Migrations
                                 .IsFixedLength();
                         });
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Details", "TripWise.Domain.Activity.Details#ActivityDetails", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("BookingStatus")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasDefaultValue("NotNeeded")
+                                .HasColumnName("BookingStatus");
+
+                            b1.Property<string>("Category")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasDefaultValue("Other")
+                                .HasColumnName("Category");
+
+                            b1.Property<string>("ConfirmationCode")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasDefaultValue("")
+                                .HasColumnName("ConfirmationCode");
+
+                            b1.Property<string>("Link")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("Link");
+
+                            b1.Property<string>("Notes")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(2000)
+                                .HasColumnType("character varying(2000)")
+                                .HasDefaultValue("")
+                                .HasColumnName("Notes");
+                        });
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Place", "TripWise.Domain.Activity.Place#Place", b1 =>
                         {
                             b1.Property<string>("Address")

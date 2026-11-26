@@ -52,6 +52,31 @@ public class ActivityConfiguration : IEntityTypeConfiguration<Activity>
             place.Property(value => value.GoogleMapsUri).HasColumnName("PlaceGoogleMapsUri").HasMaxLength(Place.MaxUriLength);
         });
 
+        builder.ComplexProperty(activity => activity.Details, details =>
+        {
+            details.Property(value => value.Category)
+                .HasColumnName("Category")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(ActivityCategory.Other);
+            details.Property(value => value.BookingStatus)
+                .HasColumnName("BookingStatus")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(BookingStatus.NotNeeded);
+            details.Property(value => value.Notes)
+                .HasColumnName("Notes")
+                .HasMaxLength(ActivityDetails.MaxNotesLength)
+                .HasDefaultValue(string.Empty);
+            details.Property(value => value.ConfirmationCode)
+                .HasColumnName("ConfirmationCode")
+                .HasMaxLength(ActivityDetails.MaxConfirmationCodeLength)
+                .HasDefaultValue(string.Empty);
+            details.Property(value => value.Link)
+                .HasColumnName("Link")
+                .HasMaxLength(ActivityDetails.MaxLinkLength);
+        });
+
         builder.HasIndex(TripIdColumn, nameof(Activity.Date));
     }
 }

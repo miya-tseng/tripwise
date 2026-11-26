@@ -19,12 +19,19 @@ public class Trip
         DateOnly date,
         TimeSlot timeSlot,
         Money? cost = null,
-        Place? place = null)
+        Place? place = null,
+        ActivityDetails? details = null)
     {
         var normalizedName = Activity.NormalizeName(name, place);
         EnsureActivityFits(date, timeSlot, excludedActivityId: null);
 
-        var activity = Activity.Create(normalizedName, date, timeSlot, cost ?? Money.Zero, place);
+        var activity = Activity.Create(
+            normalizedName,
+            date,
+            timeSlot,
+            cost ?? Money.Zero,
+            place,
+            details ?? ActivityDetails.Default);
         _activities.Add(activity);
         return activity;
     }
@@ -35,13 +42,14 @@ public class Trip
         DateOnly date,
         TimeSlot timeSlot,
         Money? cost = null,
-        Place? place = null)
+        Place? place = null,
+        ActivityDetails? details = null)
     {
         var activity = FindActivity(activityId);
         var normalizedName = Activity.NormalizeName(name, place);
         EnsureActivityFits(date, timeSlot, excludedActivityId: activityId);
 
-        activity.Update(normalizedName, date, timeSlot, cost ?? Money.Zero, place);
+        activity.Update(normalizedName, date, timeSlot, cost ?? Money.Zero, place, details ?? ActivityDetails.Default);
         return activity;
     }
 
