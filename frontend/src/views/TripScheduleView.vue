@@ -6,6 +6,7 @@ import ActivityDialog from '@/components/ActivityDialog.vue'
 import type { ActivityPrefill } from '@/components/ActivityForm.vue'
 import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
 import DayStrip from '@/components/DayStrip.vue'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import StayDialog from '@/components/StayDialog.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
@@ -89,6 +90,8 @@ const stayDialogOpen = ref(false)
 const tripBar = ref<HTMLElement | null>(null)
 const headerOffset = ref(0)
 const activeDayIndex = ref(0)
+const paged = useMediaQuery('(max-width: 720px)')
+let touchStart: { x: number; y: number } | null = null
 const fabOpen = ref(false)
 const staysOpen = ref(false)
 let headerObserver: ResizeObserver | undefined
@@ -213,7 +216,16 @@ watch(
 
     const minimumDay = props.day ? 1 : 2
 
-    if (notReady || !Number.isInteger(dayNumber) || dayNumber < minimumDay) {
+    if (notReady || !Number.isInteger(dayNumber) || dayNumber < 1) {
+      return
+    }
+
+    if (paged.value) {
+      activeDayIndex.value = Math.min(dayNumber, dates.value.length) - 1
+      return
+    }
+
+    if (dayNumber < minimumDay) {
       return
     }
 
@@ -242,7 +254,7 @@ function updateActiveDay() {
   scrollFrame = 0
   const days = dayElements()
 
-  if (days.length === 0 || Date.now() < jumpLockUntil) {
+  if (paged.value || days.length === 0 || Date.now() < jumpLockUntil) {
     return
   }
 
@@ -265,8 +277,43 @@ function onScroll() {
 
 function jumpToDay(index: number) {
   activeDayIndex.value = index
+
+  if (paged.value) {
+    window.scrollTo?.({ top: 0, behavior: 'smooth' })
+    return
+  }
+
   jumpLockUntil = Date.now() + 900
   dayElements()[index]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+}
+
+function showDay(step: number) {
+  const next = activeDayIndex.value + step
+
+  if (next >= 0 && next < dates.value.length) {
+    jumpToDay(next)
+  }
+}
+
+function onTouchStart(event: TouchEvent) {
+  const touch = event.touches[0]
+  touchStart = touch ? { x: touch.clientX, y: touch.clientY } : null
+}
+
+function onTouchEnd(event: TouchEvent) {
+  const touch = event.changedTouches[0]
+
+  if (!paged.value || !touchStart || !touch) {
+    return
+  }
+
+  const dx = touch.clientX - touchStart.x
+  const dy = touch.clientY - touchStart.y
+  touchStart = null
+
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    showDay(dx < 0 ? 1 : -1)
+  }
 }
 
 function observeHeader(element: HTMLElement | null) {
@@ -579,7 +626,12 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         </div>
       </header>
 
-      <section class="itinerary" aria-label="Itinerary">
+      <section
+        class="itinerary"
+        aria-label="Itinerary"
+        @touchstart.passive="onTouchStart"
+        @touchend.passive="onTouchEnd"
+      >
         <p
           v-if="ratesNote"
           class="rates-note"
@@ -661,20 +713,50 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           </ul>
         </section>
 
-        <ScheduleDays
-          v-if="scheduleView === 'timeline'"
-          :days="visibleDays"
-          :today="today"
-          :editing-id="editing?.id ?? null"
-          :deleting-id="deletingId"
-          @add="addToDay"
-          @edit="startEditing"
-          @delete="removeActivity"
-          @suggest="showSuggestions"
-          @add-stay="(date) => openStayDialog({ checkIn: date })"
-          @edit-stay="(stay) => openStayDialog({ stay })"
-          @extend-stay="extendStay"
-        />
+        <template v-if="scheduleView === 'timeline'">
+          <ScheduleDays
+            :days="visibleDays"
+            :today="today"
+            :active-date="paged ? currentDayDate : null"
+            :editing-id="editing?.id ?? null"
+            :deleting-id="deletingId"
+            @add="addToDay"
+            @edit="startEditing"
+            @delete="removeActivity"
+            @suggest="showSuggestions"
+            @add-stay="(date) => openStayDialog({ checkIn: date })"
+            @edit-stay="(stay) => openStayDialog({ stay })"
+            @extend-stay="extendStay"
+          />
+          <nav
+            v-if="paged && dates.length > 1"
+            class="day-pager"
+            aria-label="Other days"
+            data-testid="day-pager"
+          >
+            <button
+              type="button"
+              class="pager-button"
+              :disabled="activeDayIndex === 0"
+              data-testid="previous-day"
+              @click="showDay(-1)"
+            >
+              <span aria-hidden="true">‹</span>
+              {{ activeDayIndex > 0 ? `Day ${activeDayIndex}` : 'Start' }}
+            </button>
+            <span class="pager-hint">Swipe to change day</span>
+            <button
+              type="button"
+              class="pager-button"
+              :disabled="activeDayIndex >= dates.length - 1"
+              data-testid="next-day"
+              @click="showDay(1)"
+            >
+              {{ activeDayIndex < dates.length - 1 ? `Day ${activeDayIndex + 2}` : 'End' }}
+              <span aria-hidden="true">›</span>
+            </button>
+          </nav>
+        </template>
         <TableView v-else-if="scheduleView === 'table'" :days="visibleDays" @edit="startEditing" />
         <BoardView
           v-else
@@ -1166,6 +1248,46 @@ h1 {
   border-radius: 999px;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
+}
+
+.day-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.pager-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.pager-button span {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.pager-button:disabled {
+  color: var(--color-subtle);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pager-hint {
+  font-size: 0.75rem;
+  color: var(--color-subtle);
 }
 
 @media (max-width: 720px) {

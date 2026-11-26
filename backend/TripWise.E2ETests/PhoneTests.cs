@@ -109,6 +109,32 @@ public class PhoneTests : SchedulePageTest
         await Expect(Page.GetByTestId("stay-card")).ToBeVisibleAsync();
     }
 
+    [Test]
+    public async Task Itinerary_ShowsOneDayAtATime()
+    {
+        await Expect(ScheduleDay(1)).ToBeVisibleAsync();
+        await Expect(ScheduleDay(2)).ToBeHiddenAsync();
+        await Expect(ScheduleDay(3)).ToBeHiddenAsync();
+
+        await Page.GetByTestId("next-day").TapAsync();
+        await Expect(ScheduleDay(2)).ToBeVisibleAsync();
+        await Expect(ScheduleDay(1)).ToBeHiddenAsync();
+        await Expect(Page.GetByTestId("day-chip").Nth(1)).ToHaveClassAsync(new Regex("active"));
+
+        await Page.GetByTestId("previous-day").TapAsync();
+        await Expect(ScheduleDay(1)).ToBeVisibleAsync();
+        await Expect(Page.GetByTestId("previous-day")).ToBeDisabledAsync();
+    }
+
+    [Test]
+    public async Task OverviewDayLink_OpensThatDay()
+    {
+        await Page.GotoAsync($"/trips/{TripId}?view=timeline&day=3");
+
+        await Expect(ScheduleDay(3)).ToBeVisibleAsync();
+        await Expect(ScheduleDay(1)).ToBeHiddenAsync();
+    }
+
     private async Task AddFromFabAsync(string name, string start, string end)
     {
         await Page.GetByTestId("fab").TapAsync();

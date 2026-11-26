@@ -32,11 +32,13 @@ withDefaults(
     editingId?: string | null
     deletingId?: string | null
     today?: string | null
+    activeDate?: string | null
   }>(),
   {
     editingId: null,
     deletingId: null,
     today: null,
+    activeDate: null,
   },
 )
 
@@ -132,7 +134,7 @@ function confirmDelete() {
       v-for="(day, index) in days"
       :key="day.date"
       class="card day"
-      :class="{ 'is-today': day.date === today }"
+      :class="{ 'is-today': day.date === today, 'off-page': activeDate && day.date !== activeDate }"
       :aria-current="day.date === today ? 'date' : undefined"
       data-testid="schedule-day"
     >
@@ -953,6 +955,10 @@ function confirmDelete() {
 
 .action-icon,
 .directions-short {
+  display: none;
+}
+
+.day.off-page {
   display: none;
 }
 

@@ -809,6 +809,87 @@ describe('TripScheduleView', () => {
     })
   })
 
+  describe('one day at a time on phones', () => {
+    function phoneScreen() {
+      vi.stubGlobal('matchMedia', () => ({
+        matches: true,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }))
+      vi.stubGlobal('scrollTo', vi.fn<() => void>())
+    }
+
+    function visibleDays(wrapper: VueWrapper) {
+      return wrapper
+        .findAll('[data-testid="schedule-day"]')
+        .filter((day) => !day.classes().includes('off-page'))
+        .map((day) => day.find('[data-testid="day-date"]').text())
+    }
+
+    it('shows the first day and pages with the buttons', async () => {
+      phoneScreen()
+      mockLoadedTrip()
+      const wrapper = await mountView()
+
+      expect(visibleDays(wrapper)).toEqual(['Tue, Dec 1'])
+      expect(wrapper.find('[data-testid="previous-day"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.findComponent(BoardView).exists()).toBe(false)
+
+      await wrapper.find('[data-testid="next-day"]').trigger('click')
+
+      expect(visibleDays(wrapper)).toEqual(['Wed, Dec 2'])
+      expect(wrapper.find('[data-testid="next-day"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.findAll('[data-testid="day-chip"]')[1]!.classes()).toContain('active')
+    })
+
+    it('changes day with a sideways swipe but not a scroll', async () => {
+      phoneScreen()
+      mockLoadedTrip()
+      const wrapper = await mountView()
+      const itinerary = wrapper.find('.itinerary')
+
+      await itinerary.trigger('touchstart', { touches: [{ clientX: 300, clientY: 400 }] })
+      await itinerary.trigger('touchend', { changedTouches: [{ clientX: 290, clientY: 100 }] })
+      expect(visibleDays(wrapper)).toEqual(['Tue, Dec 1'])
+
+      await itinerary.trigger('touchstart', { touches: [{ clientX: 300, clientY: 400 }] })
+      await itinerary.trigger('touchend', { changedTouches: [{ clientX: 120, clientY: 420 }] })
+      expect(visibleDays(wrapper)).toEqual(['Wed, Dec 2'])
+
+      await itinerary.trigger('touchstart', { touches: [{ clientX: 100, clientY: 400 }] })
+      await itinerary.trigger('touchend', { changedTouches: [{ clientX: 300, clientY: 400 }] })
+      expect(visibleDays(wrapper)).toEqual(['Tue, Dec 1'])
+    })
+
+    it('opens on today or the day in the link', async () => {
+      phoneScreen()
+      mockLoadedTrip()
+      const today = mount(TripScheduleView, {
+        props: { id: 'tokyo-id', today: '2026-12-02' },
+        global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+      })
+      await flushPromises()
+      expect(visibleDays(today)).toEqual(['Wed, Dec 2'])
+
+      const linked = mount(TripScheduleView, {
+        props: { id: 'tokyo-id', day: '2' },
+        global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+      })
+      await flushPromises()
+      expect(visibleDays(linked)).toEqual(['Wed, Dec 2'])
+    })
+
+    it('shows every day on wide screens', async () => {
+      mockLoadedTrip()
+      const wrapper = await mountView()
+
+      expect(visibleDays(wrapper)).toHaveLength(2)
+      expect(wrapper.find('[data-testid="day-pager"]').exists()).toBe(false)
+      expect(wrapper.findComponent(BoardView).exists()).toBe(false)
+      expect(wrapper.findComponent(TableView).exists()).toBe(false)
+    })
+  })
+
   describe('quick stays', () => {
     const inn = {
       id: 'inn',

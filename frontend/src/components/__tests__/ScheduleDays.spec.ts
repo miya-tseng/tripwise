@@ -578,4 +578,17 @@ describe('ScheduleDays stays', () => {
 
     expect(wrapper.emitted('edit')).toBeUndefined()
   })
+
+  it('shows only the active day when paging', () => {
+    const wrapper = mount(ScheduleDays, { props: { days, activeDate: '2026-12-02' } })
+    const dayItems = wrapper.findAll('[data-testid="schedule-day"]')
+
+    expect(dayItems.map((item) => item.classes().includes('off-page'))).toEqual([true, false, true])
+  })
+
+  it('shows every day without an active day', () => {
+    const wrapper = mount(ScheduleDays, { props: { days } })
+
+    expect(wrapper.findAll('.off-page')).toHaveLength(0)
+  })
 })
