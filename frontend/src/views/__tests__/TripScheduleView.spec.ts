@@ -32,6 +32,11 @@ const shibuya: Activity = {
   cost: 2200,
   currency: 'TWD',
   costInTwd: 2200,
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
 function mockLoadedTrip() {
@@ -143,6 +148,11 @@ describe('TripScheduleView', () => {
       cost: 500.25,
       currency: 'TWD',
       costInTwd: 500.25,
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     const wrapper = await mountView()
 
@@ -160,6 +170,11 @@ describe('TripScheduleView', () => {
       endTime: '11:00',
       cost: 500.25,
       currency: 'TWD',
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     expect(activityNames(wrapper)).toEqual(['Senso-ji', 'Shibuya'])
   })
@@ -185,6 +200,11 @@ describe('TripScheduleView', () => {
       cost: 500.25,
       currency: 'TWD',
       costInTwd: 500.25,
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     const wrapper = await mountView()
 
@@ -231,6 +251,11 @@ describe('TripScheduleView', () => {
       endTime: '16:00',
       cost: 2200,
       currency: 'TWD',
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     expect(activityNames(wrapper)).toEqual(['Shibuya Sky'])
     expect(wrapper.find('.section-title').text()).toBe('Add activity')
@@ -366,6 +391,11 @@ describe('TripScheduleView', () => {
       cost: 500,
       currency: 'JPY',
       costInTwd: 104.17,
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     const wrapper = await mountView()
 
@@ -376,6 +406,11 @@ describe('TripScheduleView', () => {
       endTime: '11:00',
       cost: 500,
       currency: 'JPY',
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     await flushPromises()
 
@@ -513,6 +548,11 @@ describe('TripScheduleView', () => {
         endTime: '17:30',
         cost: 0,
         currency: 'TWD',
+        category: 'Other',
+        bookingStatus: 'NotNeeded',
+        notes: '',
+        confirmationCode: '',
+        link: null,
       })
       await flushPromises()
 
@@ -578,6 +618,68 @@ describe('TripScheduleView', () => {
       expect(wrapper.find('[data-testid="schedule-error"]').text()).toContain(
         'The activity would end after midnight.',
       )
+    })
+  })
+
+  describe('category filter', () => {
+    function mockMixedTrip() {
+      mockLoadedTrip()
+      vi.mocked(fetchSchedule).mockResolvedValue({
+        tripId: 'tokyo-id',
+        ratesAvailable: true,
+        ratesUpdatedAt: '2026-01-01T00:00:00Z',
+        days: [
+          {
+            date: '2026-12-01',
+            activities: [
+              { ...shibuya, category: 'Sightseeing' },
+              {
+                ...shibuya,
+                id: 'sushi',
+                name: 'Sushi',
+                startTime: '19:00:00',
+                endTime: '20:00:00',
+                category: 'Food',
+              },
+            ],
+          },
+          { date: '2026-12-02', activities: [] },
+        ],
+      })
+    }
+
+    it('offers only the categories used in the trip', async () => {
+      mockMixedTrip()
+
+      const wrapper = await mountView()
+
+      expect(wrapper.find('[data-testid="filter-Sightseeing"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="filter-Food"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="filter-Shopping"]').exists()).toBe(false)
+    })
+
+    it('hides the filter when only one category is used', async () => {
+      mockLoadedTrip()
+
+      const wrapper = await mountView()
+
+      expect(wrapper.find('[data-testid="filter-all"]').exists()).toBe(false)
+    })
+
+    it('filters the timeline and the board', async () => {
+      mockMixedTrip()
+      const wrapper = await mountView()
+
+      await wrapper.find('[data-testid="filter-Food"]').trigger('click')
+      expect(activityNames(wrapper)).toEqual(['Sushi'])
+
+      await wrapper.find('[data-testid="view-board"]').trigger('click')
+      expect(wrapper.findAll('[data-testid="board-card-name"]').map((item) => item.text())).toEqual(
+        ['Sushi'],
+      )
+
+      await wrapper.find('[data-testid="filter-all"]').trigger('click')
+      expect(wrapper.findAll('[data-testid="board-card-name"]')).toHaveLength(2)
     })
   })
 })

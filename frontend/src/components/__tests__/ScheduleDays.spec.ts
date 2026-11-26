@@ -19,7 +19,21 @@ function activity(
   endTime: string,
   cost = 0,
 ): Activity {
-  return { id, name: id, date, startTime, endTime, cost, currency: 'TWD', costInTwd: cost }
+  return {
+    id,
+    name: id,
+    date,
+    startTime,
+    endTime,
+    cost,
+    currency: 'TWD',
+    costInTwd: cost,
+    category: 'Other',
+    bookingStatus: 'NotNeeded',
+    notes: '',
+    confirmationCode: '',
+    link: null,
+  }
 }
 
 const tsukiji = activity('Tsukiji', '2026-12-01', '07:00:00', '08:00:00', 1500.5)
@@ -142,6 +156,11 @@ describe('ScheduleDays', () => {
       cost: 3000,
       currency: 'JPY',
       costInTwd: 625,
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     }
     const wrapper = mount(ScheduleDays, {
       props: { days: [{ date: '2026-12-01', activities: [tsukiji, shibuya] }] },
@@ -167,6 +186,11 @@ describe('ScheduleDays', () => {
       cost: 3000,
       currency: 'JPY',
       costInTwd: null,
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     }
     const wrapper = mount(ScheduleDays, {
       props: { days: [{ date: '2026-12-01', activities: [tsukiji, shibuya] }] },
@@ -370,6 +394,57 @@ describe('ScheduleDays', () => {
       await buttons[0]!.trigger('click')
 
       expect(wrapper.emitted('suggest')).toEqual([[placed]])
+    })
+  })
+
+  describe('activity details', () => {
+    function mountOne(overrides: Partial<Activity>) {
+      return mount(ScheduleDays, {
+        props: { days: [{ date: '2026-12-01', activities: [{ ...tsukiji, ...overrides }] }] },
+      })
+    }
+
+    it('shows the category icon and colors the row', () => {
+      const wrapper = mountOne({ category: 'Food' })
+
+      expect(wrapper.find('[data-testid="activity-category"]').text()).toBe('🍜')
+      expect(wrapper.find('[data-testid="activity-category"]').attributes('title')).toBe('Food')
+      expect(wrapper.find('[data-testid="activity-item"]').classes()).toContain('category-food')
+    })
+
+    it.each([
+      ['ToBook', 'To book', 'tone-warning'],
+      ['Booked', 'Booked', 'tone-success'],
+      ['Paid', 'Paid', 'tone-success'],
+    ] as const)('shows a %s badge', (bookingStatus, label, tone) => {
+      const wrapper = mountOne({ bookingStatus })
+
+      expect(wrapper.find('[data-testid="booking-badge"]').text()).toBe(label)
+      expect(wrapper.find('[data-testid="booking-badge"]').classes()).toContain(tone)
+    })
+
+    it('has no badge when no booking is needed', () => {
+      expect(mountOne({}).find('[data-testid="booking-badge"]').exists()).toBe(false)
+    })
+
+    it('previews the notes and links the booking', () => {
+      const wrapper = mountOne({
+        notes: 'Bring passport\nArrive early',
+        confirmationCode: 'AB12',
+        link: 'https://example.com/booking',
+      })
+
+      expect(wrapper.find('[data-testid="activity-notes"]').text()).toBe('Bring passport')
+      const link = wrapper.find('[data-testid="activity-link"]')
+      expect(link.text()).toBe('Booking AB12 ↗')
+      expect(link.attributes('href')).toBe('https://example.com/booking')
+      expect(link.attributes('target')).toBe('_blank')
+    })
+
+    it('shows the confirmation code without a link', () => {
+      const wrapper = mountOne({ confirmationCode: 'AB12' })
+
+      expect(wrapper.find('[data-testid="activity-confirmation"]').text()).toBe('Booking AB12')
     })
   })
 })

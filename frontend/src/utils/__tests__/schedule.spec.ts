@@ -3,7 +3,21 @@ import type { Activity, ScheduleDay } from '@/types/activity'
 import { formatTime, slotAfter, withActivity, withoutActivity } from '../schedule'
 
 function activity(id: string, date: string, startTime: string, endTime: string): Activity {
-  return { id, name: id, date, startTime, endTime, cost: 0, currency: 'TWD', costInTwd: 0 }
+  return {
+    id,
+    name: id,
+    date,
+    startTime,
+    endTime,
+    cost: 0,
+    currency: 'TWD',
+    costInTwd: 0,
+    category: 'Other',
+    bookingStatus: 'NotNeeded',
+    notes: '',
+    confirmationCode: '',
+    link: null,
+  }
 }
 
 const tsukiji = activity('tsukiji', '2026-12-01', '07:00:00', '08:00:00')

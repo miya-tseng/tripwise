@@ -16,6 +16,11 @@ const sensoji: Activity = {
   cost: 2200.5,
   currency: 'TWD',
   costInTwd: 2200.5,
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
 type Submit = (input: SaveActivityInput) => Promise<boolean>
@@ -165,6 +170,11 @@ describe('ActivityForm', () => {
       endTime: '11:00',
       cost: 2200.5,
       currency: 'TWD',
+      category: 'Other',
+      bookingStatus: 'NotNeeded',
+      notes: '',
+      confirmationCode: '',
+      link: null,
     })
     expect((wrapper.find('input[name="name"]').element as HTMLInputElement).value).toBe('')
     expect((wrapper.find('input[name="startTime"]').element as HTMLInputElement).value).toBe('')
@@ -479,6 +489,109 @@ describe('ActivityForm', () => {
         '10:00',
       )
       expect(wrapper.findComponent(PlaceSearch).exists()).toBe(false)
+    })
+  })
+
+  describe('details', () => {
+    async function chooseBooking(wrapper: ReturnType<typeof mountForm>, label: string) {
+      const select = wrapper.find('[data-testid="booking-select"]')
+      await select.find('[data-testid="select-trigger"]').trigger('click')
+      const option = select
+        .findAll('[data-testid="select-option"]')
+        .find((item) => item.text().includes(label))
+      await option!.trigger('click')
+    }
+
+    it('defaults to Other, no booking and closed details', () => {
+      const wrapper = mountForm()
+
+      expect(wrapper.find('[data-testid="category-Other"]').attributes('aria-checked')).toBe('true')
+      expect((wrapper.find('input[name="bookingStatus"]').element as HTMLInputElement).value).toBe(
+        'NotNeeded',
+      )
+      expect(wrapper.find('textarea[name="notes"]').exists()).toBe(false)
+    })
+
+    it('submits the category, booking status and details', async () => {
+      const submit = vi.fn<Submit>().mockResolvedValue(true)
+      const wrapper = mountForm(submit)
+
+      await fill(wrapper, { name: 'Shibuya Sky', startTime: '17:00', endTime: '18:00' })
+      await wrapper.find('[data-testid="category-Sightseeing"]').trigger('click')
+      await chooseBooking(wrapper, 'Booked')
+      await wrapper.find('[data-testid="toggle-details"]').trigger('click')
+      await wrapper.find('textarea[name="notes"]').setValue('  Sunset at 16:30  ')
+      await wrapper.find('input[name="confirmationCode"]').setValue(' SKY-1 ')
+      await wrapper.find('input[name="link"]').setValue('https://example.com/sky')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'Sightseeing',
+          bookingStatus: 'Booked',
+          notes: 'Sunset at 16:30',
+          confirmationCode: 'SKY-1',
+          link: 'https://example.com/sky',
+        }),
+      )
+    })
+
+    it('sends no link when the link is empty', async () => {
+      const submit = vi.fn<Submit>().mockResolvedValue(true)
+      const wrapper = mountForm(submit)
+
+      await fill(wrapper, { name: 'Free time', startTime: '15:00', endTime: '16:00' })
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ link: null, notes: '' }))
+    })
+
+    it('rejects links that are not https', async () => {
+      const wrapper = mountForm()
+
+      await fill(wrapper, { name: 'Shibuya Sky', startTime: '17:00', endTime: '18:00' })
+      await wrapper.find('[data-testid="toggle-details"]').trigger('click')
+      await wrapper.find('input[name="link"]').setValue('http://example.com')
+
+      expect(wrapper.find('[data-testid="link-error"]').text()).toBe(
+        'Link must start with https://',
+      )
+      expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+    })
+
+    it('resets the details after adding', async () => {
+      const wrapper = mountForm()
+
+      await fill(wrapper, { name: 'Sushi', startTime: '12:00', endTime: '13:00' })
+      await wrapper.find('[data-testid="category-Food"]').trigger('click')
+      await wrapper.find('[data-testid="toggle-details"]').trigger('click')
+      await wrapper.find('textarea[name="notes"]').setValue('Counter seats')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="category-Other"]').attributes('aria-checked')).toBe('true')
+      expect(wrapper.find('textarea[name="notes"]').exists()).toBe(false)
+    })
+
+    it('opens the details of an activity that has them', () => {
+      const wrapper = mountForm(undefined, {
+        ...sensoji,
+        category: 'Food',
+        bookingStatus: 'ToBook',
+        notes: 'Counter seats',
+        confirmationCode: '',
+        link: null,
+      })
+
+      expect(wrapper.find('[data-testid="category-Food"]').attributes('aria-checked')).toBe('true')
+      expect((wrapper.find('input[name="bookingStatus"]').element as HTMLInputElement).value).toBe(
+        'ToBook',
+      )
+      expect((wrapper.find('textarea[name="notes"]').element as HTMLTextAreaElement).value).toBe(
+        'Counter seats',
+      )
     })
   })
 })

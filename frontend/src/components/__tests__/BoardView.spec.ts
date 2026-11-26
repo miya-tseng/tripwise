@@ -4,7 +4,21 @@ import type { Activity, ScheduleDay } from '@/types/activity'
 import BoardView from '../BoardView.vue'
 
 function activity(id: string, date: string, startTime: string, endTime: string): Activity {
-  return { id, name: id, date, startTime, endTime, cost: 0, currency: 'TWD', costInTwd: 0 }
+  return {
+    id,
+    name: id,
+    date,
+    startTime,
+    endTime,
+    cost: 0,
+    currency: 'TWD',
+    costInTwd: 0,
+    category: 'Other',
+    bookingStatus: 'NotNeeded',
+    notes: '',
+    confirmationCode: '',
+    link: null,
+  }
 }
 
 const morning = activity('Senso-ji', '2026-12-01', '09:00:00', '10:30:00')
@@ -202,5 +216,23 @@ describe('BoardView', () => {
 
     expect(wrapper.emitted('edit')).toEqual([[lunch]])
     wrapper.unmount()
+  })
+
+  it('shows the category and booking status on cards', () => {
+    const wrapper = mount(BoardView, {
+      props: {
+        days: [
+          {
+            date: '2026-12-01',
+            activities: [{ ...morning, category: 'Sightseeing', bookingStatus: 'ToBook' }],
+          },
+        ],
+      },
+    })
+
+    const boardCard = wrapper.find('[data-testid="board-card"]')
+    expect(boardCard.classes()).toContain('category-sightseeing')
+    expect(boardCard.text()).toContain('🏯 Sightseeing')
+    expect(boardCard.find('[data-testid="board-booking-badge"]').text()).toBe('To book')
   })
 })

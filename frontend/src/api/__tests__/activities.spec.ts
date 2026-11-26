@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Activity, Schedule } from '@/types/activity'
+import type { Activity, Schedule, SaveActivityInput } from '@/types/activity'
 import {
   addActivity,
   deleteActivity,
@@ -20,15 +20,25 @@ const sensoji: Activity = {
   cost: 0,
   currency: 'TWD',
   costInTwd: 0,
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
-const input = {
+const input: SaveActivityInput = {
   name: 'Senso-ji',
   date: '2026-12-01',
   startTime: '10:00',
   endTime: '11:00',
   cost: 0,
   currency: 'TWD',
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
 function jsonResponse(body: unknown, status = 200): Response {

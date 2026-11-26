@@ -4,6 +4,7 @@ import type { Activity, ScheduleDay } from '@/types/activity'
 import { dateParts, formatDayLabel } from '@/utils/date'
 import { formatCurrency } from '@/utils/money'
 import { formatTime } from '@/utils/schedule'
+import { bookingStatusMeta, categoryMeta } from '@/utils/activityDetails'
 import { insertionIndex, shiftedStartTime, startTimeForDrop } from '@/utils/board'
 
 export interface MoveRequest {
@@ -174,7 +175,10 @@ function toggleMenu(activityId: string) {
           />
           <li
             class="board-card"
-            :class="{ dragging: dragged?.id === activity.id, moving: movingId === activity.id }"
+            :class="[
+              `category-${activity.category.toLowerCase()}`,
+              { dragging: dragged?.id === activity.id, moving: movingId === activity.id },
+            ]"
             :data-card="activity.id"
             draggable="true"
             data-testid="board-card"
@@ -192,6 +196,20 @@ function toggleMenu(activityId: string) {
             >
               {{ activity.name }}
             </button>
+            <span class="card-meta">
+              <span class="card-category">
+                {{ categoryMeta(activity.category).icon }}
+                {{ categoryMeta(activity.category).label }}
+              </span>
+              <span
+                v-if="activity.bookingStatus !== 'NotNeeded'"
+                class="booking-badge"
+                :class="`tone-${bookingStatusMeta(activity.bookingStatus).tone}`"
+                data-testid="board-booking-badge"
+              >
+                {{ bookingStatusMeta(activity.bookingStatus).label }}
+              </span>
+            </span>
             <span v-if="activity.cost > 0" class="card-cost">
               {{ formatCurrency(activity.cost, activity.currency) }}
             </span>
@@ -344,7 +362,7 @@ function toggleMenu(activityId: string) {
   padding: 0.7rem 0.8rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-primary);
+  border-left: 3px solid var(--category-color, var(--color-primary));
   border-radius: 10px;
   box-shadow: var(--shadow-sm);
   cursor: grab;
@@ -385,6 +403,15 @@ function toggleMenu(activityId: string) {
 
 .card-name:hover {
   color: var(--color-primary);
+}
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-muted);
 }
 
 .card-cost {

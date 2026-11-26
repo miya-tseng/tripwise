@@ -24,6 +24,11 @@ function activity(cost: number, currency = 'TWD', costInTwd: number | null = cos
     cost,
     currency,
     costInTwd,
+    category: 'Other',
+    bookingStatus: 'NotNeeded',
+    notes: '',
+    confirmationCode: '',
+    link: null,
   }
 }
 

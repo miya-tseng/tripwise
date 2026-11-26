@@ -24,6 +24,11 @@ function activity(id: string, activityPlace: Place | null): Activity {
     cost: 0,
     currency: 'TWD',
     costInTwd: 0,
+    category: 'Other',
+    bookingStatus: 'NotNeeded',
+    notes: '',
+    confirmationCode: '',
+    link: null,
     place: activityPlace,
   }
 }

@@ -3,8 +3,17 @@ import { computed, ref, useId } from 'vue'
 import PlaceSearch from '@/components/PlaceSearch.vue'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import TimePicker from '@/components/TimePicker.vue'
-import { MAX_ACTIVITY_NAME_LENGTH, type Activity, type SaveActivityInput } from '@/types/activity'
+import {
+  MAX_ACTIVITY_NAME_LENGTH,
+  MAX_CONFIRMATION_CODE_LENGTH,
+  MAX_NOTES_LENGTH,
+  type Activity,
+  type ActivityCategory,
+  type BookingStatus,
+  type SaveActivityInput,
+} from '@/types/activity'
 import { formatDayLabel } from '@/utils/date'
+import { BOOKING_STATUSES, CATEGORIES, linkError } from '@/utils/activityDetails'
 import { COMMON_CURRENCIES, HOME_CURRENCY, type ExchangeRates } from '@/types/currency'
 import type { GeoPoint, PlaceSuggestion } from '@/types/place'
 import { currencyName, formatTwd, parseCost, toTwd } from '@/utils/money'
@@ -70,6 +79,19 @@ const endTime = ref(
 )
 const cost = ref(props.activity && props.activity.cost > 0 ? props.activity.cost.toFixed(2) : '')
 const currency = ref(props.activity?.currency ?? props.defaultCurrency)
+const category = ref<ActivityCategory>(props.activity?.category ?? 'Other')
+const bookingStatus = ref<BookingStatus>(props.activity?.bookingStatus ?? 'NotNeeded')
+const notes = ref(props.activity?.notes ?? '')
+const confirmationCode = ref(props.activity?.confirmationCode ?? '')
+const link = ref(props.activity?.link ?? '')
+const detailsOpen = ref(
+  Boolean(props.activity?.notes || props.activity?.confirmationCode || props.activity?.link),
+)
+const bookingOptions = BOOKING_STATUSES.map((status) => ({
+  value: status.value,
+  label: status.label,
+}))
+const linkProblem = computed(() => linkError(link.value))
 const submitting = ref(false)
 
 const dateOptions = computed<SelectOption[]>(() =>
@@ -126,7 +148,8 @@ const canSubmit = computed(
     date.value !== '' &&
     timesAreFilled.value &&
     endsAfterStart.value &&
-    parsedCost.value.ok,
+    parsedCost.value.ok &&
+    linkProblem.value === '',
 )
 
 async function onSubmit() {
@@ -145,6 +168,11 @@ async function onSubmit() {
     endTime: endTime.value,
     cost: parsedCost.value.value,
     currency: currency.value,
+    category: category.value,
+    bookingStatus: bookingStatus.value,
+    notes: notes.value.trim(),
+    confirmationCode: confirmationCode.value.trim(),
+    link: link.value.trim() || null,
   })
 
   submitting.value = false
@@ -159,6 +187,12 @@ async function onSubmit() {
     startTime.value = ''
     endTime.value = ''
     cost.value = ''
+    category.value = 'Other'
+    bookingStatus.value = 'NotNeeded'
+    notes.value = ''
+    confirmationCode.value = ''
+    link.value = ''
+    detailsOpen.value = false
   }
 }
 </script>
@@ -266,6 +300,87 @@ async function onSubmit() {
     </div>
     <p v-if="costError" class="field-error" data-testid="cost-error">{{ costError }}</p>
 
+    <div class="field">
+      <span class="field-label">Category</span>
+      <div class="category-chips" role="radiogroup" aria-label="Category">
+        <button
+          v-for="option in CATEGORIES"
+          :key="option.value"
+          type="button"
+          role="radio"
+          class="category-chip"
+          :class="`category-${option.value.toLowerCase()}`"
+          :aria-checked="category === option.value"
+          :data-testid="`category-${option.value}`"
+          @click="category = option.value"
+        >
+          <span aria-hidden="true">{{ option.icon }}</span>
+          {{ option.label }}
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Booking</span>
+      <SelectMenu
+        v-model="bookingStatus"
+        name="bookingStatus"
+        :options="bookingOptions"
+        data-testid="booking-select"
+      />
+    </div>
+
+    <div class="details" :class="{ open: detailsOpen }">
+      <button
+        type="button"
+        class="details-toggle"
+        :aria-expanded="detailsOpen"
+        data-testid="toggle-details"
+        @click="detailsOpen = !detailsOpen"
+      >
+        <span>Notes, confirmation &amp; link</span>
+        <span aria-hidden="true">{{ detailsOpen ? '−' : '+' }}</span>
+      </button>
+      <div v-if="detailsOpen" class="details-body">
+        <label class="field">
+          <span class="field-label">Notes</span>
+          <textarea
+            v-model="notes"
+            class="text-input notes-input"
+            name="notes"
+            rows="3"
+            :maxlength="MAX_NOTES_LENGTH"
+            placeholder="Opening hours, what to bring, tips…"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">Confirmation code</span>
+          <input
+            v-model="confirmationCode"
+            class="text-input"
+            name="confirmationCode"
+            type="text"
+            autocomplete="off"
+            :maxlength="MAX_CONFIRMATION_CODE_LENGTH"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">Link</span>
+          <input
+            v-model="link"
+            class="text-input"
+            name="link"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            placeholder="https://"
+            :aria-invalid="linkProblem !== ''"
+          />
+        </label>
+        <p v-if="linkProblem" class="field-error" data-testid="link-error">{{ linkProblem }}</p>
+      </div>
+    </div>
+
     <div class="actions">
       <button
         v-if="isEditing"
@@ -308,6 +423,79 @@ async function onSubmit() {
 .time-separator svg {
   width: 1.1rem;
   height: 1.1rem;
+}
+
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.category-chip:hover {
+  border-color: var(--color-border-strong);
+}
+
+.category-chip[aria-checked='true'] {
+  color: var(--category-color, var(--color-primary));
+  background: var(--category-soft, var(--color-primary-soft));
+  border-color: var(--category-color, var(--color-primary));
+}
+
+.category-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--color-primary-ring);
+}
+
+.details {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+.notes-input {
+  height: auto;
+  padding: 0.6rem 0.9rem;
+  resize: vertical;
+  line-height: 1.5;
 }
 
 .mode-switch {

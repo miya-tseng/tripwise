@@ -10,7 +10,7 @@ import {
 } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
-import type { Activity } from '@/types/activity'
+import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { Trip } from '@/types/trip'
 import { useScheduleStore } from '../schedule'
 
@@ -35,6 +35,11 @@ const shibuya: Activity = {
   cost: 0,
   currency: 'TWD',
   costInTwd: 0,
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
 const sensoji: Activity = {
@@ -46,15 +51,25 @@ const sensoji: Activity = {
   cost: 0,
   currency: 'TWD',
   costInTwd: 0,
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
-const input = {
+const input: SaveActivityInput = {
   name: 'Senso-ji',
   date: '2026-12-01',
   startTime: '10:00',
   endTime: '11:00',
   cost: 0,
   currency: 'TWD',
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
 async function loadedStore() {

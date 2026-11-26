@@ -16,6 +16,8 @@ import { formatDateRange } from '@/utils/date'
 import { formatTotals, formatTwd, totalsByCurrency, tripTotalInTwd } from '@/utils/money'
 import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
 import { slotAfter } from '@/utils/schedule'
+import { CATEGORIES } from '@/utils/activityDetails'
+import type { ActivityCategory } from '@/types/activity'
 
 const props = defineProps<{
   id: string
@@ -43,6 +45,21 @@ const editing = ref<Activity | null>(null)
 const tripEditorOpen = ref(false)
 const prefill = ref<ActivityPrefill | null>(null)
 const scheduleView = ref<'timeline' | 'board'>('timeline')
+const categoryFilter = ref<ActivityCategory | null>(null)
+const categoriesInTrip = computed(() => {
+  const used = new Set(
+    days.value.flatMap((day) => day.activities.map((activity) => activity.category)),
+  )
+  return CATEGORIES.filter((category) => used.has(category.value))
+})
+const visibleDays = computed(() =>
+  categoryFilter.value === null
+    ? days.value
+    : days.value.map((day) => ({
+        ...day,
+        activities: day.activities.filter((activity) => activity.category === categoryFilter.value),
+      })),
+)
 const movingId = ref<string | null>(null)
 
 async function moveActivity(request: MoveRequest) {
@@ -320,9 +337,37 @@ async function removeActivity(id: string) {
               {{ ratesNote }}
             </p>
           </div>
+          <div
+            v-if="categoriesInTrip.length > 1"
+            class="category-filter"
+            role="group"
+            aria-label="Filter by category"
+          >
+            <button
+              type="button"
+              class="filter-chip"
+              :aria-pressed="categoryFilter === null"
+              data-testid="filter-all"
+              @click="categoryFilter = null"
+            >
+              All
+            </button>
+            <button
+              v-for="category in categoriesInTrip"
+              :key="category.value"
+              type="button"
+              class="filter-chip"
+              :class="`category-${category.value.toLowerCase()}`"
+              :aria-pressed="categoryFilter === category.value"
+              :data-testid="`filter-${category.value}`"
+              @click="categoryFilter = category.value"
+            >
+              {{ category.icon }} {{ category.label }}
+            </button>
+          </div>
           <ScheduleDays
             v-if="scheduleView === 'timeline'"
-            :days="days"
+            :days="visibleDays"
             :editing-id="editing?.id ?? null"
             :deleting-id="deletingId"
             @edit="startEditing"
@@ -331,7 +376,7 @@ async function removeActivity(id: string) {
           />
           <BoardView
             v-else
-            :days="days"
+            :days="visibleDays"
             :moving-id="movingId"
             @move="moveActivity"
             @edit="startEditing"
@@ -559,6 +604,30 @@ h1 {
 
 .schedule-panel {
   min-width: 0;
+}
+
+.category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: -0.25rem 0 1rem;
+}
+
+.filter-chip {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.filter-chip[aria-pressed='true'] {
+  color: var(--category-color, var(--color-text));
+  background: var(--category-soft, var(--color-surface-muted));
+  border-color: var(--category-color, var(--color-border-strong));
 }
 
 .schedule-heading {

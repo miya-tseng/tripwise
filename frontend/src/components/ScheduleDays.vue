@@ -20,6 +20,7 @@ import {
   previousPlaceOf,
 } from '@/utils/mapsLinks'
 import { hasMapsKey } from '@/utils/googleMaps'
+import { bookingStatusMeta, categoryMeta, notesPreview } from '@/utils/activityDetails'
 import { formatTime } from '@/utils/schedule'
 
 withDefaults(
@@ -175,10 +176,13 @@ function confirmDelete() {
           </li>
           <li
             class="activity"
-            :class="{
-              editing: activity.id === editingId,
-              highlighted: activity.id === highlightedId,
-            }"
+            :class="[
+              `category-${activity.category.toLowerCase()}`,
+              {
+                editing: activity.id === editingId,
+                highlighted: activity.id === highlightedId,
+              },
+            ]"
             :data-activity-id="activity.id"
             data-testid="activity-item"
           >
@@ -187,30 +191,73 @@ function confirmDelete() {
               {{ formatTime(activity.startTime) }} – {{ formatTime(activity.endTime) }}
             </span>
             <span class="activity-main">
-              <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
-              <span v-if="activity.place" class="activity-address" data-testid="activity-address">
-                {{ activity.place.address }}
+              <span class="activity-title">
+                <span class="activity-heading">
+                  <span
+                    class="category-icon"
+                    :title="categoryMeta(activity.category).label"
+                    data-testid="activity-category"
+                    >{{ categoryMeta(activity.category).icon }}</span
+                  >
+                  <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
+                </span>
+                <span
+                  v-if="activity.bookingStatus !== 'NotNeeded'"
+                  class="booking-badge"
+                  :class="`tone-${bookingStatusMeta(activity.bookingStatus).tone}`"
+                  data-testid="booking-badge"
+                >
+                  {{ bookingStatusMeta(activity.bookingStatus).label }}
+                </span>
+              </span>
+              <span v-if="activity.place" class="activity-place">
+                <a
+                  v-if="activity.place"
+                  class="map-link"
+                  :href="placeLink(activity.place)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :aria-label="`Open ${activity.name} in Google Maps`"
+                  data-testid="activity-map-link"
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path
+                      d="M10 18s-5.5-5.2-5.5-9.3a5.5 5.5 0 1 1 11 0C15.5 12.8 10 18 10 18Z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+                    <circle cx="10" cy="8.6" r="1.9" fill="currentColor" />
+                  </svg>
+                </a>
+                <span class="activity-address" data-testid="activity-address">
+                  {{ activity.place.address }}
+                </span>
+              </span>
+              <span v-if="activity.notes" class="activity-notes" data-testid="activity-notes">
+                {{ notesPreview(activity.notes) }}
+              </span>
+              <a
+                v-if="activity.link"
+                class="activity-link"
+                :href="activity.link"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="activity-link"
+              >
+                {{
+                  activity.confirmationCode ? `Booking ${activity.confirmationCode}` : 'Open link'
+                }}
+                ↗
+              </a>
+              <span
+                v-else-if="activity.confirmationCode"
+                class="activity-confirmation"
+                data-testid="activity-confirmation"
+              >
+                Booking {{ activity.confirmationCode }}
               </span>
             </span>
-            <a
-              v-if="activity.place"
-              class="map-link"
-              :href="placeLink(activity.place)"
-              target="_blank"
-              rel="noopener noreferrer"
-              :aria-label="`Open ${activity.name} in Google Maps`"
-              data-testid="activity-map-link"
-            >
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M10 18s-5.5-5.2-5.5-9.3a5.5 5.5 0 1 1 11 0C15.5 12.8 10 18 10 18Z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                />
-                <circle cx="10" cy="8.6" r="1.9" fill="currentColor" />
-              </svg>
-            </a>
             <span class="activity-cost" :class="{ free: activity.cost === 0 }">
               <span data-testid="activity-cost">
                 {{
@@ -415,7 +462,7 @@ function confirmDelete() {
   height: 0.75rem;
   margin-top: -0.375rem;
   background: var(--color-surface);
-  border: 2.5px solid var(--color-primary);
+  border: 2.5px solid var(--category-color, var(--color-primary));
   border-radius: 50%;
   box-shadow: 0 0 0 4px var(--color-surface);
 }
@@ -440,6 +487,46 @@ function confirmDelete() {
   min-width: 0;
 }
 
+.activity-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.4rem;
+  min-width: 0;
+}
+
+.category-icon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+}
+
+.activity-title .activity-name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.activity-notes {
+  overflow: hidden;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-link,
+.activity-confirmation {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.activity-link:hover {
+  text-decoration: underline;
+}
+
 .activity-address {
   overflow: hidden;
   font-size: 0.78rem;
@@ -456,20 +543,35 @@ function confirmDelete() {
   white-space: nowrap;
 }
 
+.activity-heading {
+  min-width: 0;
+}
+
+.activity-heading .category-icon {
+  margin-right: 0.3rem;
+}
+
+.activity-place {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
 .map-link {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.5rem;
+  height: 1.5rem;
   color: var(--color-accent);
   border-radius: 8px;
   transition: background-color 0.15s;
 }
 
 .map-link svg {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .map-link:hover,
@@ -607,10 +709,10 @@ function confirmDelete() {
 
   .activity {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'time map cost actions'
-      'name map cost actions';
+      'time cost actions'
+      'name cost actions';
     gap: 0.1rem 0.5rem;
     padding-left: 0.6rem;
   }
@@ -627,10 +729,6 @@ function confirmDelete() {
 
   .activity-name {
     white-space: normal;
-  }
-
-  .map-link {
-    grid-area: map;
   }
 
   .activity-cost {

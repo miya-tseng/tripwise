@@ -13,6 +13,11 @@ const anchor: Activity = {
   cost: 0,
   currency: 'TWD',
   costInTwd: 0,
+  category: 'Other',
+  bookingStatus: 'NotNeeded',
+  notes: '',
+  confirmationCode: '',
+  link: null,
 }
 
 function suggestion(name: string, minutes: number): Suggestion {
