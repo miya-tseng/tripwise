@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import { routerKey, type Router } from 'vue-router'
 import { createPinia } from 'pinia'
 import {
   addActivity,
@@ -18,6 +19,7 @@ import BoardView from '@/components/BoardView.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import { createMemoryStorage } from '@/test/memoryStorage'
+import TableView from '@/components/TableView.vue'
 import TripScheduleView from '../TripScheduleView.vue'
 
 vi.mock('@/api/activities')
@@ -111,6 +113,11 @@ function activityNames(wrapper: Awaited<ReturnType<typeof mountView>>): string[]
 describe('TripScheduleView', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    vi.stubGlobal('localStorage', createMemoryStorage())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('shows the trip and its schedule', async () => {
@@ -715,6 +722,142 @@ describe('TripScheduleView', () => {
     })
   })
 
+  describe('views', () => {
+    function fakeRouter(query: Record<string, string> = {}) {
+      const replace = vi.fn<Router['replace']>()
+      const router = { currentRoute: { value: { query } }, replace } as unknown as Router
+      return { router, replace }
+    }
+
+    async function mountWithRouter(router: Router, props: Record<string, string> = {}) {
+      const wrapper = mount(TripScheduleView, {
+        props: { id: 'tokyo-id', ...props },
+        global: {
+          plugins: [createPinia()],
+          stubs: { RouterLink: RouterLinkStub },
+          provide: { [routerKey as symbol]: router },
+        },
+      })
+      await flushPromises()
+      return wrapper
+    }
+
+    it('switches to the table and keeps the view in the url', async () => {
+      mockLoadedTrip()
+      const { router, replace } = fakeRouter({ day: '2' })
+      const wrapper = await mountWithRouter(router)
+
+      await wrapper.find('[data-testid="view-table"]').trigger('click')
+
+      expect(wrapper.findComponent(TableView).exists()).toBe(true)
+      expect(wrapper.findComponent(ScheduleDays).exists()).toBe(false)
+      expect(wrapper.find('[data-testid="view-table"]').attributes('aria-pressed')).toBe('true')
+      expect(replace).toHaveBeenLastCalledWith({ query: { view: 'table' } })
+
+      await wrapper.find('[data-testid="view-timeline"]').trigger('click')
+      expect(replace).toHaveBeenLastCalledWith({ query: {} })
+    })
+
+    it('opens the view given in the url', async () => {
+      mockLoadedTrip()
+      const { router } = fakeRouter()
+
+      const wrapper = await mountWithRouter(router, { view: 'board' })
+
+      expect(wrapper.findComponent(BoardView).exists()).toBe(true)
+    })
+
+    it('remembers the last view of the trip', async () => {
+      mockLoadedTrip()
+      const first = await mountWithRouter(fakeRouter().router)
+      await first.find('[data-testid="view-table"]').trigger('click')
+      first.unmount()
+
+      const second = await mountWithRouter(fakeRouter().router)
+
+      expect(second.findComponent(TableView).exists()).toBe(true)
+    })
+
+    it('ignores an unknown view in the url', async () => {
+      mockLoadedTrip()
+
+      const wrapper = await mountWithRouter(fakeRouter().router, { view: 'map' })
+
+      expect(wrapper.findComponent(ScheduleDays).exists()).toBe(true)
+    })
+
+    it('follows the url when it changes', async () => {
+      mockLoadedTrip()
+      const wrapper = await mountWithRouter(fakeRouter().router)
+
+      await wrapper.setProps({ view: 'table' })
+
+      expect(wrapper.findComponent(TableView).exists()).toBe(true)
+    })
+
+    it('edits an activity clicked in the table', async () => {
+      mockLoadedTrip()
+      const wrapper = await mountWithRouter(fakeRouter().router, { view: 'table' })
+
+      await wrapper.find('[data-testid="table-row"]').trigger('click')
+
+      expect(wrapper.findComponent(ActivityDialog).props('open')).toBe(true)
+      expect(wrapper.findComponent(ActivityDialog).props('activity')).toMatchObject({
+        id: 'shibuya-id',
+      })
+    })
+  })
+
+  describe('booking filter', () => {
+    it('filters every view by booking status', async () => {
+      mockLoadedTrip()
+      vi.mocked(fetchSchedule).mockResolvedValue({
+        tripId: 'tokyo-id',
+        ratesAvailable: true,
+        ratesUpdatedAt: '2026-01-01T00:00:00Z',
+        days: [
+          {
+            date: '2026-12-01',
+            activities: [
+              shibuya,
+              {
+                ...shibuya,
+                id: 'sushi',
+                name: 'Sushi',
+                startTime: '19:00:00',
+                endTime: '20:00:00',
+                bookingStatus: 'ToBook',
+              },
+            ],
+          },
+          { date: '2026-12-02', activities: [] },
+        ],
+      })
+      const wrapper = await mountView()
+      const filter = wrapper.find('[data-testid="booking-filter"]')
+
+      await filter.find('[data-testid="select-trigger"]').trigger('click')
+      await filter
+        .findAll('[role="option"]')
+        .find((option) => option.text() === 'To book')!
+        .trigger('click')
+
+      expect(activityNames(wrapper)).toEqual(['Sushi'])
+      await wrapper.find('[data-testid="view-table"]').trigger('click')
+      expect(wrapper.findAll('[data-testid="table-name"]').map((cell) => cell.text())).toEqual([
+        'Sushi',
+      ])
+    })
+
+    it('is hidden when every activity has the same booking status', async () => {
+      mockLoadedTrip()
+
+      const wrapper = await mountView()
+
+      expect(wrapper.find('[data-testid="booking-filter"]').exists()).toBe(false)
+    })
+  })
+
   describe('category filter', () => {
     function mockMixedTrip() {
       mockLoadedTrip()
@@ -781,6 +924,11 @@ describe('TripScheduleView', () => {
 describe('TripScheduleView add flow', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    vi.stubGlobal('localStorage', createMemoryStorage())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('keeps the form closed until an add button is used', async () => {

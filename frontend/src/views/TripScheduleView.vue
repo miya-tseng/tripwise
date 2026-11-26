@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, inject, nextTick, ref, watch } from 'vue'
+import { RouterLink, routerKey } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import ActivityDialog from '@/components/ActivityDialog.vue'
 import type { ActivityPrefill } from '@/components/ActivityForm.vue'
@@ -8,9 +8,11 @@ import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import StayDialog from '@/components/StayDialog.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
+import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
+import TableView from '@/components/TableView.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
 import { useScheduleStore } from '@/stores/schedule'
-import type { Activity, ActivityCategory, SaveActivityInput } from '@/types/activity'
+import type { Activity, ActivityCategory, BookingStatus, SaveActivityInput } from '@/types/activity'
 import type { GeoPoint } from '@/types/place'
 import type { SaveStayInput, Stay } from '@/types/stay'
 import type { Suggestion } from '@/types/suggestion'
@@ -25,20 +27,22 @@ import {
   tripCosts,
   tripTotalInTwd,
 } from '@/utils/money'
-import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
+import { lastUsedCurrency, lastUsedView, rememberCurrency, rememberView } from '@/utils/preferences'
+import { filterDays, parseView, type ScheduleView } from '@/utils/activityTable'
 import { slotAfter } from '@/utils/schedule'
 import { firstFreeNight, nextCheckInAfter, nightsLabel, stayRangeLabel } from '@/utils/stays'
 import { addDays } from '@/utils/date'
 import { todayIso } from '@/utils/trips'
-import { bookingStatusMeta } from '@/utils/activityDetails'
+import { BOOKING_STATUSES, bookingStatusMeta } from '@/utils/activityDetails'
 
 const props = withDefaults(
   defineProps<{
     id: string
     day?: string
+    view?: string
     today?: string
   }>(),
-  { day: undefined, today: () => todayIso() },
+  { day: undefined, view: undefined, today: () => todayIso() },
 )
 
 const store = useScheduleStore()
@@ -67,8 +71,10 @@ const addingDate = ref<string | null>(null)
 const prefill = ref<ActivityPrefill | null>(null)
 const formVersion = ref(0)
 const tripEditorOpen = ref(false)
-const scheduleView = ref<'timeline' | 'board'>('timeline')
+const router = inject(routerKey, null)
+const scheduleView = ref<ScheduleView>(initialView(props.id))
 const categoryFilter = ref<ActivityCategory | null>(null)
+const bookingFilter = ref<BookingStatus | null>(null)
 const movingId = ref<string | null>(null)
 const defaultCurrency = ref(lastUsedCurrency(props.id))
 const stayDialogOpen = ref(false)
@@ -88,13 +94,31 @@ const categoriesInTrip = computed(() => {
   return CATEGORIES.filter((category) => used.has(category.value))
 })
 const visibleDays = computed(() =>
-  categoryFilter.value === null
-    ? days.value
-    : days.value.map((day) => ({
-        ...day,
-        activities: day.activities.filter((activity) => activity.category === categoryFilter.value),
-      })),
+  filterDays(days.value, { category: categoryFilter.value, bookingStatus: bookingFilter.value }),
 )
+const bookingStatusesInTrip = computed(
+  () => new Set(days.value.flatMap((day) => day.activities.map((a) => a.bookingStatus))),
+)
+const bookingFilterOptions = computed<SelectOption[]>(() => [
+  { value: '', label: 'All bookings' },
+  ...BOOKING_STATUSES.filter((status) => bookingStatusesInTrip.value.has(status.value)).map(
+    (status) => ({ value: status.value, label: status.label }),
+  ),
+])
+const bookingFilterValue = computed({
+  get: () => bookingFilter.value ?? '',
+  set: (value: string) => {
+    bookingFilter.value = value === '' ? null : (value as BookingStatus)
+  },
+})
+const showBookingFilter = computed(
+  () => bookingStatusesInTrip.value.size > 1 || bookingFilter.value !== null,
+)
+const viewOptions: { value: ScheduleView; label: string }[] = [
+  { value: 'timeline', label: 'Timeline' },
+  { value: 'board', label: 'Board' },
+  { value: 'table', label: 'Table' },
+]
 const searchNear = computed<GeoPoint | null>(() => {
   const places = days.value.flatMap((day) =>
     day.activities.flatMap((activity) => activity.place ?? []),
@@ -122,9 +146,43 @@ const ratesNote = computed(() => {
   return updated ? `Totals in TWD · Rates by Exchange Rate API, updated ${updated}` : ''
 })
 
+function initialView(tripId: string): ScheduleView {
+  return parseView(props.view) ?? parseView(lastUsedView(tripId)) ?? 'timeline'
+}
+
+function setView(view: ScheduleView) {
+  scheduleView.value = view
+  rememberView(props.id, view)
+
+  const query = { ...router?.currentRoute.value.query }
+  delete query.day
+
+  if (view === 'timeline') {
+    delete query.view
+  } else {
+    query.view = view
+  }
+
+  router?.replace({ query })
+}
+
+watch(
+  () => props.view,
+  (view) => {
+    const parsed = parseView(view)
+
+    if (parsed) {
+      scheduleView.value = parsed
+    }
+  },
+)
+
 watch(
   () => props.id,
-  (id) => {
+  (id, previousId) => {
+    if (previousId !== undefined) {
+      scheduleView.value = initialView(id)
+    }
     closeDialog()
     defaultCurrency.value = lastUsedCurrency(id)
     store.load(id)
@@ -348,21 +406,22 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           <div class="bar-bottom">
             <div class="view-toggle" role="group" aria-label="Schedule view">
               <button
+                v-for="option in viewOptions"
+                :key="option.value"
                 type="button"
-                :aria-pressed="scheduleView === 'timeline'"
-                data-testid="view-timeline"
-                @click="scheduleView = 'timeline'"
+                :aria-pressed="scheduleView === option.value"
+                :data-testid="`view-${option.value}`"
+                @click="setView(option.value)"
               >
-                Timeline
+                {{ option.label }}
               </button>
-              <button
-                type="button"
-                :aria-pressed="scheduleView === 'board'"
-                data-testid="view-board"
-                @click="scheduleView = 'board'"
-              >
-                Board
-              </button>
+            </div>
+            <div v-if="showBookingFilter" class="booking-filter" data-testid="booking-filter">
+              <SelectMenu
+                v-model="bookingFilterValue"
+                :options="bookingFilterOptions"
+                name="booking-filter"
+              />
             </div>
             <div
               v-if="categoriesInTrip.length > 1"
@@ -480,6 +539,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           @add-stay="(date) => openStayDialog({ checkIn: date })"
           @edit-stay="(stay) => openStayDialog({ stay })"
         />
+        <TableView v-else-if="scheduleView === 'table'" :days="visibleDays" @edit="startEditing" />
         <BoardView
           v-else
           :days="visibleDays"
@@ -764,6 +824,19 @@ h1 {
   color: var(--color-text);
   background: var(--color-surface);
   box-shadow: var(--shadow-sm);
+}
+
+.booking-filter {
+  width: 9.5rem;
+}
+
+.booking-filter :deep(.select-trigger) {
+  height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  box-shadow: none;
 }
 
 .category-filter {
