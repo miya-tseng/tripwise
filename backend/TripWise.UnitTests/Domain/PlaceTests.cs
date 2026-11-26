@@ -93,6 +93,9 @@ public class PlaceTests
     [Test]
     public void Equals_WithSameValues_ReturnsTrue()
     {
-        Assert.That(Valid(), Is.EqualTo(Valid()));
+        var first = Valid();
+        var second = Valid();
+
+        Assert.That(first, Is.EqualTo(second));
     }
 }
