@@ -66,14 +66,24 @@ public class ActivityDetailsTests : SchedulePageTest
         await AddCategorizedAsync("Senso-ji", "Sightseeing", "10:00", "11:00");
         await AddCategorizedAsync("Sushi Dai", "Food", "07:00", "08:00");
 
-        await Page.GetByTestId("filter-Food").ClickAsync();
+        await ChooseCategoryFilterAsync("filter-Food");
         await Expect(ActivityNames(day: 1)).ToHaveTextAsync(["Sushi Dai"]);
 
         await Page.GetByTestId("view-board").ClickAsync();
         await Expect(Page.GetByTestId("board-card-name")).ToHaveTextAsync(["Sushi Dai"]);
 
-        await Page.GetByTestId("filter-all").ClickAsync();
+        await ChooseCategoryFilterAsync("filter-all");
         await Expect(Page.GetByTestId("board-card-name")).ToHaveTextAsync(["Sushi Dai", "Senso-ji"]);
+    }
+
+    private async Task ChooseCategoryFilterAsync(string testId)
+    {
+        if (!await Page.GetByTestId("filter-panel").IsVisibleAsync())
+        {
+            await Page.GetByTestId("filter-button").ClickAsync();
+        }
+
+        await Page.GetByTestId(testId).ClickAsync();
     }
 
     private async Task AddCategorizedAsync(string name, string category, string start, string end)

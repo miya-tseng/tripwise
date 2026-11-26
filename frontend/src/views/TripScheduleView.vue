@@ -6,11 +6,12 @@ import ActivityDialog from '@/components/ActivityDialog.vue'
 import type { ActivityPrefill } from '@/components/ActivityForm.vue'
 import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
 import DayStrip from '@/components/DayStrip.vue'
+import FilterMenu from '@/components/FilterMenu.vue'
 import { useMediaQuery } from '@/composables/useMediaQuery'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import StayDialog from '@/components/StayDialog.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
-import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
+import type { SelectOption } from '@/components/SelectMenu.vue'
 import TableView from '@/components/TableView.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
 import TripTabs from '@/components/TripTabs.vue'
@@ -130,9 +131,12 @@ const bookingFilterValue = computed({
     bookingFilter.value = value === '' ? null : (value as BookingStatus)
   },
 })
-const showBookingFilter = computed(
-  () => bookingStatusesInTrip.value.size > 1 || bookingFilter.value !== null,
-)
+const categoryFilterValue = computed({
+  get: () => categoryFilter.value as string | null,
+  set: (value: string | null) => {
+    categoryFilter.value = value as ActivityCategory | null
+  },
+})
 const viewOptions: { value: ScheduleView; label: string }[] = [
   { value: 'timeline', label: 'Timeline' },
   { value: 'board', label: 'Board' },
@@ -549,6 +553,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
                 type="button"
                 class="btn btn-secondary btn-small edit-trip"
                 aria-label="Edit trip"
+                title="Edit trip"
                 data-testid="edit-trip"
                 @click="openTripEditor"
               >
@@ -579,50 +584,22 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
                 {{ option.label }}
               </button>
             </div>
-            <div v-if="showBookingFilter" class="booking-filter" data-testid="booking-filter">
-              <SelectMenu
-                v-model="bookingFilterValue"
-                :options="bookingFilterOptions"
-                name="booking-filter"
-              />
-            </div>
-            <div
-              v-if="categoriesInTrip.length > 1"
-              class="category-filter"
-              role="group"
-              aria-label="Filter by category"
-            >
-              <button
-                type="button"
-                class="filter-chip"
-                :aria-pressed="categoryFilter === null"
-                data-testid="filter-all"
-                @click="categoryFilter = null"
-              >
-                All
-              </button>
-              <button
-                v-for="category in categoriesInTrip"
-                :key="category.value"
-                type="button"
-                class="filter-chip"
-                :class="`category-${category.value.toLowerCase()}`"
-                :aria-pressed="categoryFilter === category.value"
-                :data-testid="`filter-${category.value}`"
-                @click="categoryFilter = category.value"
-              >
-                {{ category.icon }} {{ category.label }}
-              </button>
-            </div>
+            <DayStrip
+              v-if="scheduleView === 'timeline' && dates.length > 1"
+              class="day-strip-row"
+              :dates="dates"
+              :active-index="activeDayIndex"
+              :today="today"
+              @jump="jumpToDay"
+            />
+            <FilterMenu
+              v-model:booking="bookingFilterValue"
+              v-model:category="categoryFilterValue"
+              class="filters"
+              :booking-options="bookingFilterOptions"
+              :categories="categoriesInTrip"
+            />
           </div>
-          <DayStrip
-            v-if="scheduleView === 'timeline' && dates.length > 1"
-            class="day-strip-row"
-            :dates="dates"
-            :active-index="activeDayIndex"
-            :today="today"
-            @jump="jumpToDay"
-          />
         </div>
       </header>
 
@@ -1051,9 +1028,18 @@ h1 {
 
 .bar-bottom {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem 1rem;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.bar-bottom .day-strip-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.bar-bottom .filters {
+  margin-left: auto;
 }
 
 .view-toggle {
@@ -1078,42 +1064,6 @@ h1 {
   color: var(--color-text);
   background: var(--color-surface);
   box-shadow: var(--shadow-sm);
-}
-
-.booking-filter {
-  width: 9.5rem;
-}
-
-.booking-filter :deep(.select-trigger) {
-  height: 2rem;
-  padding: 0 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 999px;
-  box-shadow: none;
-}
-
-.category-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.filter-chip {
-  padding: 0.25rem 0.7rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.filter-chip[aria-pressed='true'] {
-  color: var(--category-color, var(--color-text));
-  background: var(--category-soft, var(--color-surface-muted));
-  border-color: var(--category-color, var(--color-border-strong));
 }
 
 .itinerary {
@@ -1170,12 +1120,14 @@ h1 {
   color: var(--color-muted);
 }
 
-.edit-trip-icon {
-  display: none;
+.edit-trip {
+  width: 2.25rem;
+  padding: 0;
+  font-size: 1rem;
 }
 
-.day-strip-row {
-  margin-top: 0.1rem;
+.edit-trip-label {
+  display: none;
 }
 
 .stays-toggle {
@@ -1343,38 +1295,18 @@ h1 {
     grid-area: actions;
   }
 
-  .bar-actions .add-activity,
-  .edit-trip-label {
+  .bar-actions .add-activity {
     display: none;
-  }
-
-  .edit-trip {
-    width: 2.25rem;
-    padding: 0;
-  }
-
-  .edit-trip-icon {
-    display: inline;
   }
 
   .bar-bottom {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
-  .bar-bottom::-webkit-scrollbar {
-    display: none;
-  }
-
-  .category-filter {
-    flex-wrap: nowrap;
-  }
-
-  .filter-chip,
-  .view-toggle,
-  .booking-filter {
-    flex-shrink: 0;
+  .bar-bottom .day-strip-row {
+    order: 3;
+    flex-basis: 100%;
   }
 
   .rates-note {

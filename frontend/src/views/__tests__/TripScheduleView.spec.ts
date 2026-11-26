@@ -1066,6 +1066,7 @@ describe('TripScheduleView', () => {
         ],
       })
       const wrapper = await mountView()
+      await wrapper.find('[data-testid="filter-button"]').trigger('click')
       const filter = wrapper.find('[data-testid="booking-filter"]')
 
       await filter.find('[data-testid="select-trigger"]').trigger('click')
@@ -1121,6 +1122,7 @@ describe('TripScheduleView', () => {
       mockMixedTrip()
 
       const wrapper = await mountView()
+      await wrapper.find('[data-testid="filter-button"]').trigger('click')
 
       expect(wrapper.find('[data-testid="filter-Sightseeing"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="filter-Food"]').exists()).toBe(true)
@@ -1138,6 +1140,7 @@ describe('TripScheduleView', () => {
     it('filters the timeline and the board', async () => {
       mockMixedTrip()
       const wrapper = await mountView()
+      await wrapper.find('[data-testid="filter-button"]').trigger('click')
 
       await wrapper.find('[data-testid="filter-Food"]').trigger('click')
       expect(activityNames(wrapper)).toEqual(['Sushi'])
