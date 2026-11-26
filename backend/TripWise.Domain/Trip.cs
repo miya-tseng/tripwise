@@ -8,6 +8,7 @@ public class Trip
     public Guid Id { get; private set; }
     public string Name { get; private set; } = null!;
     public DateRange Period { get; private set; } = null!;
+    public Place? Destination { get; private set; }
 
     private readonly List<Activity> _activities = [];
     public IReadOnlyCollection<Activity> Activities => _activities.AsReadOnly();
@@ -158,14 +159,20 @@ public class Trip
         }
     }
 
-    public static Trip Create(string name, DateOnly start, DateOnly end)
+    public static Trip Create(string name, DateOnly start, DateOnly end, Place? destination = null)
     {
         return new Trip
         {
             Id = Guid.CreateVersion7(),
             Name = NormalizeName(name),
             Period = CreatePeriod(start, end),
+            Destination = destination,
         };
+    }
+
+    public void ChangeDestination(Place? destination)
+    {
+        Destination = destination;
     }
 
     public void Rename(string name)

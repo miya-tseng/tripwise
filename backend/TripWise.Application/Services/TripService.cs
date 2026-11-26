@@ -3,11 +3,16 @@ using TripWise.Application.Dtos;
 
 namespace TripWise.Application.Services;
 
-public class TripService(ITripRepository repository)
+public class TripService(ITripRepository repository, PlaceResolver placeResolver)
 {
     public async Task<TripDto> CreateAsync(CreateTripDto dto, CancellationToken cancellationToken = default)
     {
-        var trip = Trip.Create(dto.Name, dto.StartDate!.Value, dto.EndDate!.Value);
+        var destination = await placeResolver.ResolveAsync(
+            dto.DestinationPlaceId,
+            dto.PlaceSessionToken,
+            currentPlace: null,
+            cancellationToken);
+        var trip = Trip.Create(dto.Name, dto.StartDate!.Value, dto.EndDate!.Value, destination);
 
         await repository.AddAsync(trip, cancellationToken);
 
@@ -37,8 +42,15 @@ public class TripService(ITripRepository repository)
             return null;
         }
 
+        var destination = await placeResolver.ResolveAsync(
+            dto.DestinationPlaceId,
+            dto.PlaceSessionToken,
+            trip.Destination,
+            cancellationToken);
+
         trip.Reschedule(dto.StartDate!.Value, dto.EndDate!.Value);
         trip.Rename(dto.Name);
+        trip.ChangeDestination(destination);
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(trip);
@@ -67,6 +79,7 @@ public class TripService(ITripRepository repository)
             StartDate = trip.Period.Start,
             EndDate = trip.Period.End,
             Days = trip.Period.Days,
+            Destination = trip.Destination is null ? null : PlaceService.ToDto(trip.Destination),
         };
     }
 }

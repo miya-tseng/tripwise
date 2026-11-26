@@ -22,10 +22,11 @@ public class TestPlaceSearch : IPlaceSearch
         string query,
         string? sessionToken,
         GeoPoint? near,
+        PlaceSearchKind kind = PlaceSearchKind.Any,
         CancellationToken cancellationToken = default)
     {
         EnsureAvailable();
-        return _fake.AutocompleteAsync(query, sessionToken, near, cancellationToken);
+        return _fake.AutocompleteAsync(query, sessionToken, near, kind, cancellationToken);
     }
 
     public Task<Place?> GetDetailsAsync(string placeId, string? sessionToken, CancellationToken cancellationToken = default)

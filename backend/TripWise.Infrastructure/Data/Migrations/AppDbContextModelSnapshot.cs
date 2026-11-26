@@ -264,6 +264,41 @@ namespace TripWise.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Destination", "TripWise.Domain.Trip.Destination#Place", b1 =>
+                        {
+                            b1.Property<string>("Address")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("DestinationAddress");
+
+                            b1.Property<string>("GoogleMapsUri")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("DestinationGoogleMapsUri");
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("DestinationLatitude");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("DestinationLongitude");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("DestinationName");
+
+                            b1.Property<string>("PlaceId")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("DestinationPlaceId");
+                        });
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Period", "TripWise.Domain.Trip.Period#DateRange", b1 =>
                         {
                             b1.IsRequired();

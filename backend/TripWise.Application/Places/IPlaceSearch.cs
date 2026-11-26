@@ -8,6 +8,7 @@ public interface IPlaceSearch
         string query,
         string? sessionToken,
         GeoPoint? near,
+        PlaceSearchKind kind = PlaceSearchKind.Any,
         CancellationToken cancellationToken = default);
 
     Task<Place?> GetDetailsAsync(string placeId, string? sessionToken, CancellationToken cancellationToken = default);

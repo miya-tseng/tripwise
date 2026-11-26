@@ -14,4 +14,9 @@ public class CreateTripDto
 
     [Required]
     public DateOnly? EndDate { get; set; }
+
+    [StringLength(Place.MaxPlaceIdLength)]
+    public string? DestinationPlaceId { get; set; }
+
+    public string? PlaceSessionToken { get; set; }
 }

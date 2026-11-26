@@ -88,7 +88,21 @@ public class GooglePlaceSearchTests
         {
             Assert.That(body.TryGetProperty("locationBias", out _), Is.False);
             Assert.That(body.TryGetProperty("sessionToken", out _), Is.False);
+            Assert.That(body.TryGetProperty("includedPrimaryTypes", out _), Is.False);
         });
+    }
+
+    [Test]
+    public async Task AutocompleteAsync_ForDestinations_LimitsResultsToRegions()
+    {
+        _handler.Respond(HttpStatusCode.OK, AutocompleteBody);
+
+        await _search.AutocompleteAsync("tok", null, null, PlaceSearchKind.Destination);
+
+        var body = JsonDocument.Parse(_handler.Requests.Single().Body!).RootElement;
+        Assert.That(
+            body.GetProperty("includedPrimaryTypes").EnumerateArray().Select(type => type.GetString()),
+            Is.EqualTo(new[] { "(regions)" }));
     }
 
     [Test]

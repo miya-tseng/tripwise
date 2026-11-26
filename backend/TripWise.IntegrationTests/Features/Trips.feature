@@ -9,6 +9,24 @@ Feature: Trips
     And the response is a trip "Tokyo" from 2021-05-01 to 2021-05-05 with 5 days
     And the response location points to the trip
 
+  Scenario: Create a trip with a destination
+    When I create a trip "Tokyo" from 2021-05-01 to 2021-05-03 with the destination "fake-city-tokyo"
+    Then the response status is 201
+    And the response trip destination is "Tokyo" in "Japan"
+    And the stored trip destination is "Tokyo"
+
+  Scenario: Create a trip with an unknown destination
+    When I create a trip "Tokyo" from 2021-05-01 to 2021-05-03 with the destination "unknown-place"
+    Then the response status is 400
+    And the error detail is "Place not found."
+
+  Scenario: Change and clear a trip destination
+    Given a trip "Japan" from 2021-05-01 to 2021-05-03 exists
+    When I update the trip to "Japan" from 2021-05-01 to 2021-05-03 with the destination "fake-city-kyoto"
+    Then the stored trip destination is "Kyoto"
+    When I update the trip to "Japan" from 2021-05-01 to 2021-05-03
+    Then the stored trip has no destination
+
   Scenario: Create a trip without a name
     When I create a trip without a name from 2021-05-01 to 2021-05-01
     Then the response status is 400

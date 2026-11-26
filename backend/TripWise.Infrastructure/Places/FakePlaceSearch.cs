@@ -21,13 +21,25 @@ public class FakePlaceSearch : IPlaceSearch
         Create("fake-jiufen", "Jiufen Old Street", "Jishan Street, Ruifang District, New Taipei City, Taiwan", 25.109650, 121.845116),
     ];
 
+    public static readonly IReadOnlyList<Place> Destinations =
+    [
+        Create("fake-city-tokyo", "Tokyo", "Japan", 35.676191, 139.650311),
+        Create("fake-city-kyoto", "Kyoto", "Japan", 35.011564, 135.768149),
+        Create("fake-city-osaka", "Osaka", "Japan", 34.693738, 135.502165),
+        Create("fake-city-taipei", "Taipei", "Taiwan", 25.032969, 121.565418),
+        Create("fake-city-seoul", "Seoul", "South Korea", 37.566535, 126.977969),
+        Create("fake-city-bangkok", "Bangkok", "Thailand", 13.756331, 100.501765),
+    ];
+
     public Task<IReadOnlyList<PlaceSuggestion>> AutocompleteAsync(
         string query,
         string? sessionToken,
         GeoPoint? near,
+        PlaceSearchKind kind = PlaceSearchKind.Any,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<PlaceSuggestion> suggestions = Places
+        var candidates = kind == PlaceSearchKind.Destination ? Destinations : Places;
+        IReadOnlyList<PlaceSuggestion> suggestions = candidates
             .Where(place =>
                 place.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || place.Address.Contains(query, StringComparison.OrdinalIgnoreCase))
@@ -42,7 +54,7 @@ public class FakePlaceSearch : IPlaceSearch
         string placeId,
         string? sessionToken,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(Places.FirstOrDefault(place => place.PlaceId == placeId));
+        Task.FromResult(Places.Concat(Destinations).FirstOrDefault(place => place.PlaceId == placeId));
 
     public Task<Place?> FindAsync(string text, GeoPoint? near, CancellationToken cancellationToken = default) =>
         Task.FromResult(Places.FirstOrDefault(place =>

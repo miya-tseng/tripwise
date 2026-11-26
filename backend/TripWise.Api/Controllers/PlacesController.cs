@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TripWise.Application.Dtos;
+using TripWise.Application.Places;
 using TripWise.Application.Services;
 
 namespace TripWise.Api.Controllers;
@@ -14,9 +15,10 @@ public class PlacesController(PlaceService placeService) : ControllerBase
         [FromQuery] string? sessionToken,
         [FromQuery] double? lat,
         [FromQuery] double? lng,
+        [FromQuery] PlaceSearchKind kind,
         CancellationToken cancellationToken)
     {
-        return await placeService.AutocompleteAsync(query, sessionToken, lat, lng, cancellationToken);
+        return await placeService.AutocompleteAsync(query, sessionToken, lat, lng, kind, cancellationToken);
     }
 
     [HttpGet("{placeId}")]

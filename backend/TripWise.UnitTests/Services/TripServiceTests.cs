@@ -1,6 +1,7 @@
 using NSubstitute;
 using TripWise.Domain;
 using TripWise.Application.Dtos;
+using TripWise.Application.Places;
 using TripWise.Application.Services;
 
 namespace TripWise.UnitTests.Services;
@@ -8,15 +9,19 @@ namespace TripWise.UnitTests.Services;
 public class TripServiceTests
 {
     private static readonly DateOnly Start = new(2021, 05, 01);
+    private static readonly Place Tokyo = new("city-tokyo", "Tokyo", "Japan", 35.68, 139.65, "https://maps.google.com/?cid=1");
 
     private ITripRepository _repository = null!;
+    private IPlaceSearch _placeSearch = null!;
     private TripService _sut = null!;
 
     [SetUp]
     public void SetUp()
     {
         _repository = Substitute.For<ITripRepository>();
-        _sut = new TripService(_repository);
+        _placeSearch = Substitute.For<IPlaceSearch>();
+        _placeSearch.GetDetailsAsync(Tokyo.PlaceId, Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(Tokyo);
+        _sut = new TripService(_repository, new PlaceResolver(_placeSearch));
     }
 
     [Test]
@@ -39,6 +44,77 @@ public class TripServiceTests
             Assert.That(result.StartDate, Is.EqualTo(Start));
             Assert.That(result.EndDate, Is.EqualTo(Start.AddDays(2)));
             Assert.That(result.Days, Is.EqualTo(3));
+        });
+    }
+
+    [Test]
+    public async Task CreateAsync_WithDestination_ResolvesAndReturnsIt()
+    {
+        var dto = new CreateTripDto
+        {
+            Name = "Tokyo",
+            StartDate = Start,
+            EndDate = Start,
+            DestinationPlaceId = Tokyo.PlaceId,
+            PlaceSessionToken = "session-1",
+        };
+
+        var result = await _sut.CreateAsync(dto);
+
+        await _placeSearch.Received(1).GetDetailsAsync(Tokyo.PlaceId, "session-1", Arg.Any<CancellationToken>());
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Destination!.PlaceId, Is.EqualTo(Tokyo.PlaceId));
+            Assert.That(result.Destination.Name, Is.EqualTo("Tokyo"));
+            Assert.That(result.Destination.Latitude, Is.EqualTo(35.68));
+        });
+    }
+
+    [Test]
+    public async Task CreateAsync_WithoutDestination_ReturnsNoDestination()
+    {
+        var result = await _sut.CreateAsync(new CreateTripDto { Name = "Tokyo", StartDate = Start, EndDate = Start });
+
+        Assert.That(result.Destination, Is.Null);
+    }
+
+    [Test]
+    public async Task CreateAsync_WithUnknownDestination_ThrowsWithoutAdding()
+    {
+        var dto = new CreateTripDto { Name = "Tokyo", StartDate = Start, EndDate = Start, DestinationPlaceId = "missing" };
+
+        var ex = Assert.ThrowsAsync<DomainException>(() => _sut.CreateAsync(dto));
+
+        Assert.That(ex!.Message, Is.EqualTo("Place not found."));
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithSameDestination_KeepsItWithoutLookingItUp()
+    {
+        var trip = Trip.Create("Tokyo", Start, Start, Tokyo);
+        _repository.GetByIdAsync(trip.Id, Arg.Any<CancellationToken>()).Returns(trip);
+        var dto = new UpdateTripDto { Name = "Tokyo", StartDate = Start, EndDate = Start, DestinationPlaceId = Tokyo.PlaceId };
+
+        var result = await _sut.UpdateAsync(trip.Id, dto);
+
+        Assert.That(result!.Destination!.PlaceId, Is.EqualTo(Tokyo.PlaceId));
+        await _placeSearch.DidNotReceiveWithAnyArgs().GetDetailsAsync(default!, default, default);
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithoutDestination_ClearsIt()
+    {
+        var trip = Trip.Create("Tokyo", Start, Start, Tokyo);
+        _repository.GetByIdAsync(trip.Id, Arg.Any<CancellationToken>()).Returns(trip);
+        var dto = new UpdateTripDto { Name = "Tokyo", StartDate = Start, EndDate = Start };
+
+        var result = await _sut.UpdateAsync(trip.Id, dto);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Destination, Is.Null);
+            Assert.That(trip.Destination, Is.Null);
         });
     }
 

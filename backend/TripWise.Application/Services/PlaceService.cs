@@ -13,6 +13,7 @@ public class PlaceService(IPlaceSearch placeSearch)
         string? sessionToken,
         double? latitude,
         double? longitude,
+        PlaceSearchKind kind = PlaceSearchKind.Any,
         CancellationToken cancellationToken = default)
     {
         var trimmedQuery = query?.Trim() ?? string.Empty;
@@ -28,7 +29,7 @@ public class PlaceService(IPlaceSearch placeSearch)
         }
 
         var near = latitude is { } lat && longitude is { } lng ? new GeoPoint(lat, lng) : null;
-        var suggestions = await placeSearch.AutocompleteAsync(trimmedQuery, sessionToken, near, cancellationToken);
+        var suggestions = await placeSearch.AutocompleteAsync(trimmedQuery, sessionToken, near, kind, cancellationToken);
 
         return suggestions
             .Select(suggestion => new PlaceSuggestionDto

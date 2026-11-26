@@ -20,6 +20,16 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
             period.Property(range => range.End).HasColumnName("EndDate");
         });
 
+        builder.ComplexProperty(trip => trip.Destination, place =>
+        {
+            place.Property(value => value.PlaceId).HasColumnName("DestinationPlaceId").HasMaxLength(Place.MaxPlaceIdLength);
+            place.Property(value => value.Name).HasColumnName("DestinationName").HasMaxLength(Place.MaxNameLength);
+            place.Property(value => value.Address).HasColumnName("DestinationAddress").HasMaxLength(Place.MaxAddressLength);
+            place.Property(value => value.Latitude).HasColumnName("DestinationLatitude");
+            place.Property(value => value.Longitude).HasColumnName("DestinationLongitude");
+            place.Property(value => value.GoogleMapsUri).HasColumnName("DestinationGoogleMapsUri").HasMaxLength(Place.MaxUriLength);
+        });
+
         builder.HasMany(trip => trip.Activities)
             .WithOne()
             .HasForeignKey(ActivityConfiguration.TripIdColumn)

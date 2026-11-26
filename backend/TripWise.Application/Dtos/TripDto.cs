@@ -7,4 +7,5 @@ public class TripDto
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
     public int Days { get; set; }
+    public PlaceDto? Destination { get; set; }
 }

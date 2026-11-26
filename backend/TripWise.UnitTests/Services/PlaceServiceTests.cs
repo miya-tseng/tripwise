@@ -25,7 +25,7 @@ public class PlaceServiceTests
         var result = await _sut.AutocompleteAsync(query, "token", null, null);
 
         Assert.That(result, Is.Empty);
-        await _placeSearch.DidNotReceiveWithAnyArgs().AutocompleteAsync(default!, default, default);
+        await _placeSearch.DidNotReceiveWithAnyArgs().AutocompleteAsync(default!, default, default, default);
     }
 
     [Test]
@@ -40,7 +40,7 @@ public class PlaceServiceTests
     [Test]
     public async Task AutocompleteAsync_TrimsQueryAndPassesSessionAndLocation()
     {
-        _placeSearch.AutocompleteAsync("senso", "token", new GeoPoint(35.7, 139.8), Arg.Any<CancellationToken>())
+        _placeSearch.AutocompleteAsync("senso", "token", new GeoPoint(35.7, 139.8), PlaceSearchKind.Any, Arg.Any<CancellationToken>())
             .Returns([new PlaceSuggestion("senso-ji-id", "Senso-ji", "Asakusa, Tokyo")]);
 
         var result = await _sut.AutocompleteAsync("  senso  ", "token", 35.7, 139.8);
@@ -58,7 +58,15 @@ public class PlaceServiceTests
     {
         await _sut.AutocompleteAsync("senso", null, 35.7, null);
 
-        await _placeSearch.Received(1).AutocompleteAsync("senso", null, null, Arg.Any<CancellationToken>());
+        await _placeSearch.Received(1).AutocompleteAsync("senso", null, null, PlaceSearchKind.Any, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AutocompleteAsync_ForDestinations_PassesTheKind()
+    {
+        await _sut.AutocompleteAsync("tok", null, null, null, PlaceSearchKind.Destination);
+
+        await _placeSearch.Received(1).AutocompleteAsync("tok", null, null, PlaceSearchKind.Destination, Arg.Any<CancellationToken>());
     }
 
     [Test]

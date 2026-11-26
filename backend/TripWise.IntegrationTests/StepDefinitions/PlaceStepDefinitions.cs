@@ -37,6 +37,18 @@ public class PlaceStepDefinitions(
         response.Message = await client.GetAsync($"/api/places/autocomplete?query={Uri.EscapeDataString(query)}&sessionToken=test-session");
     }
 
+    [When("I search destinations for {string}")]
+    public async Task WhenISearchDestinationsFor(string query)
+    {
+        response.Message = await client.GetAsync($"/api/places/autocomplete?query={Uri.EscapeDataString(query)}&kind=destination");
+    }
+
+    [When("I search places with the kind {string}")]
+    public async Task WhenISearchPlacesWithTheKind(string kind)
+    {
+        response.Message = await client.GetAsync($"/api/places/autocomplete?query=tokyo&kind={Uri.EscapeDataString(kind)}");
+    }
+
     [When("I search places with {int} characters")]
     public async Task WhenISearchPlacesWithCharacters(int length)
     {

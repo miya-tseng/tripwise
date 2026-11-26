@@ -12,6 +12,15 @@ Feature: Places
     When I search places for "Kyoto"
     Then the place suggestions are "Fushimi Inari Taisha, Kiyomizu-dera"
 
+  Scenario: Search destinations returns only cities and regions
+    When I search destinations for "Tokyo"
+    Then the response status is 200
+    And the place suggestions are "Tokyo"
+
+  Scenario: Search with an unknown kind
+    When I search places with the kind "museum"
+    Then the response status is 400
+
   Scenario: Blank search returns nothing
     When I search places for "   "
     Then the response status is 200

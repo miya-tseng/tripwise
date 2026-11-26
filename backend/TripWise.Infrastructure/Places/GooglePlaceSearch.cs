@@ -23,6 +23,7 @@ public class GooglePlaceSearch(
         string query,
         string? sessionToken,
         GeoPoint? near,
+        PlaceSearchKind kind = PlaceSearchKind.Any,
         CancellationToken cancellationToken = default)
     {
         var body = new AutocompleteRequest
@@ -30,6 +31,7 @@ public class GooglePlaceSearch(
             Input = query,
             SessionToken = sessionToken,
             LanguageCode = options.Value.LanguageCode,
+            IncludedPrimaryTypes = kind == PlaceSearchKind.Destination ? ["(regions)"] : null,
             LocationBias = near is null
                 ? null
                 : new LocationBias
@@ -179,6 +181,10 @@ public class GooglePlaceSearch(
 
         [JsonPropertyName("languageCode")]
         public string LanguageCode { get; set; } = string.Empty;
+
+        [JsonPropertyName("includedPrimaryTypes")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[]? IncludedPrimaryTypes { get; set; }
 
         [JsonPropertyName("locationBias")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

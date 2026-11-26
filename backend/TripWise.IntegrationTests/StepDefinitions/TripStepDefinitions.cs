@@ -25,6 +25,56 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
         response.Message = await client.PostAsJsonAsync("/api/trips", NewTrip(name, start, end));
     }
 
+    [When("I create a trip {string} from {DateOnly} to {DateOnly} with the destination {string}")]
+    public async Task WhenICreateATripWithADestination(string name, DateOnly start, DateOnly end, string placeId)
+    {
+        var trip = NewTrip(name, start, end);
+        trip.DestinationPlaceId = placeId;
+        response.Message = await client.PostAsJsonAsync("/api/trips", trip);
+
+        if (response.Message.IsSuccessStatusCode)
+        {
+            existing.Trip = await ReadResponseTripAsync();
+        }
+    }
+
+    [When("I update the trip to {string} from {DateOnly} to {DateOnly} with the destination {string}")]
+    public async Task WhenIUpdateTheTripWithADestination(string name, DateOnly start, DateOnly end, string placeId)
+    {
+        var trip = UpdatedTrip(name, start, end);
+        trip.DestinationPlaceId = placeId;
+        response.Message = await client.PutAsJsonAsync($"/api/trips/{existing.Trip.Id}", trip);
+        response.Message.EnsureSuccessStatusCode();
+    }
+
+    [Then("the response trip destination is {string} in {string}")]
+    public async Task ThenTheResponseTripDestinationIs(string name, string address)
+    {
+        var trip = await ReadResponseTripAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(trip.Destination!.Name, Is.EqualTo(name));
+            Assert.That(trip.Destination.Address, Is.EqualTo(address));
+        });
+    }
+
+    [Then("the stored trip destination is {string}")]
+    public async Task ThenTheStoredTripDestinationIs(string name)
+    {
+        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}"))!;
+
+        Assert.That(trip.Destination?.Name, Is.EqualTo(name));
+    }
+
+    [Then("the stored trip has no destination")]
+    public async Task ThenTheStoredTripHasNoDestination()
+    {
+        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}"))!;
+
+        Assert.That(trip.Destination, Is.Null);
+    }
+
     [When("I create a trip without a name from {DateOnly} to {DateOnly}")]
     public async Task WhenICreateATripWithoutAName(DateOnly start, DateOnly end)
     {
