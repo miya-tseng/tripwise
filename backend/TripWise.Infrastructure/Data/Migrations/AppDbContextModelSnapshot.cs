@@ -49,6 +49,15 @@ namespace TripWise.Infrastructure.Data.Migrations
                                 .HasColumnType("numeric(12,2)")
                                 .HasDefaultValue(0m)
                                 .HasColumnName("Cost");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character(3)")
+                                .HasDefaultValue("TWD")
+                                .HasColumnName("CostCurrency")
+                                .IsFixedLength();
                         });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "TimeSlot", "TripWise.Domain.Activity.TimeSlot#TimeSlot", b1 =>

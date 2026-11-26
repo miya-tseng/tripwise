@@ -44,10 +44,10 @@ public class Trip
         _activities.Remove(FindActivity(activityId));
     }
 
-    public Money GetDailyTotal(DateOnly date) =>
-        Money.Sum(_activities.Where(activity => activity.Date == date).Select(activity => activity.Cost));
+    public IReadOnlyList<Money> GetDailyTotals(DateOnly date) =>
+        Money.SumByCurrency(_activities.Where(activity => activity.Date == date).Select(activity => activity.Cost));
 
-    public Money GetTotal() => Money.Sum(_activities.Select(activity => activity.Cost));
+    public IReadOnlyList<Money> GetTotals() => Money.SumByCurrency(_activities.Select(activity => activity.Cost));
 
     private Activity FindActivity(Guid activityId) =>
         _activities.FirstOrDefault(activity => activity.Id == activityId)

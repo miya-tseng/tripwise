@@ -66,7 +66,7 @@ public class ActivityService(ITripRepository repository)
             .Select(date => new ScheduleDayDto
             {
                 Date = date,
-                Total = trip.GetDailyTotal(date).Amount,
+                Total = HomeCurrencyAmount(trip.GetDailyTotals(date)),
                 Activities = activitiesByDate[date]
                     .OrderBy(activity => activity.TimeSlot.Start)
                     .Select(ToDto)
@@ -77,10 +77,13 @@ public class ActivityService(ITripRepository repository)
         return new ScheduleDto
         {
             TripId = trip.Id,
-            Total = trip.GetTotal().Amount,
+            Total = HomeCurrencyAmount(trip.GetTotals()),
             Days = days,
         };
     }
+
+    private static decimal HomeCurrencyAmount(IEnumerable<Money> totals) =>
+        totals.Where(total => total.Currency == Money.HomeCurrency).Sum(total => total.Amount);
 
     private static TimeSlot ToTimeSlot(SaveActivityDto dto) =>
         new(dto.StartTime!.Value, dto.EndTime!.Value);

@@ -34,6 +34,12 @@ public class ActivityConfiguration : IEntityTypeConfiguration<Activity>
                 .HasColumnName("Cost")
                 .HasPrecision(12, Money.DecimalPlaces)
                 .HasDefaultValue(0m);
+
+            cost.Property(money => money.Currency)
+                .HasColumnName("CostCurrency")
+                .HasMaxLength(3)
+                .IsFixedLength()
+                .HasDefaultValue(Money.HomeCurrency);
         });
 
         builder.HasIndex(TripIdColumn, nameof(Activity.Date));

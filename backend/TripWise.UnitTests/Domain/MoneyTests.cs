@@ -88,4 +88,85 @@ public class MoneyTests
 
         Assert.That(a, Is.EqualTo(b));
     }
+
+    [Test]
+    public void Constructor_WithoutCurrency_UsesHomeCurrency()
+    {
+        Assert.That(new Money(10m).Currency, Is.EqualTo("TWD"));
+    }
+
+    [TestCase("JPY", "JPY")]
+    [TestCase("usd", "USD")]
+    [TestCase(" eur ", "EUR")]
+    public void Constructor_WithCurrency_NormalizesCode(string currency, string expected)
+    {
+        Assert.That(new Money(10m, currency).Currency, Is.EqualTo(expected));
+    }
+
+    [TestCase("")]
+    [TestCase("JP")]
+    [TestCase("JPYY")]
+    [TestCase("J1Y")]
+    [TestCase(null)]
+    public void Constructor_WithInvalidCurrency_ThrowsDomainException(string? currency)
+    {
+        var ex = Assert.Throws<DomainException>(() => new Money(10m, currency!));
+
+        Assert.That(ex.Message, Is.EqualTo("Currency must be a 3-letter ISO 4217 code."));
+    }
+
+    [Test]
+    public void Add_SameCurrency_KeepsCurrency()
+    {
+        var total = new Money(1000m, "JPY") + new Money(500m, "JPY");
+
+        Assert.That(total, Is.EqualTo(new Money(1500m, "JPY")));
+    }
+
+    [Test]
+    public void Add_DifferentCurrencies_ThrowsDomainException()
+    {
+        var ex = Assert.Throws<DomainException>(() => _ = new Money(1000m, "JPY") + new Money(10m));
+
+        Assert.That(ex.Message, Is.EqualTo("Cannot add amounts in different currencies."));
+    }
+
+    [Test]
+    public void Sum_OfForeignCurrency_KeepsThatCurrency()
+    {
+        Assert.That(Money.Sum([new Money(1000m, "JPY"), new Money(2000m, "JPY")]), Is.EqualTo(new Money(3000m, "JPY")));
+    }
+
+    [Test]
+    public void SumByCurrency_GroupsAmountsWithHomeCurrencyFirstThenAlphabetical()
+    {
+        var totals = Money.SumByCurrency(
+        [
+            new Money(10m, "USD"),
+            new Money(1000m, "JPY"),
+            new Money(100m),
+            new Money(2000m, "JPY"),
+            new Money(5m, "EUR"),
+        ]);
+
+        Assert.That(totals, Is.EqualTo(new[]
+        {
+            new Money(100m),
+            new Money(5m, "EUR"),
+            new Money(3000m, "JPY"),
+            new Money(10m, "USD"),
+        }));
+    }
+
+    [Test]
+    public void SumByCurrency_OfNothing_IsEmpty()
+    {
+        Assert.That(Money.SumByCurrency([]), Is.Empty);
+    }
+
+    [Test]
+    public void Equals_WithDifferentCurrency_ReturnsFalse()
+    {
+        Assert.That(new Money(10m, "USD"), Is.Not.EqualTo(new Money(10m)));
+    }
 }
