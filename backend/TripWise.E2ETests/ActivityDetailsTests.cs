@@ -17,7 +17,7 @@ public class ActivityDetailsTests : SchedulePageTest
         await Page.GetByLabel("Notes").FillAsync("Queue opens at 5am\nCash only");
         await Page.GetByLabel("Confirmation code").FillAsync("SD-12");
         await Page.GetByLabel("Link").FillAsync("https://example.com/sushi-dai");
-        await SubmitButton("Add").ClickAsync();
+        await SubmitAsync("Add", "Sushi Dai");
 
         var item = ActivityItem("Sushi Dai");
         await Expect(item.GetByTestId("activity-category")).ToHaveTextAsync("🍜");
@@ -37,7 +37,7 @@ public class ActivityDetailsTests : SchedulePageTest
         await PickTimeAsync("Start", "10:00");
         await PickTimeAsync("End", "12:00");
         await ChooseBookingAsync("To book");
-        await SubmitButton("Add").ClickAsync();
+        await SubmitAsync("Add", "teamLab");
         await Expect(ActivityItem("teamLab").GetByTestId("booking-badge")).ToHaveTextAsync("To book");
 
         await ActivityItem("teamLab").GetByTestId("edit-activity").ClickAsync();
@@ -82,8 +82,7 @@ public class ActivityDetailsTests : SchedulePageTest
         await PickTimeAsync("Start", start);
         await PickTimeAsync("End", end);
         await Page.GetByRole(AriaRole.Radio, new() { Name = category }).ClickAsync();
-        await SubmitButton("Add").ClickAsync();
-        await Expect(ActivityItem(name)).ToBeVisibleAsync();
+        await SubmitAsync("Add", name);
     }
 
     private async Task ChooseBookingAsync(string label)

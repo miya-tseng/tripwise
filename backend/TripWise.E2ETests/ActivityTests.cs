@@ -107,7 +107,7 @@ public class ActivityTests : SchedulePageTest
 
         await Expect(ActivityNames(day: 2)).ToHaveTextAsync(["Tokyo Tower"]);
         await Expect(ActivityNames(day: 1)).ToHaveCountAsync(0);
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Add activity" })).ToBeVisibleAsync();
+        await Expect(Dialog()).ToBeHiddenAsync();
     }
 
     [Test]

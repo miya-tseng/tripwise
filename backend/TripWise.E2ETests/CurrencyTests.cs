@@ -66,6 +66,7 @@ public class CurrencyTests : SchedulePageTest
     [Test]
     public async Task ForeignCost_IsPreviewedInTwdBeforeSaving()
     {
+        await OpenAddDialogAsync();
         await CostInput().FillAsync("2200");
         await ChooseCurrencyAsync("JPY");
 
@@ -77,9 +78,11 @@ public class CurrencyTests : SchedulePageTest
     {
         await AddActivityInCurrencyAsync("Shibuya Sky", day: 1, "17:00", "18:00", cost: "2200", currency: "JPY");
 
+        await OpenAddDialogAsync();
         await Expect(CurrencyTrigger()).ToContainTextAsync("JPY");
 
         await Page.ReloadAsync();
+        await OpenAddDialogAsync();
         await Expect(CurrencyTrigger()).ToContainTextAsync("JPY");
     }
 
@@ -97,8 +100,7 @@ public class CurrencyTests : SchedulePageTest
         await PickTimeAsync("End", end);
         await CostInput().FillAsync(cost);
         await ChooseCurrencyAsync(currency);
-        await SubmitButton("Add").ClickAsync();
-        await Expect(ActivityItem(name)).ToBeVisibleAsync();
+        await SubmitAsync("Add", name);
     }
 
     private async Task ChooseCurrencyAsync(string currency)

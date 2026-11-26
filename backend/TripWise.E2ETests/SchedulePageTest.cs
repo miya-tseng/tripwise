@@ -54,11 +54,21 @@ public abstract class SchedulePageTest : PageTest
         {
             await CostInput().FillAsync(cost);
         }
-        await SubmitButton("Add").ClickAsync();
+        await SubmitAsync("Add", name);
+    }
 
-        var added = ActivityItem(name);
-        var rejected = Page.GetByTestId("schedule-error");
-        await Expect(added.Or(rejected)).ToBeVisibleAsync();
+    protected async Task SubmitAsync(string button, string activityName)
+    {
+        await SubmitButton(button).ClickAsync();
+
+        var saved = ActivityItem(activityName);
+        var rejected = Dialog().GetByTestId("schedule-error");
+        await Expect(saved.Or(rejected)).ToBeVisibleAsync();
+
+        if (!await rejected.IsVisibleAsync())
+        {
+            await Expect(Dialog()).ToHaveCountAsync(0);
+        }
     }
 
     protected async Task RequireFakePlacesAsync()
@@ -75,8 +85,20 @@ public abstract class SchedulePageTest : PageTest
         }
     }
 
+    protected ILocator Dialog() => Page.GetByTestId("activity-dialog");
+
+    protected async Task OpenAddDialogAsync()
+    {
+        if (!await Dialog().IsVisibleAsync())
+        {
+            await Page.GetByTestId("add-activity").ClickAsync();
+            await Expect(Dialog()).ToBeVisibleAsync();
+        }
+    }
+
     protected async Task SearchPlaceAsync(string query)
     {
+        await OpenAddDialogAsync();
         var usePlaceSearch = Page.GetByTestId("use-place-search");
 
         if (await usePlaceSearch.IsVisibleAsync())
@@ -97,12 +119,12 @@ public abstract class SchedulePageTest : PageTest
         await ChooseDayAsync(day);
         await PickTimeAsync("Start", start);
         await PickTimeAsync("End", end);
-        await SubmitButton("Add").ClickAsync();
-        await Expect(ActivityItem(placeName)).ToBeVisibleAsync();
+        await SubmitAsync("Add", placeName);
     }
 
     protected async Task TypeCustomActivityAsync(string name)
     {
+        await OpenAddDialogAsync();
         var useCustom = Page.GetByTestId("use-custom-activity");
 
         if (await useCustom.IsVisibleAsync())
