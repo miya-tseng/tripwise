@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Activity, Schedule } from '@/types/activity'
-import { addActivity, deleteActivity, fetchSchedule, updateActivity } from '../activities'
+import {
+  addActivity,
+  deleteActivity,
+  fetchSchedule,
+  fetchSuggestions,
+  updateActivity,
+} from '../activities'
 
 const tripId = 'trip-id'
 
@@ -101,6 +107,24 @@ describe('activities api', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/trips/trip-id/activities/senso-ji-id', {
       method: 'DELETE',
+    })
+  })
+
+  it('gets suggestions for an activity', async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]))
+
+    await fetchSuggestions(tripId, sensoji.id)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/trips/trip-id/activities/senso-ji-id/suggestions')
+  })
+
+  it('throws the detail when suggestions are unavailable', async () => {
+    const detail = 'Suggestions are unavailable right now. Please try again later.'
+    fetchMock.mockResolvedValue(jsonResponse({ title: 'Suggestions unavailable', detail }, 503))
+
+    await expect(fetchSuggestions(tripId, sensoji.id)).rejects.toMatchObject({
+      status: 503,
+      message: detail,
     })
   })
 })

@@ -1,10 +1,17 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { addActivity, deleteActivity, fetchSchedule, updateActivity } from '@/api/activities'
+import {
+  addActivity,
+  deleteActivity,
+  fetchSchedule,
+  fetchSuggestions,
+  updateActivity,
+} from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
-import type { SaveActivityInput, Schedule, ScheduleDay } from '@/types/activity'
+import type { Activity, SaveActivityInput, Schedule, ScheduleDay } from '@/types/activity'
 import type { ExchangeRates } from '@/types/currency'
+import type { Suggestion } from '@/types/suggestion'
 import type { Trip, UpdateTripInput } from '@/types/trip'
 import { withActivity, withoutActivity } from '@/utils/schedule'
 
@@ -23,6 +30,11 @@ export const useScheduleStore = defineStore('schedule', () => {
   const ratesAvailable = ref(true)
   const ratesUpdatedAt = ref<string | null>(null)
   const exchangeRates = ref<ExchangeRates | null>(null)
+  const suggestionsFor = ref<Activity | null>(null)
+  const suggestions = ref<Suggestion[]>([])
+  const suggestionsLoading = ref(false)
+  const suggestionsError = ref<string | null>(null)
+  let suggestionsRequest = 0
 
   function applySchedule(schedule: Schedule): void {
     days.value = schedule.days
@@ -131,6 +143,47 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  async function loadSuggestions(activity: Activity): Promise<void> {
+    if (!trip.value) {
+      return
+    }
+
+    const requestId = ++suggestionsRequest
+    suggestionsFor.value = activity
+    suggestions.value = []
+    suggestionsError.value = null
+    suggestionsLoading.value = true
+
+    try {
+      const result = await fetchSuggestions(trip.value.id, activity.id)
+      if (requestId === suggestionsRequest) {
+        suggestions.value = result
+      }
+    } catch (e) {
+      if (requestId === suggestionsRequest) {
+        suggestionsError.value = toMessage(e)
+      }
+    } finally {
+      if (requestId === suggestionsRequest) {
+        suggestionsLoading.value = false
+      }
+    }
+  }
+
+  function closeSuggestions(): void {
+    suggestionsRequest++
+    suggestionsFor.value = null
+    suggestions.value = []
+    suggestionsError.value = null
+    suggestionsLoading.value = false
+  }
+
+  function dropSuggestion(placeId: string): void {
+    suggestions.value = suggestions.value.filter(
+      (suggestion) => suggestion.place.placeId !== placeId,
+    )
+  }
+
   function clearEditTripError(): void {
     editTripError.value = null
   }
@@ -150,6 +203,10 @@ export const useScheduleStore = defineStore('schedule', () => {
     ratesAvailable,
     ratesUpdatedAt,
     exchangeRates,
+    suggestionsFor,
+    suggestions,
+    suggestionsLoading,
+    suggestionsError,
     load,
     add,
     update,
@@ -157,5 +214,8 @@ export const useScheduleStore = defineStore('schedule', () => {
     clearError,
     editTrip,
     clearEditTripError,
+    loadSuggestions,
+    closeSuggestions,
+    dropSuggestion,
   }
 })

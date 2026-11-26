@@ -35,6 +35,12 @@ function mountForm(
     rates?: ExchangeRates | null
     defaultCurrency?: string
     near?: { latitude: number; longitude: number } | null
+    prefill?: {
+      place: { placeId: string; name: string; description: string }
+      date: string
+      startTime: string
+      endTime: string
+    } | null
   } = {},
 ) {
   return mount(ActivityForm, { props: { dates, submit, activity, ...options } })
@@ -440,6 +446,39 @@ describe('ActivityForm', () => {
       expect((wrapper.find('input[name="name"]').element as HTMLInputElement).value).toBe(
         'Senso-ji',
       )
+    })
+  })
+
+  describe('prefill from a suggestion', () => {
+    const prefill = {
+      place: { placeId: 'skytree-id', name: 'Tokyo Skytree', description: 'Oshiage, Tokyo' },
+      date: '2026-12-02',
+      startTime: '11:30',
+      endTime: '13:00',
+    }
+
+    it('fills in the place, day and times', () => {
+      const wrapper = mountForm(undefined, undefined, { prefill })
+
+      expect(wrapper.findComponent(PlaceSearch).props('modelValue')).toEqual(prefill.place)
+      expect(selectedDay(wrapper)).toBe('2026-12-02')
+      expect((wrapper.find('input[name="startTime"]').element as HTMLInputElement).value).toBe(
+        '11:30',
+      )
+      expect((wrapper.find('input[name="endTime"]').element as HTMLInputElement).value).toBe(
+        '13:00',
+      )
+      expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('is ignored while editing an activity', () => {
+      const wrapper = mountForm(undefined, sensoji, { prefill })
+
+      expect(selectedDay(wrapper)).toBe('2026-12-02')
+      expect((wrapper.find('input[name="startTime"]').element as HTMLInputElement).value).toBe(
+        '10:00',
+      )
+      expect(wrapper.findComponent(PlaceSearch).exists()).toBe(false)
     })
   })
 })

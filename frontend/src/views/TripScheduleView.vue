@@ -2,16 +2,19 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import ActivityForm from '@/components/ActivityForm.vue'
+import ActivityForm, { type ActivityPrefill } from '@/components/ActivityForm.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
+import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { GeoPoint } from '@/types/place'
+import type { Suggestion } from '@/types/suggestion'
 import type { UpdateTripInput } from '@/types/trip'
 import { formatDateRange } from '@/utils/date'
 import { formatTotals, formatTwd, totalsByCurrency, tripTotalInTwd } from '@/utils/money'
 import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
+import { slotAfter } from '@/utils/schedule'
 
 const props = defineProps<{
   id: string
@@ -29,10 +32,17 @@ const {
   ratesAvailable,
   ratesUpdatedAt,
   exchangeRates,
+  suggestionsFor,
+  suggestions,
+  suggestionsLoading,
+  suggestionsError,
 } = storeToRefs(store)
 
 const editing = ref<Activity | null>(null)
 const tripEditorOpen = ref(false)
+const prefill = ref<ActivityPrefill | null>(null)
+const formVersion = ref(0)
+const formKey = computed(() => editing.value?.id ?? `new-${formVersion.value}`)
 
 const dates = computed(() => days.value.map((day) => day.date))
 const defaultCurrency = ref(lastUsedCurrency(props.id))
@@ -84,6 +94,11 @@ async function save(input: SaveActivityInput): Promise<boolean> {
 
   editing.value = null
 
+  if (prefill.value && input.placeId === prefill.value.place.placeId) {
+    store.dropSuggestion(input.placeId)
+    prefill.value = null
+  }
+
   if (input.cost > 0) {
     rememberCurrency(props.id, input.currency)
     defaultCurrency.value = input.currency
@@ -94,7 +109,33 @@ async function save(input: SaveActivityInput): Promise<boolean> {
 
 function startEditing(activity: Activity) {
   store.clearError()
+  prefill.value = null
   editing.value = activity
+}
+
+function showSuggestions(activity: Activity) {
+  store.loadSuggestions(activity)
+}
+
+function addSuggestion(suggestion: Suggestion) {
+  const anchor = suggestionsFor.value
+
+  if (!anchor) {
+    return
+  }
+
+  store.clearError()
+  editing.value = null
+  prefill.value = {
+    place: {
+      placeId: suggestion.place.placeId,
+      name: suggestion.place.name,
+      description: suggestion.place.address,
+    },
+    date: anchor.date,
+    ...slotAfter(anchor.endTime, suggestion.suggestedMinutes),
+  }
+  formVersion.value++
 }
 
 function cancelEditing() {
@@ -124,6 +165,10 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
 async function removeActivity(id: string) {
   if (editing.value?.id === id) {
     editing.value = null
+  }
+
+  if (suggestionsFor.value?.id === id) {
+    store.closeSuggestions()
   }
 
   await store.remove(id)
@@ -193,34 +238,46 @@ async function removeActivity(id: string) {
       </header>
 
       <div class="layout">
-        <section class="card form-panel" :class="{ editing }">
-          <span class="eyebrow">{{ editing ? 'Editing' : 'Plan' }}</span>
-          <h2 class="section-title">
-            {{ editing ? `Edit "${editing.name}"` : 'Add activity' }}
-          </h2>
-          <ActivityForm
-            :key="editing?.id ?? 'new'"
-            :dates="dates"
-            :activity="editing"
-            :submit="save"
-            :rates="exchangeRates"
-            :default-currency="defaultCurrency"
-            :near="searchNear"
-            @cancel="cancelEditing"
+        <div class="side-column">
+          <section class="card form-panel" :class="{ editing }">
+            <span class="eyebrow">{{ editing ? 'Editing' : 'Plan' }}</span>
+            <h2 class="section-title">
+              {{ editing ? `Edit "${editing.name}"` : 'Add activity' }}
+            </h2>
+            <ActivityForm
+              :key="formKey"
+              :dates="dates"
+              :activity="editing"
+              :submit="save"
+              :rates="exchangeRates"
+              :default-currency="defaultCurrency"
+              :near="searchNear"
+              :prefill="prefill"
+              @cancel="cancelEditing"
+            />
+            <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">
+              <span>{{ error }}</span>
+              <button
+                type="button"
+                class="alert-close"
+                aria-label="Dismiss"
+                data-testid="dismiss-error"
+                @click="store.clearError"
+              >
+                ✕
+              </button>
+            </div>
+          </section>
+          <SuggestionsPanel
+            v-if="suggestionsFor"
+            :anchor="suggestionsFor"
+            :suggestions="suggestions"
+            :loading="suggestionsLoading"
+            :error="suggestionsError"
+            @close="store.closeSuggestions"
+            @add="addSuggestion"
           />
-          <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">
-            <span>{{ error }}</span>
-            <button
-              type="button"
-              class="alert-close"
-              aria-label="Dismiss"
-              data-testid="dismiss-error"
-              @click="store.clearError"
-            >
-              ✕
-            </button>
-          </div>
-        </section>
+        </div>
 
         <section class="schedule-panel">
           <div class="schedule-header">
@@ -240,6 +297,7 @@ async function removeActivity(id: string) {
             :deleting-id="deletingId"
             @edit="startEditing"
             @delete="removeActivity"
+            @suggest="showSuggestions"
           />
         </section>
       </div>
@@ -427,9 +485,19 @@ h1 {
   align-items: start;
 }
 
-.form-panel {
+.side-column {
   position: sticky;
   top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding: 0.25rem;
+  margin: -0.25rem;
+}
+
+.form-panel {
   padding: 1.6rem;
   transition:
     border-color 0.2s,
@@ -488,8 +556,10 @@ h1 {
     grid-template-columns: 1fr;
   }
 
-  .form-panel {
+  .side-column {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 

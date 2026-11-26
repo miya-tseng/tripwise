@@ -18,12 +18,14 @@ const props = withDefaults(
     rates?: ExchangeRates | null
     defaultCurrency?: string
     near?: GeoPoint | null
+    prefill?: ActivityPrefill | null
   }>(),
   {
     activity: null,
     rates: null,
     defaultCurrency: HOME_CURRENCY,
     near: null,
+    prefill: null,
   },
 )
 
@@ -31,7 +33,15 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+export interface ActivityPrefill {
+  place: PlaceSuggestion
+  date: string
+  startTime: string
+  endTime: string
+}
+
 const isEditing = computed(() => props.activity !== null)
+const prefilled = !props.activity ? props.prefill : null
 
 const activityFieldId = useId()
 
@@ -49,11 +59,15 @@ const selectedPlace = ref<PlaceSuggestion | null>(
         name: props.activity.name,
         description: props.activity.place.address,
       }
-    : null,
+    : (prefilled?.place ?? null),
 )
-const date = ref(props.activity?.date ?? props.dates[0] ?? '')
-const startTime = ref(props.activity ? formatTime(props.activity.startTime) : '')
-const endTime = ref(props.activity ? formatTime(props.activity.endTime) : '')
+const date = ref(props.activity?.date ?? prefilled?.date ?? props.dates[0] ?? '')
+const startTime = ref(
+  props.activity ? formatTime(props.activity.startTime) : (prefilled?.startTime ?? ''),
+)
+const endTime = ref(
+  props.activity ? formatTime(props.activity.endTime) : (prefilled?.endTime ?? ''),
+)
 const cost = ref(props.activity && props.activity.cost > 0 ? props.activity.cost.toFixed(2) : '')
 const currency = ref(props.activity?.currency ?? props.defaultCurrency)
 const submitting = ref(false)

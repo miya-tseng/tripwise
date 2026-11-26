@@ -1,4 +1,5 @@
 import type { Activity, SaveActivityInput, Schedule } from '@/types/activity'
+import type { Suggestion } from '@/types/suggestion'
 import { jsonBody, request } from './http'
 
 function tripUrl(tripId: string): string {
@@ -29,4 +30,9 @@ export async function updateActivity(
 
 export async function deleteActivity(tripId: string, activityId: string): Promise<void> {
   await request(`${tripUrl(tripId)}/activities/${activityId}`, { method: 'DELETE' })
+}
+
+export async function fetchSuggestions(tripId: string, activityId: string): Promise<Suggestion[]> {
+  const response = await request(`${tripUrl(tripId)}/activities/${activityId}/suggestions`)
+  return response.json()
 }

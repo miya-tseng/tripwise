@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { addActivity, fetchSchedule, updateActivity } from '@/api/activities'
+import { addActivity, fetchSchedule, fetchSuggestions, updateActivity } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
 import ActivityForm from '@/components/ActivityForm.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
+import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import { createMemoryStorage } from '@/test/memoryStorage'
 import TripScheduleView from '../TripScheduleView.vue'
 
@@ -407,6 +408,120 @@ describe('TripScheduleView', () => {
     expect(wrapper.findComponent(ActivityForm).props('near')).toEqual({
       latitude: 35.658,
       longitude: 139.702,
+    })
+  })
+
+  describe('suggestions', () => {
+    const shibuyaWithPlace: Activity = {
+      ...shibuya,
+      place: {
+        placeId: 'shibuya-id',
+        name: 'Shibuya Sky',
+        address: 'Shibuya, Tokyo',
+        latitude: 35.658,
+        longitude: 139.702,
+        googleMapsUri: 'https://maps.google.com/?cid=3',
+      },
+    }
+    const meiji = {
+      place: {
+        placeId: 'meiji-id',
+        name: 'Meiji Jingu',
+        address: 'Yoyogi, Tokyo',
+        latitude: 35.676,
+        longitude: 139.699,
+        googleMapsUri: 'https://maps.google.com/?cid=4',
+      },
+      reason: 'Quiet shrine nearby',
+      suggestedMinutes: 90,
+    }
+
+    function mockTripWithPlace() {
+      mockLoadedTrip()
+      vi.mocked(fetchSchedule).mockResolvedValue({
+        tripId: 'tokyo-id',
+        ratesAvailable: true,
+        ratesUpdatedAt: '2026-01-01T00:00:00Z',
+        days: [
+          { date: '2026-12-01', activities: [shibuyaWithPlace] },
+          { date: '2026-12-02', activities: [] },
+        ],
+      })
+      vi.mocked(fetchSuggestions).mockResolvedValue([meiji])
+    }
+
+    it('shows ideas for an activity', async () => {
+      mockTripWithPlace()
+      const wrapper = await mountView()
+
+      await wrapper.find('[data-testid="suggest-activity"]').trigger('click')
+      await flushPromises()
+
+      const panel = wrapper.findComponent(SuggestionsPanel)
+      expect(fetchSuggestions).toHaveBeenCalledWith('tokyo-id', 'shibuya-id')
+      expect(panel.props('anchor')).toEqual(shibuyaWithPlace)
+      expect(panel.props('suggestions')).toEqual([meiji])
+    })
+
+    it('fills the form with a suggestion right after the activity', async () => {
+      mockTripWithPlace()
+      const wrapper = await mountView()
+      await wrapper.find('[data-testid="suggest-activity"]').trigger('click')
+      await flushPromises()
+
+      wrapper.findComponent(SuggestionsPanel).vm.$emit('add', meiji)
+      await flushPromises()
+
+      expect(wrapper.findComponent(ActivityForm).props('prefill')).toEqual({
+        place: { placeId: 'meiji-id', name: 'Meiji Jingu', description: 'Yoyogi, Tokyo' },
+        date: '2026-12-01',
+        startTime: '16:00',
+        endTime: '17:30',
+      })
+    })
+
+    it('removes the suggestion after it is added to the trip', async () => {
+      mockTripWithPlace()
+      vi.mocked(addActivity).mockResolvedValue({
+        ...shibuyaWithPlace,
+        id: 'meiji-activity',
+        name: 'Meiji Jingu',
+        startTime: '16:00:00',
+        endTime: '17:30:00',
+        place: meiji.place,
+      })
+      const wrapper = await mountView()
+      await wrapper.find('[data-testid="suggest-activity"]').trigger('click')
+      await flushPromises()
+      wrapper.findComponent(SuggestionsPanel).vm.$emit('add', meiji)
+      await flushPromises()
+
+      await wrapper.findComponent(ActivityForm).props('submit')({
+        name: 'Meiji Jingu',
+        placeId: 'meiji-id',
+        placeSessionToken: 'token',
+        date: '2026-12-01',
+        startTime: '16:00',
+        endTime: '17:30',
+        cost: 0,
+        currency: 'TWD',
+      })
+      await flushPromises()
+
+      expect(wrapper.findComponent(SuggestionsPanel).props('suggestions')).toEqual([])
+      expect(wrapper.findComponent(ActivityForm).props('prefill')).toBeNull()
+    })
+
+    it('closes the ideas panel', async () => {
+      mockTripWithPlace()
+      const wrapper = await mountView()
+      await wrapper.find('[data-testid="suggest-activity"]').trigger('click')
+      await flushPromises()
+
+      wrapper.findComponent(SuggestionsPanel).vm.$emit('close')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SuggestionsPanel).exists()).toBe(false)
     })
   })
 })

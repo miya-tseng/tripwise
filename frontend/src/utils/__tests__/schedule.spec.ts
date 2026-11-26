@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Activity, ScheduleDay } from '@/types/activity'
-import { formatTime, withActivity, withoutActivity } from '../schedule'
+import { formatTime, slotAfter, withActivity, withoutActivity } from '../schedule'
 
 function activity(id: string, date: string, startTime: string, endTime: string): Activity {
   return { id, name: id, date, startTime, endTime, cost: 0, currency: 'TWD', costInTwd: 0 }
@@ -72,5 +72,18 @@ describe('withoutActivity', () => {
     const result = withoutActivity(withoutActivity(days(), 'tsukiji'), 'shibuya')
 
     expect(result.map((day) => day.date)).toEqual(['2026-12-01', '2026-12-02'])
+  })
+})
+
+describe('slotAfter', () => {
+  it.each([
+    ['11:30:00', 90, '11:30', '13:00'],
+    ['11:32', 60, '11:35', '12:35'],
+    ['09:00', 15, '09:00', '09:15'],
+    ['22:30', 120, '22:30', '23:55'],
+    ['23:58', 60, '23:50', '23:55'],
+    ['10:00', 0, '10:00', '10:05'],
+  ])('after %s for %d minutes is %s – %s', (end, minutes, startTime, endTime) => {
+    expect(slotAfter(end, minutes)).toEqual({ startTime, endTime })
   })
 })

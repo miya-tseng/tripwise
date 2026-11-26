@@ -18,11 +18,12 @@ export class ApiError extends Error {
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
-  if (gatewayErrorStatuses.includes(response.status)) {
+  const problem: ProblemDetails = await response.json().catch(() => ({}))
+
+  if (gatewayErrorStatuses.includes(response.status) && !problem.detail) {
     return new ApiError(connectionErrorMessage, response.status)
   }
 
-  const problem: ProblemDetails = await response.json().catch(() => ({}))
   const validationMessages = Object.values(problem.errors ?? {}).flat()
   const message =
     validationMessages.join(' ') ||

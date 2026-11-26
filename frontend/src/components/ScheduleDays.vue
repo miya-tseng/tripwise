@@ -37,6 +37,7 @@ withDefaults(
 const emit = defineEmits<{
   edit: [activity: Activity]
   delete: [id: string]
+  suggest: [activity: Activity]
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
@@ -225,6 +226,15 @@ function confirmDelete() {
               </span>
             </span>
             <div class="activity-actions">
+              <button
+                v-if="activity.place"
+                type="button"
+                class="btn btn-ghost btn-small ideas"
+                data-testid="suggest-activity"
+                @click="emit('suggest', activity)"
+              >
+                Ideas
+              </button>
               <button
                 type="button"
                 class="btn btn-ghost btn-small"
@@ -552,6 +562,15 @@ function confirmDelete() {
 .activity:focus-within .activity-actions,
 .activity.editing .activity-actions {
   opacity: 1;
+}
+
+.ideas {
+  color: var(--color-accent);
+}
+
+.ideas:hover:not(:disabled) {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
 .delete:hover:not(:disabled) {

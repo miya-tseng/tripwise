@@ -345,4 +345,31 @@ describe('ScheduleDays', () => {
       wrapper.unmount()
     })
   })
+
+  describe('ideas', () => {
+    const placed: Activity = {
+      ...tsukiji,
+      place: {
+        placeId: 'tsukiji',
+        name: 'Tsukiji',
+        address: 'Tsukiji, Tokyo',
+        latitude: 35.66,
+        longitude: 139.77,
+        googleMapsUri: 'https://maps.google.com/?cid=tsukiji',
+      },
+    }
+
+    it('offers ideas only for activities with a place', async () => {
+      const wrapper = mount(ScheduleDays, {
+        props: { days: [{ date: '2026-12-01', activities: [placed, sensoji] }] },
+      })
+
+      const buttons = wrapper.findAll('[data-testid="suggest-activity"]')
+      expect(buttons).toHaveLength(1)
+
+      await buttons[0]!.trigger('click')
+
+      expect(wrapper.emitted('suggest')).toEqual([[placed]])
+    })
+  })
 })

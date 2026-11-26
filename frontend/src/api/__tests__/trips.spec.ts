@@ -51,6 +51,15 @@ describe('trips api', () => {
       },
     )
 
+    it('uses the server detail when the API itself reports a gateway error', async () => {
+      const detail = 'Place search is unavailable right now. Please try again later.'
+      fetchMock.mockResolvedValue(
+        jsonResponse({ title: 'External service unavailable', detail }, 502),
+      )
+
+      await expect(fetchTrips()).rejects.toMatchObject({ status: 502, message: detail })
+    })
+
     it('gets all trips', async () => {
       fetchMock.mockResolvedValue(jsonResponse([tokyo]))
 

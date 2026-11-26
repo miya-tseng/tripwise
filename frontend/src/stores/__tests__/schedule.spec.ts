@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { addActivity, deleteActivity, fetchSchedule, updateActivity } from '@/api/activities'
+import {
+  addActivity,
+  deleteActivity,
+  fetchSchedule,
+  fetchSuggestions,
+  updateActivity,
+} from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
@@ -266,6 +272,71 @@ describe('schedule store', () => {
 
       expect(store.error).toBe('Cannot connect to the server.')
       expect(namesPerDay(store)).toEqual([['Shibuya'], []])
+    })
+  })
+
+  describe('suggestions', () => {
+    const suggestion = {
+      place: {
+        placeId: 'skytree-id',
+        name: 'Tokyo Skytree',
+        address: 'Oshiage, Tokyo',
+        latitude: 35.71,
+        longitude: 139.81,
+        googleMapsUri: 'https://maps.google.com/?cid=1',
+      },
+      reason: 'Close by',
+      suggestedMinutes: 90,
+    }
+
+    it('loads suggestions for an activity', async () => {
+      const store = await loadedStore()
+      vi.mocked(fetchSuggestions).mockResolvedValue([suggestion])
+
+      await store.loadSuggestions(shibuya)
+
+      expect(fetchSuggestions).toHaveBeenCalledWith('tokyo-id', 'shibuya-id')
+      expect(store.suggestionsFor).toEqual(shibuya)
+      expect(store.suggestions).toEqual([suggestion])
+      expect(store.suggestionsLoading).toBe(false)
+      expect(store.suggestionsError).toBeNull()
+    })
+
+    it('keeps the error when suggestions fail', async () => {
+      const store = await loadedStore()
+      vi.mocked(fetchSuggestions).mockRejectedValue(
+        new Error('Suggestions are unavailable right now.'),
+      )
+
+      await store.loadSuggestions(shibuya)
+
+      expect(store.suggestionsError).toBe('Suggestions are unavailable right now.')
+      expect(store.suggestions).toEqual([])
+      expect(store.suggestionsLoading).toBe(false)
+    })
+
+    it('ignores suggestions that arrive after the panel was closed', async () => {
+      const store = await loadedStore()
+      let resolve: (value: (typeof suggestion)[]) => void = () => {}
+      vi.mocked(fetchSuggestions).mockReturnValue(new Promise((done) => (resolve = done)))
+
+      const loading = store.loadSuggestions(shibuya)
+      store.closeSuggestions()
+      resolve([suggestion])
+      await loading
+
+      expect(store.suggestionsFor).toBeNull()
+      expect(store.suggestions).toEqual([])
+    })
+
+    it('drops a suggestion once its place is added', async () => {
+      const store = await loadedStore()
+      vi.mocked(fetchSuggestions).mockResolvedValue([suggestion])
+      await store.loadSuggestions(shibuya)
+
+      store.dropSuggestion('skytree-id')
+
+      expect(store.suggestions).toEqual([])
     })
   })
 })
