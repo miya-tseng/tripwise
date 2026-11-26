@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using TripWise.Domain;
 
 namespace TripWise.Application.Dtos;
@@ -43,6 +44,7 @@ public class CurrencySpendDto
 
 public class CategorySpendDto
 {
+    [JsonConverter(typeof(JsonStringEnumConverter<ActivityCategory>))]
     public ActivityCategory Category { get; set; }
     public int ActivityCount { get; set; }
     public decimal? AmountInTwd { get; set; }
@@ -67,6 +69,7 @@ public class BookingProgressDto
 
 public class ExpenseDto
 {
+    [JsonConverter(typeof(JsonStringEnumConverter<ExpenseKind>))]
     public ExpenseKind Kind { get; set; }
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -77,6 +80,7 @@ public class ExpenseDto
 
 public class AttentionItemDto
 {
+    [JsonConverter(typeof(JsonStringEnumConverter<AttentionKind>))]
     public AttentionKind Kind { get; set; }
     public DateOnly Date { get; set; }
     public Guid? ItemId { get; set; }
