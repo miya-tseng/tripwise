@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import TripList from '../TripList.vue'
 import type { Trip } from '@/types/trip'
@@ -47,5 +47,20 @@ describe('TripList', () => {
 
     expect(wrapper.emitted('delete')).toEqual([[tokyo]])
     wrapper.unmount()
+  })
+
+  it('scrolls the row by about one screen', () => {
+    const wrapper = mount(TripList, {
+      props: { trips: [tokyo, osaka], phase: 'upcoming', today: '2026-12-10' },
+      global,
+    })
+    const row = wrapper.find('[data-testid="upcoming-trips"]').element as HTMLElement
+    const scrollBy = vi.fn<(options?: ScrollToOptions) => void>()
+    row.scrollBy = scrollBy as unknown as typeof row.scrollBy
+    Object.defineProperty(row, 'clientWidth', { value: 1000 })
+
+    ;(wrapper.vm as unknown as { scroll: (step: number) => void }).scroll(1)
+
+    expect(scrollBy).toHaveBeenCalledWith({ left: 900, behavior: 'smooth' })
   })
 })

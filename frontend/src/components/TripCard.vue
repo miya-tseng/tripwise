@@ -510,6 +510,13 @@ function askToDelete() {
   outline: none;
 }
 
+.upcoming .menu-panel,
+.past .menu-panel {
+  top: 50%;
+  right: calc(100% + 0.25rem);
+  transform: translateY(-50%);
+}
+
 @media (max-width: 560px) {
   .ongoing .cover {
     display: none;

@@ -17,6 +17,7 @@ const store = useTripsStore()
 const { trips, loading, error, deletingId } = storeToRefs(store)
 
 const newTripOpen = ref(false)
+const upcomingList = ref<InstanceType<typeof TripList> | null>(null)
 const pastOpen = ref(false)
 const tripToDelete = ref<Trip | null>(null)
 
@@ -148,9 +149,35 @@ function confirmDelete() {
         <div class="section-header">
           <h2 class="section-title">Upcoming</h2>
           <span class="chip">{{ groups.upcoming.length }}</span>
+          <div
+            v-if="upcomingList && (upcomingList.canScrollBack || upcomingList.canScrollForward)"
+            class="row-arrows"
+          >
+            <button
+              type="button"
+              class="arrow"
+              aria-label="Earlier trips"
+              :disabled="!upcomingList.canScrollBack"
+              data-testid="upcoming-back"
+              @click="upcomingList.scroll(-1)"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              class="arrow"
+              aria-label="Later trips"
+              :disabled="!upcomingList.canScrollForward"
+              data-testid="upcoming-forward"
+              @click="upcomingList.scroll(1)"
+            >
+              ›
+            </button>
+          </div>
         </div>
         <TripList
           v-if="groups.upcoming.length > 0"
+          ref="upcomingList"
           :trips="groups.upcoming"
           phase="upcoming"
           :today="today"
@@ -276,6 +303,39 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+.row-arrows {
+  margin-left: auto;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.arrow {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.arrow:disabled {
+  color: var(--color-subtle);
+  cursor: default;
+  opacity: 0.5;
+}
+
+@media (max-width: 720px) {
+  .row-arrows {
+    display: none;
+  }
 }
 
 .add-upcoming {
