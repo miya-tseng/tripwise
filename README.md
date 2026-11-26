@@ -101,6 +101,17 @@ E2E tests expect fake places and fixed rates. If you configured real keys, run t
 GooglePlaces__Provider=Fake ExchangeRates__Provider=Fake dotnet run --project backend/TripWise.Api
 ```
 
+### Day map
+
+Each day can show its places on a map (Maps JavaScript API). The map needs a **separate browser key** restricted by HTTP referrer, set in `frontend/.env.local` (git-ignored):
+
+```bash
+VITE_GOOGLE_MAPS_BROWSER_KEY=<browser key>
+VITE_GOOGLE_MAPS_MAP_ID=<map id, optional, defaults to DEMO_MAP_ID>
+```
+
+Without a browser key the map button is hidden and the Google Maps links still work. The map script only loads when a day's map is opened.
+
 ### Add a migration
 
 ```bash

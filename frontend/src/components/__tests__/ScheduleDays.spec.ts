@@ -1,8 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ScheduleDays from '../ScheduleDays.vue'
 import ConfirmDialog from '../ConfirmDialog.vue'
+import DayMap from '../DayMap.vue'
+import { hasMapsKey } from '@/utils/googleMaps'
 import type { Activity, ScheduleDay } from '@/types/activity'
+
+vi.mock('@/utils/googleMaps', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/googleMaps')>()),
+  hasMapsKey: vi.fn<() => boolean>(() => false),
+  loadGoogleMaps: vi.fn<() => Promise<never>>(() => new Promise(() => {})),
+}))
 
 function activity(
   id: string,
@@ -260,6 +268,81 @@ describe('ScheduleDays', () => {
 
       expect(wrapper.find('[data-testid="directions-link"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="day-route-link"]').exists()).toBe(false)
+    })
+  })
+
+  describe('day map', () => {
+    const placed: Activity = {
+      ...tsukiji,
+      place: {
+        placeId: 'tsukiji',
+        name: 'Tsukiji',
+        address: 'Tsukiji, Tokyo',
+        latitude: 35.66,
+        longitude: 139.77,
+        googleMapsUri: 'https://maps.google.com/?cid=tsukiji',
+      },
+    }
+
+    beforeEach(() => {
+      vi.mocked(hasMapsKey).mockReturnValue(true)
+    })
+
+    function mountMapDays(activities: Activity[]) {
+      return mount(ScheduleDays, {
+        props: { days: [{ date: '2026-12-01', activities }] },
+        attachTo: document.body,
+      })
+    }
+
+    it('has no map toggle without a browser key', () => {
+      vi.mocked(hasMapsKey).mockReturnValue(false)
+
+      const wrapper = mountMapDays([placed])
+
+      expect(wrapper.find('[data-testid="toggle-day-map"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('has no map toggle for a day without places', () => {
+      const wrapper = mountMapDays([sensoji])
+
+      expect(wrapper.find('[data-testid="toggle-day-map"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('loads the map only when it is opened', async () => {
+      const wrapper = mountMapDays([placed, sensoji])
+      expect(wrapper.findComponent(DayMap).exists()).toBe(false)
+
+      await wrapper.find('[data-testid="toggle-day-map"]').trigger('click')
+
+      const map = wrapper.findComponent(DayMap)
+      expect(map.props('stops')).toEqual([
+        { activityId: placed.id, name: placed.name, place: placed.place },
+      ])
+      expect(wrapper.find('[data-testid="toggle-day-map"]').text()).toBe('Hide map')
+      expect(wrapper.find('[data-testid="toggle-day-map"]').attributes('aria-expanded')).toBe(
+        'true',
+      )
+
+      await wrapper.find('[data-testid="toggle-day-map"]').trigger('click')
+      expect(wrapper.findComponent(DayMap).exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('highlights the activity picked on the map', async () => {
+      const wrapper = mountMapDays([placed, sensoji])
+      await wrapper.find('[data-testid="toggle-day-map"]').trigger('click')
+
+      wrapper.findComponent(DayMap).vm.$emit('select', placed.id)
+      await wrapper.vm.$nextTick()
+
+      const items = wrapper.findAll('[data-testid="activity-item"]')
+      expect(items[0]!.classes()).toContain('highlighted')
+      expect(items[1]!.classes()).not.toContain('highlighted')
+      expect(wrapper.findComponent(DayMap).props('highlightedId')).toBe(placed.id)
+      wrapper.unmount()
     })
   })
 })

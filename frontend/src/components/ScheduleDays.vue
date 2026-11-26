@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DayMap, { type DayMapStop } from '@/components/DayMap.vue'
 import type { Activity, ScheduleDay } from '@/types/activity'
 import { dateParts, formatDayLabel } from '@/utils/date'
 import { HOME_CURRENCY } from '@/types/currency'
@@ -18,6 +19,7 @@ import {
   placesOf,
   previousPlaceOf,
 } from '@/utils/mapsLinks'
+import { hasMapsKey } from '@/utils/googleMaps'
 import { formatTime } from '@/utils/schedule'
 
 withDefaults(
@@ -38,6 +40,39 @@ const emit = defineEmits<{
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
+const mapsAvailable = hasMapsKey()
+const openMaps = ref(new Set<string>())
+const highlightedId = ref<string | null>(null)
+
+function stopsOf(day: ScheduleDay): DayMapStop[] {
+  return day.activities.flatMap((activity) =>
+    activity.place ? [{ activityId: activity.id, name: activity.name, place: activity.place }] : [],
+  )
+}
+
+function canShowMap(day: ScheduleDay): boolean {
+  return mapsAvailable && stopsOf(day).length > 0
+}
+
+function toggleMap(date: string) {
+  const next = new Set(openMaps.value)
+
+  if (next.has(date)) {
+    next.delete(date)
+  } else {
+    next.add(date)
+  }
+
+  openMaps.value = next
+}
+
+async function selectFromMap(activityId: string) {
+  highlightedId.value = activityId
+  await nextTick()
+  document
+    .querySelector(`[data-activity-id="${CSS.escape(activityId)}"]`)
+    ?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+}
 
 function directionsFor(activities: Activity[], index: number): string | null {
   const place = activities[index]?.place
@@ -88,6 +123,16 @@ function confirmDelete() {
             {{ day.activities.length }}
             {{ day.activities.length === 1 ? 'activity' : 'activities' }}
           </span>
+          <button
+            v-if="canShowMap(day)"
+            type="button"
+            class="map-toggle"
+            :aria-expanded="openMaps.has(day.date)"
+            data-testid="toggle-day-map"
+            @click="toggleMap(day.date)"
+          >
+            {{ openMaps.has(day.date) ? 'Hide map' : 'Show map' }}
+          </button>
           <a
             v-if="dayRouteLink(placesOf(day.activities))"
             class="day-route"
@@ -100,6 +145,13 @@ function confirmDelete() {
           </a>
         </div>
       </header>
+
+      <DayMap
+        v-if="canShowMap(day) && openMaps.has(day.date)"
+        :stops="stopsOf(day)"
+        :highlighted-id="highlightedId"
+        @select="selectFromMap"
+      />
 
       <p v-if="day.activities.length === 0" class="day-empty" data-testid="day-empty">
         Nothing planned yet.
@@ -122,7 +174,11 @@ function confirmDelete() {
           </li>
           <li
             class="activity"
-            :class="{ editing: activity.id === editingId }"
+            :class="{
+              editing: activity.id === editingId,
+              highlighted: activity.id === highlightedId,
+            }"
+            :data-activity-id="activity.id"
             data-testid="activity-item"
           >
             <span class="dot" aria-hidden="true" />
@@ -427,6 +483,26 @@ function confirmDelete() {
 
 .directions a:hover {
   text-decoration: underline;
+}
+
+.map-toggle {
+  margin-top: 0.2rem;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.map-toggle:hover {
+  text-decoration: underline;
+}
+
+.activity.highlighted {
+  background: var(--color-accent-soft);
+  border-color: rgb(201 113 75 / 0.35);
 }
 
 .day-route {
