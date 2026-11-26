@@ -13,6 +13,7 @@ import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
 import ActivityForm from '@/components/ActivityForm.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
+import ActivityDialog from '@/components/ActivityDialog.vue'
 import BoardView from '@/components/BoardView.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
@@ -86,6 +87,7 @@ async function submitActivity(
   wrapper: Awaited<ReturnType<typeof mountView>>,
   values: { name: string; startTime: string; endTime: string; cost?: string },
 ) {
+  await wrapper.find('[data-testid="add-activity"]').trigger('click')
   await wrapper.find('[data-testid="use-custom-activity"]').trigger('click')
   await wrapper.find('input[name="name"]').setValue(values.name)
   await pickTime(wrapper, 'startTime', values.startTime)
@@ -95,6 +97,11 @@ async function submitActivity(
   }
   await wrapper.find('form').trigger('submit')
   await flushPromises()
+}
+
+function dialogTitle(wrapper: Awaited<ReturnType<typeof mountView>>): string | null {
+  const dialog = wrapper.find('[data-testid="activity-dialog"]')
+  return dialog.exists() ? dialog.find('h2').text() : null
 }
 
 function activityNames(wrapper: Awaited<ReturnType<typeof mountView>>): string[] {
@@ -237,7 +244,7 @@ describe('TripScheduleView', () => {
     const wrapper = await mountView()
 
     await wrapper.find('[data-testid="edit-activity"]').trigger('click')
-    expect(wrapper.find('.section-title').text()).toBe('Edit "Shibuya"')
+    expect(dialogTitle(wrapper)).toBe('Edit "Shibuya"')
     expect(wrapper.findComponent(ActivityForm).props('activity')).toEqual(shibuya)
 
     await wrapper.find('input[name="name"]').setValue('Shibuya Sky')
@@ -258,7 +265,7 @@ describe('TripScheduleView', () => {
       link: null,
     })
     expect(activityNames(wrapper)).toEqual(['Shibuya Sky'])
-    expect(wrapper.find('.section-title').text()).toBe('Add activity')
+    expect(dialogTitle(wrapper)).toBeNull()
   })
 
   it('stays in edit mode when saving fails', async () => {
@@ -270,8 +277,10 @@ describe('TripScheduleView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.find('.section-title').text()).toBe('Edit "Shibuya"')
-    expect(wrapper.find('[data-testid="schedule-error"]').text()).toContain('Overlap')
+    expect(dialogTitle(wrapper)).toBe('Edit "Shibuya"')
+    expect(
+      wrapper.find('[data-testid="activity-dialog"] [data-testid="schedule-error"]').text(),
+    ).toContain('Overlap')
   })
 
   it('cancels editing', async () => {
@@ -281,7 +290,7 @@ describe('TripScheduleView', () => {
     await wrapper.find('[data-testid="edit-activity"]').trigger('click')
     await wrapper.find('[data-testid="cancel-edit"]').trigger('click')
 
-    expect(wrapper.find('.section-title').text()).toBe('Add activity')
+    expect(dialogTitle(wrapper)).toBeNull()
   })
 
   it('edits the trip from the hero and shows the new details', async () => {
@@ -398,6 +407,7 @@ describe('TripScheduleView', () => {
       link: null,
     })
     const wrapper = await mountView()
+    await wrapper.find('[data-testid="add-activity"]').trigger('click')
 
     await wrapper.findComponent(ActivityForm).props('submit')({
       name: 'Senso-ji',
@@ -415,6 +425,8 @@ describe('TripScheduleView', () => {
     await flushPromises()
 
     expect(localStorage.getItem('tripwise.currency.tokyo-id')).toBe('JPY')
+    expect(wrapper.findComponent(ActivityForm).exists()).toBe(false)
+    await wrapper.find('[data-testid="add-activity"]').trigger('click')
     expect(wrapper.findComponent(ActivityForm).props('defaultCurrency')).toBe('JPY')
     vi.unstubAllGlobals()
   })
@@ -447,6 +459,7 @@ describe('TripScheduleView', () => {
     })
 
     const wrapper = await mountView()
+    await wrapper.find('[data-testid="add-activity"]').trigger('click')
 
     expect(wrapper.findComponent(ActivityForm).props('near')).toEqual({
       latitude: 35.658,
@@ -557,7 +570,7 @@ describe('TripScheduleView', () => {
       await flushPromises()
 
       expect(wrapper.findComponent(SuggestionsPanel).props('suggestions')).toEqual([])
-      expect(wrapper.findComponent(ActivityForm).props('prefill')).toBeNull()
+      expect(wrapper.findComponent(ActivityDialog).props('open')).toBe(false)
     })
 
     it('closes the ideas panel', async () => {
@@ -681,5 +694,108 @@ describe('TripScheduleView', () => {
       await wrapper.find('[data-testid="filter-all"]').trigger('click')
       expect(wrapper.findAll('[data-testid="board-card-name"]')).toHaveLength(2)
     })
+  })
+})
+
+describe('TripScheduleView add flow', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('keeps the form closed until an add button is used', async () => {
+    mockLoadedTrip()
+
+    const wrapper = await mountView()
+
+    expect(wrapper.findComponent(ActivityDialog).props('open')).toBe(false)
+    expect(wrapper.findComponent(ActivityForm).exists()).toBe(false)
+  })
+
+  it('opens the dialog for the day whose add button was used', async () => {
+    mockLoadedTrip()
+    const wrapper = await mountView()
+
+    await wrapper.findAll('[data-testid="add-to-day"]')[1]!.trigger('click')
+
+    expect(wrapper.findComponent(ActivityDialog).props('initialDate')).toBe('2026-12-02')
+    expect(wrapper.findComponent(ActivityForm).props('initialDate')).toBe('2026-12-02')
+    expect(wrapper.find('[data-testid="activity-dialog"]').text()).toContain('Day 2 · Wed, Dec 2')
+  })
+
+  it('opens the dialog for the first day from the header button', async () => {
+    mockLoadedTrip()
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-testid="add-activity"]').trigger('click')
+
+    expect(wrapper.findComponent(ActivityForm).props('initialDate')).toBe('2026-12-01')
+  })
+
+  it('opens the dialog from a board column', async () => {
+    mockLoadedTrip()
+    const wrapper = await mountView()
+    await wrapper.find('[data-testid="view-board"]').trigger('click')
+
+    await wrapper.findAll('[data-testid="board-add"]')[1]!.trigger('click')
+
+    expect(wrapper.findComponent(ActivityForm).props('initialDate')).toBe('2026-12-02')
+  })
+
+  it('closes the dialog after adding', async () => {
+    mockLoadedTrip()
+    vi.mocked(addActivity).mockResolvedValue({ ...shibuya, id: 'new', name: 'Senso-ji' })
+    const wrapper = await mountView()
+
+    await submitActivity(wrapper, { name: 'Senso-ji', startTime: '10:00', endTime: '11:00' })
+
+    expect(wrapper.find('[data-testid="activity-dialog"]').exists()).toBe(false)
+  })
+
+  it('keeps the dialog open with the error when adding fails', async () => {
+    mockLoadedTrip()
+    vi.mocked(addActivity).mockRejectedValue(new Error('The activity overlaps with "Shibuya"'))
+    const wrapper = await mountView()
+
+    await submitActivity(wrapper, { name: 'Hachiko', startTime: '15:30', endTime: '16:30' })
+
+    const dialog = wrapper.find('[data-testid="activity-dialog"]')
+    expect(dialog.exists()).toBe(true)
+    expect(dialog.find('[data-testid="schedule-error"]').text()).toContain('overlaps')
+  })
+
+  it('closes the dialog with the close button', async () => {
+    mockLoadedTrip()
+    const wrapper = await mountView()
+    await wrapper.find('[data-testid="add-activity"]').trigger('click')
+
+    await wrapper.find('[data-testid="close-activity-dialog"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="activity-dialog"]').exists()).toBe(false)
+  })
+
+  it('shows board move errors on the page', async () => {
+    mockLoadedTrip()
+    vi.mocked(moveActivity).mockRejectedValue(new Error('The activity would end after midnight.'))
+    const wrapper = await mountView()
+    await wrapper.find('[data-testid="view-board"]').trigger('click')
+
+    wrapper
+      .findComponent(BoardView)
+      .vm.$emit('move', { activityId: 'shibuya-id', date: '2026-12-01', startTime: '23:30' })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="activity-dialog"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="schedule-error"]').text()).toContain('after midnight')
+  })
+
+  it('keeps the trip bar with the trip summary', async () => {
+    mockLoadedTrip()
+
+    const wrapper = await mountView()
+
+    const bar = wrapper.find('[data-testid="trip-bar"]')
+    expect(bar.find('h1').text()).toBe('Tokyo')
+    expect(bar.find('[data-testid="trip-total"]').exists()).toBe(true)
+    expect(bar.find('[data-testid="add-activity"]').exists()).toBe(true)
   })
 })

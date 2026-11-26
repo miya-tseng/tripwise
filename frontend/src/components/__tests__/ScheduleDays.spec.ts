@@ -87,12 +87,29 @@ describe('ScheduleDays', () => {
     expect(totals).toEqual(['NT$1,500.50', 'NT$0.00', 'NT$0.10'])
   })
 
-  it('shows an empty message for a day without activities', () => {
+  it('shows an empty day that adds an activity when clicked', async () => {
     const wrapper = mountDays()
 
     const secondDay = wrapper.findAll('[data-testid="schedule-day"]')[1]!
-    expect(secondDay.find('[data-testid="day-empty"]').text()).toBe('Nothing planned yet.')
+    const empty = secondDay.find('[data-testid="day-empty"]')
+    expect(empty.text()).toContain('Nothing planned yet.')
     expect(secondDay.findAll('[data-testid="activity-item"]')).toHaveLength(0)
+
+    await empty.trigger('click')
+
+    expect(wrapper.emitted('add')).toEqual([['2026-12-02']])
+  })
+
+  it('adds an activity from the day header', async () => {
+    const wrapper = mountDays()
+
+    const addButtons = wrapper.findAll('[data-testid="add-to-day"]')
+    expect(addButtons).toHaveLength(3)
+    expect(addButtons[2]!.attributes('aria-label')).toBe('Add activity to Day 3')
+
+    await addButtons[2]!.trigger('click')
+
+    expect(wrapper.emitted('add')).toEqual([['2026-12-03']])
   })
 
   it('emits edit with the activity', async () => {

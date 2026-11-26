@@ -235,4 +235,13 @@ describe('BoardView', () => {
     expect(boardCard.text()).toContain('🏯 Sightseeing')
     expect(boardCard.find('[data-testid="board-booking-badge"]').text()).toBe('To book')
   })
+
+  it('adds an activity from a column', async () => {
+    const wrapper = mountBoard()
+
+    await column(wrapper, 2).find('[data-testid="board-add"]').trigger('click')
+
+    expect(wrapper.emitted('add')).toEqual([['2026-12-03']])
+    wrapper.unmount()
+  })
 })

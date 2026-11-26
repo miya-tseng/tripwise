@@ -26,6 +26,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   move: [request: MoveRequest]
   edit: [activity: Activity]
+  add: [date: string]
 }>()
 
 const MOVE_STEP_MINUTES = 30
@@ -157,7 +158,18 @@ function toggleMenu(activityId: string) {
             {{ dateParts(day.date).day }}</span
           >
         </span>
-        <span class="column-count">{{ day.activities.length }}</span>
+        <span class="column-tools">
+          <span class="column-count">{{ day.activities.length }}</span>
+          <button
+            type="button"
+            class="column-add"
+            :aria-label="`Add activity to Day ${dayIndex + 1}`"
+            data-testid="board-add"
+            @click="emit('add', day.date)"
+          >
+            +
+          </button>
+        </span>
       </header>
 
       <ol
@@ -330,6 +342,30 @@ function toggleMenu(activityId: string) {
 .column-date {
   font-family: var(--font-display);
   font-weight: 700;
+}
+
+.column-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.column-add {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.column-add:hover {
+  background: var(--color-primary-soft);
 }
 
 .column-count {

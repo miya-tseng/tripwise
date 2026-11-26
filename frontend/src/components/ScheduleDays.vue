@@ -39,6 +39,7 @@ const emit = defineEmits<{
   edit: [activity: Activity]
   delete: [id: string]
   suggest: [activity: Activity]
+  add: [date: string]
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
@@ -119,6 +120,15 @@ function confirmDelete() {
           <span class="eyebrow">Day {{ index + 1 }}</span>
           <h3 class="day-date" data-testid="day-date">{{ formatDayLabel(day.date) }}</h3>
         </div>
+        <button
+          type="button"
+          class="btn btn-secondary btn-small add-to-day"
+          :aria-label="`Add activity to Day ${index + 1}`"
+          data-testid="add-to-day"
+          @click="emit('add', day.date)"
+        >
+          + Add
+        </button>
         <div class="day-summary">
           <span class="day-total" data-testid="day-total">{{ dayTotalText(day) }}</span>
           <span class="day-count">
@@ -155,9 +165,16 @@ function confirmDelete() {
         @select="selectFromMap"
       />
 
-      <p v-if="day.activities.length === 0" class="day-empty" data-testid="day-empty">
+      <button
+        v-if="day.activities.length === 0"
+        type="button"
+        class="day-empty"
+        data-testid="day-empty"
+        @click="emit('add', day.date)"
+      >
         Nothing planned yet.
-      </p>
+        <span class="day-empty-action">+ Add an activity</span>
+      </button>
       <ul v-else class="timeline">
         <template v-for="(activity, activityIndex) in day.activities" :key="activity.id">
           <li
@@ -400,7 +417,23 @@ function confirmDelete() {
   color: var(--color-subtle);
 }
 
+.add-to-day {
+  flex-shrink: 0;
+}
+
+.day-empty-action {
+  margin-left: 0.4rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 .day-empty {
+  display: block;
+  width: calc(100% - 4.4rem);
+  text-align: left;
+  background: none;
+  cursor: pointer;
+  font: inherit;
   margin: 1rem 0 0 4.4rem;
   padding: 0.85rem 1rem;
   font-size: 0.9rem;
@@ -688,56 +721,93 @@ function confirmDelete() {
 
 @media (max-width: 560px) {
   .day {
-    padding: 1.1rem 1rem 1.2rem;
+    padding: 1rem 0.9rem 1.1rem;
+  }
+
+  .day-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'tile heading summary'
+      'add add add';
+    gap: 0.6rem 0.75rem;
+  }
+
+  .date-tile {
+    grid-area: tile;
+    width: 3rem;
+    height: 3.2rem;
+  }
+
+  .day-heading {
+    grid-area: heading;
+  }
+
+  .day-date {
+    font-size: 1.05rem;
+  }
+
+  .day-summary {
+    grid-area: summary;
+  }
+
+  .day-total {
+    font-size: 1.05rem;
+  }
+
+  .add-to-day {
+    grid-area: add;
+    width: 100%;
   }
 
   .timeline {
-    padding-left: 1.6rem;
+    padding-left: 1.4rem;
   }
 
   .timeline::before {
-    left: 0.45rem;
+    left: 0.4rem;
   }
 
   .dot {
-    left: -1.5rem;
+    left: -1.35rem;
   }
 
   .day-empty {
+    width: 100%;
     margin-left: 0;
   }
 
   .activity {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      'time cost actions'
-      'name cost actions';
-    gap: 0.1rem 0.5rem;
-    padding-left: 0.6rem;
+      'time cost'
+      'name cost'
+      'actions actions';
+    gap: 0.15rem 0.6rem;
+    padding: 0.55rem 0.4rem 0.4rem 0.6rem;
   }
 
   .activity-time {
     grid-area: time;
     min-width: 0;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
   }
 
   .activity-main {
     grid-area: name;
   }
 
-  .activity-name {
-    white-space: normal;
-  }
-
   .activity-cost {
     grid-area: cost;
+    align-self: start;
     min-width: 0;
   }
 
   .activity-actions {
     grid-area: actions;
+    justify-content: flex-end;
+    opacity: 1;
   }
 }
 </style>

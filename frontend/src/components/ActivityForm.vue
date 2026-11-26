@@ -28,6 +28,8 @@ const props = withDefaults(
     defaultCurrency?: string
     near?: GeoPoint | null
     prefill?: ActivityPrefill | null
+    initialDate?: string | null
+    showCancel?: boolean
   }>(),
   {
     activity: null,
@@ -35,6 +37,8 @@ const props = withDefaults(
     defaultCurrency: HOME_CURRENCY,
     near: null,
     prefill: null,
+    initialDate: null,
+    showCancel: false,
   },
 )
 
@@ -70,7 +74,9 @@ const selectedPlace = ref<PlaceSuggestion | null>(
       }
     : (prefilled?.place ?? null),
 )
-const date = ref(props.activity?.date ?? prefilled?.date ?? props.dates[0] ?? '')
+const date = ref(
+  props.activity?.date ?? prefilled?.date ?? props.initialDate ?? props.dates[0] ?? '',
+)
 const startTime = ref(
   props.activity ? formatTime(props.activity.startTime) : (prefilled?.startTime ?? ''),
 )
@@ -384,7 +390,7 @@ async function onSubmit() {
 
     <div class="actions">
       <button
-        v-if="isEditing"
+        v-if="isEditing || showCancel"
         type="button"
         class="btn btn-secondary"
         data-testid="cancel-edit"
