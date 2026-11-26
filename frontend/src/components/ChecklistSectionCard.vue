@@ -303,16 +303,17 @@ function onDragEnd() {
               {{ dueLabel(item.dueDate, today) }}
             </span>
           </button>
-          <button
-            type="button"
+          <span
             class="handle"
+            role="button"
+            tabindex="0"
             :aria-label="`Move ${item.text}. Use arrow keys to move up or down`"
             data-testid="drag-handle"
             @keydown.up.prevent="move(item, -1)"
             @keydown.down.prevent="move(item, 1)"
           >
             ⋮⋮
-          </button>
+          </span>
         </template>
       </li>
     </ul>
@@ -543,6 +544,8 @@ function onDragEnd() {
 }
 
 .handle {
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
   width: 2rem;
   height: 2rem;
