@@ -11,7 +11,7 @@ function activity(
   endTime: string,
   cost = 0,
 ): Activity {
-  return { id, name: id, date, startTime, endTime, cost }
+  return { id, name: id, date, startTime, endTime, cost, currency: 'TWD', costInTwd: cost }
 }
 
 const tsukiji = activity('Tsukiji', '2026-12-01', '07:00:00', '08:00:00', 1500.5)
@@ -55,14 +55,14 @@ describe('ScheduleDays', () => {
     const wrapper = mountDays()
 
     const costs = wrapper.findAll('[data-testid="activity-cost"]').map((item) => item.text())
-    expect(costs).toEqual(['1,500.50', 'Free', '0.10'])
+    expect(costs).toEqual(['NT$1,500.50', 'Free', 'NT$0.10'])
   })
 
   it('shows the subtotal of each day', () => {
     const wrapper = mountDays()
 
     const totals = wrapper.findAll('[data-testid="day-total"]').map((item) => item.text())
-    expect(totals).toEqual(['1,500.50', '0.00', '0.10'])
+    expect(totals).toEqual(['NT$1,500.50', 'NT$0.00', 'NT$0.10'])
   })
 
   it('shows an empty message for a day without activities', () => {
@@ -122,5 +122,49 @@ describe('ScheduleDays', () => {
     const button = wrapper.findAll('[data-testid="delete-activity"]')[0]!
     expect(button.attributes('disabled')).toBeDefined()
     expect(button.text()).toBe('Deleting...')
+  })
+
+  it('shows foreign costs in their currency with the TWD amount', () => {
+    const shibuya: Activity = {
+      id: 'shibuya',
+      name: 'Shibuya Sky',
+      date: '2026-12-01',
+      startTime: '17:00:00',
+      endTime: '18:00:00',
+      cost: 3000,
+      currency: 'JPY',
+      costInTwd: 625,
+    }
+    const wrapper = mount(ScheduleDays, {
+      props: { days: [{ date: '2026-12-01', activities: [tsukiji, shibuya] }] },
+    })
+
+    expect(wrapper.findAll('[data-testid="activity-cost"]').map((item) => item.text())).toEqual([
+      'NT$1,500.50',
+      '¥3,000',
+    ])
+    expect(wrapper.findAll('[data-testid="activity-cost-twd"]').map((item) => item.text())).toEqual(
+      ['≈ NT$625.00'],
+    )
+    expect(wrapper.find('[data-testid="day-total"]').text()).toBe('NT$2,125.50')
+  })
+
+  it('shows the day total per currency when a cost cannot be converted', () => {
+    const shibuya: Activity = {
+      id: 'shibuya',
+      name: 'Shibuya Sky',
+      date: '2026-12-01',
+      startTime: '17:00:00',
+      endTime: '18:00:00',
+      cost: 3000,
+      currency: 'JPY',
+      costInTwd: null,
+    }
+    const wrapper = mount(ScheduleDays, {
+      props: { days: [{ date: '2026-12-01', activities: [tsukiji, shibuya] }] },
+    })
+
+    expect(wrapper.find('[data-testid="activity-cost-twd"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="day-total"]').text()).toBe('NT$1,500.50 + ¥3,000')
   })
 })

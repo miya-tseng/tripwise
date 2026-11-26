@@ -1,8 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { addActivity, deleteActivity, fetchSchedule, updateActivity } from '@/api/activities'
+import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
-import type { SaveActivityInput, ScheduleDay } from '@/types/activity'
+import type { SaveActivityInput, Schedule, ScheduleDay } from '@/types/activity'
+import type { ExchangeRates } from '@/types/currency'
 import type { Trip, UpdateTripInput } from '@/types/trip'
 import { withActivity, withoutActivity } from '@/utils/schedule'
 
@@ -18,6 +20,23 @@ export const useScheduleStore = defineStore('schedule', () => {
   const error = ref<string | null>(null)
   const deletingId = ref<string | null>(null)
   const editTripError = ref<string | null>(null)
+  const ratesAvailable = ref(true)
+  const ratesUpdatedAt = ref<string | null>(null)
+  const exchangeRates = ref<ExchangeRates | null>(null)
+
+  function applySchedule(schedule: Schedule): void {
+    days.value = schedule.days
+    ratesAvailable.value = schedule.ratesAvailable
+    ratesUpdatedAt.value = schedule.ratesUpdatedAt
+  }
+
+  async function loadExchangeRates(): Promise<void> {
+    try {
+      exchangeRates.value = await fetchExchangeRates()
+    } catch {
+      exchangeRates.value = null
+    }
+  }
 
   async function load(tripId: string): Promise<void> {
     loading.value = true
@@ -27,9 +46,13 @@ export const useScheduleStore = defineStore('schedule', () => {
     days.value = []
 
     try {
-      const [loadedTrip, schedule] = await Promise.all([fetchTrip(tripId), fetchSchedule(tripId)])
+      const [loadedTrip, schedule] = await Promise.all([
+        fetchTrip(tripId),
+        fetchSchedule(tripId),
+        loadExchangeRates(),
+      ])
       trip.value = loadedTrip
-      days.value = schedule.days
+      applySchedule(schedule)
     } catch (e) {
       loadError.value = toMessage(e)
     } finally {
@@ -100,7 +123,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       const updated = await updateTrip(trip.value.id, input)
       const schedule = await fetchSchedule(updated.id)
       trip.value = updated
-      days.value = schedule.days
+      applySchedule(schedule)
       return true
     } catch (e) {
       editTripError.value = toMessage(e)
@@ -124,6 +147,9 @@ export const useScheduleStore = defineStore('schedule', () => {
     error,
     deletingId,
     editTripError,
+    ratesAvailable,
+    ratesUpdatedAt,
+    exchangeRates,
     load,
     add,
     update,

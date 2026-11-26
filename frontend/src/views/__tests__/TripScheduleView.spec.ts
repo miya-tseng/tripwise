@@ -2,14 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { addActivity, fetchSchedule, updateActivity } from '@/api/activities'
+import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
 import ActivityForm from '@/components/ActivityForm.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
+import { createMemoryStorage } from '@/test/memoryStorage'
 import TripScheduleView from '../TripScheduleView.vue'
 
 vi.mock('@/api/activities')
 vi.mock('@/api/trips')
+vi.mock('@/api/exchangeRates')
 
 const shibuya: Activity = {
   id: 'shibuya-id',
@@ -18,6 +21,8 @@ const shibuya: Activity = {
   startTime: '15:00:00',
   endTime: '16:00:00',
   cost: 2200,
+  currency: 'TWD',
+  costInTwd: 2200,
 }
 
 function mockLoadedTrip() {
@@ -30,6 +35,8 @@ function mockLoadedTrip() {
   })
   vi.mocked(fetchSchedule).mockResolvedValue({
     tripId: 'tokyo-id',
+    ratesAvailable: true,
+    ratesUpdatedAt: '2026-01-01T00:00:00Z',
     days: [
       { date: '2026-12-01', activities: [shibuya] },
       { date: '2026-12-02', activities: [] },
@@ -124,6 +131,8 @@ describe('TripScheduleView', () => {
       startTime: '10:00:00',
       endTime: '11:00:00',
       cost: 500.25,
+      currency: 'TWD',
+      costInTwd: 500.25,
     })
     const wrapper = await mountView()
 
@@ -140,6 +149,7 @@ describe('TripScheduleView', () => {
       startTime: '10:00',
       endTime: '11:00',
       cost: 500.25,
+      currency: 'TWD',
     })
     expect(activityNames(wrapper)).toEqual(['Senso-ji', 'Shibuya'])
   })
@@ -149,9 +159,9 @@ describe('TripScheduleView', () => {
 
     const wrapper = await mountView()
 
-    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('2,200.00')
+    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('NT$2,200.00')
     const dayTotals = wrapper.findAll('[data-testid="day-total"]').map((item) => item.text())
-    expect(dayTotals).toEqual(['2,200.00', '0.00'])
+    expect(dayTotals).toEqual(['NT$2,200.00', 'NT$0.00'])
   })
 
   it('updates the budget after adding an activity with a cost', async () => {
@@ -163,6 +173,8 @@ describe('TripScheduleView', () => {
       startTime: '10:00:00',
       endTime: '11:00:00',
       cost: 500.25,
+      currency: 'TWD',
+      costInTwd: 500.25,
     })
     const wrapper = await mountView()
 
@@ -173,8 +185,8 @@ describe('TripScheduleView', () => {
       cost: '500.25',
     })
 
-    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('2,700.25')
-    expect(wrapper.find('[data-testid="day-total"]').text()).toBe('2,700.25')
+    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('NT$2,700.25')
+    expect(wrapper.find('[data-testid="day-total"]').text()).toBe('NT$2,700.25')
   })
 
   it('shows the overlap error from the server', async () => {
@@ -208,6 +220,7 @@ describe('TripScheduleView', () => {
       startTime: '15:00',
       endTime: '16:00',
       cost: 2200,
+      currency: 'TWD',
     })
     expect(activityNames(wrapper)).toEqual(['Shibuya Sky'])
     expect(wrapper.find('.section-title').text()).toBe('Add activity')
@@ -248,6 +261,8 @@ describe('TripScheduleView', () => {
     const wrapper = await mountView()
     vi.mocked(fetchSchedule).mockResolvedValue({
       tripId: 'tokyo-id',
+      ratesAvailable: true,
+      ratesUpdatedAt: '2026-01-01T00:00:00Z',
       days: [
         { date: '2026-12-01', activities: [shibuya] },
         { date: '2026-12-02', activities: [] },
@@ -287,5 +302,75 @@ describe('TripScheduleView', () => {
       '1 activity falls outside the new dates.',
     )
     expect(wrapper.find('h1').text()).toBe('Tokyo')
+  })
+
+  it('notes where the exchange rates come from', async () => {
+    mockLoadedTrip()
+
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="rates-note"]').text()).toBe(
+      'Totals in TWD · Rates by Exchange Rate API, updated Jan 1, 2026',
+    )
+  })
+
+  it('warns and shows totals per currency when rates are unavailable', async () => {
+    mockLoadedTrip()
+    vi.mocked(fetchSchedule).mockResolvedValue({
+      tripId: 'tokyo-id',
+      ratesAvailable: false,
+      ratesUpdatedAt: null,
+      days: [
+        {
+          date: '2026-12-01',
+          activities: [{ ...shibuya, cost: 3000, currency: 'JPY', costInTwd: null }],
+        },
+        { date: '2026-12-02', activities: [] },
+      ],
+    })
+
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="rates-note"]').text()).toBe(
+      'Exchange rates are unavailable right now, so totals are shown per currency.',
+    )
+    expect(wrapper.find('[data-testid="trip-total"]').text()).toBe('¥3,000')
+  })
+
+  it('remembers the currency of the last added cost for this trip', async () => {
+    vi.stubGlobal('localStorage', createMemoryStorage())
+    mockLoadedTrip()
+    vi.mocked(fetchExchangeRates).mockResolvedValue({
+      baseCurrency: 'TWD',
+      available: true,
+      updatedAt: '2026-01-01T00:00:00Z',
+      currencies: ['JPY', 'TWD'],
+      unitsPerBaseCurrency: { TWD: 1, JPY: 4.8 },
+    })
+    vi.mocked(addActivity).mockResolvedValue({
+      id: 'senso-ji-id',
+      name: 'Senso-ji',
+      date: '2026-12-01',
+      startTime: '10:00:00',
+      endTime: '11:00:00',
+      cost: 500,
+      currency: 'JPY',
+      costInTwd: 104.17,
+    })
+    const wrapper = await mountView()
+
+    await wrapper.findComponent(ActivityForm).props('submit')({
+      name: 'Senso-ji',
+      date: '2026-12-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      cost: 500,
+      currency: 'JPY',
+    })
+    await flushPromises()
+
+    expect(localStorage.getItem('tripwise.currency.tokyo-id')).toBe('JPY')
+    expect(wrapper.findComponent(ActivityForm).props('defaultCurrency')).toBe('JPY')
+    vi.unstubAllGlobals()
   })
 })

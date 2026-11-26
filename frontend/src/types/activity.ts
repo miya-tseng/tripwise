@@ -5,6 +5,8 @@ export interface Activity {
   startTime: string
   endTime: string
   cost: number
+  currency: string
+  costInTwd: number | null
 }
 
 export interface SaveActivityInput {
@@ -13,6 +15,7 @@ export interface SaveActivityInput {
   startTime: string
   endTime: string
   cost: number
+  currency: string
 }
 
 export interface ScheduleDay {
@@ -22,6 +25,8 @@ export interface ScheduleDay {
 
 export interface Schedule {
   tripId: string
+  ratesAvailable: boolean
+  ratesUpdatedAt: string | null
   days: ScheduleDay[]
 }
 

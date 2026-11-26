@@ -63,9 +63,10 @@ public abstract class SchedulePageTest : PageTest
 
     protected async Task ChooseDayAsync(int day)
     {
-        await Page.GetByTestId("select-trigger").ClickAsync();
-        await Page.GetByRole(AriaRole.Option).Nth(day - 1).ClickAsync();
-        await Expect(Page.GetByTestId("select-trigger")).ToContainTextAsync($"Day {day}");
+        var daySelect = Page.GetByTestId("day-select");
+        await daySelect.GetByTestId("select-trigger").ClickAsync();
+        await daySelect.GetByRole(AriaRole.Option).Nth(day - 1).ClickAsync();
+        await Expect(daySelect.GetByTestId("select-trigger")).ToContainTextAsync($"Day {day}");
     }
 
     protected async Task PickTimeAsync(string label, string time)

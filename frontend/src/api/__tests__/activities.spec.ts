@@ -11,6 +11,8 @@ const sensoji: Activity = {
   startTime: '10:00:00',
   endTime: '11:00:00',
   cost: 0,
+  currency: 'TWD',
+  costInTwd: 0,
 }
 
 const input = {
@@ -19,6 +21,7 @@ const input = {
   startTime: '10:00',
   endTime: '11:00',
   cost: 0,
+  currency: 'TWD',
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -41,7 +44,12 @@ describe('activities api', () => {
   })
 
   it('gets the schedule of a trip', async () => {
-    const schedule: Schedule = { tripId, days: [{ date: '2026-12-01', activities: [sensoji] }] }
+    const schedule: Schedule = {
+      tripId,
+      ratesAvailable: true,
+      ratesUpdatedAt: '2026-01-01T00:00:00Z',
+      days: [{ date: '2026-12-01', activities: [sensoji] }],
+    }
     fetchMock.mockResolvedValue(jsonResponse(schedule))
 
     const result = await fetchSchedule(tripId)

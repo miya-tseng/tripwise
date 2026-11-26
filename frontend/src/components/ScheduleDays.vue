@@ -3,7 +3,14 @@ import { computed, ref } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { Activity, ScheduleDay } from '@/types/activity'
 import { dateParts, formatDayLabel } from '@/utils/date'
-import { dayTotal, formatMoney } from '@/utils/money'
+import { HOME_CURRENCY } from '@/types/currency'
+import {
+  dayTotalInTwd,
+  formatCurrency,
+  formatTotals,
+  formatTwd,
+  totalsByCurrency,
+} from '@/utils/money'
 import { formatTime } from '@/utils/schedule'
 
 withDefaults(
@@ -24,6 +31,15 @@ const emit = defineEmits<{
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
+
+function isForeign(activity: Activity): boolean {
+  return activity.cost > 0 && activity.currency !== HOME_CURRENCY
+}
+
+function dayTotalText(day: ScheduleDay): string {
+  const total = dayTotalInTwd(day)
+  return total === null ? formatTotals(totalsByCurrency(day.activities)) : formatTwd(total)
+}
 
 const confirmMessage = computed(() =>
   activityToDelete.value ? `Delete "${activityToDelete.value.name}" from your schedule?` : '',
@@ -50,7 +66,7 @@ function confirmDelete() {
           <h3 class="day-date" data-testid="day-date">{{ formatDayLabel(day.date) }}</h3>
         </div>
         <div class="day-summary">
-          <span class="day-total" data-testid="day-total">{{ formatMoney(dayTotal(day)) }}</span>
+          <span class="day-total" data-testid="day-total">{{ dayTotalText(day) }}</span>
           <span class="day-count">
             {{ day.activities.length }}
             {{ day.activities.length === 1 ? 'activity' : 'activities' }}
@@ -74,12 +90,17 @@ function confirmDelete() {
             {{ formatTime(activity.startTime) }} – {{ formatTime(activity.endTime) }}
           </span>
           <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
-          <span
-            class="activity-cost"
-            :class="{ free: activity.cost === 0 }"
-            data-testid="activity-cost"
-          >
-            {{ activity.cost === 0 ? 'Free' : formatMoney(activity.cost) }}
+          <span class="activity-cost" :class="{ free: activity.cost === 0 }">
+            <span data-testid="activity-cost">
+              {{ activity.cost === 0 ? 'Free' : formatCurrency(activity.cost, activity.currency) }}
+            </span>
+            <span
+              v-if="isForeign(activity) && activity.costInTwd !== null"
+              class="activity-cost-twd"
+              data-testid="activity-cost-twd"
+            >
+              ≈ {{ formatTwd(activity.costInTwd) }}
+            </span>
           </span>
           <div class="activity-actions">
             <button
@@ -290,12 +311,21 @@ function confirmDelete() {
 
 .activity-cost {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   min-width: 5.5rem;
   font-size: 0.92rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--color-accent);
+}
+
+.activity-cost-twd {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-subtle);
 }
 
 .activity-cost.free {

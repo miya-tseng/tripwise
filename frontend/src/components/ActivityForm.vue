@@ -4,7 +4,8 @@ import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import TimePicker from '@/components/TimePicker.vue'
 import { MAX_ACTIVITY_NAME_LENGTH, type Activity, type SaveActivityInput } from '@/types/activity'
 import { formatDayLabel } from '@/utils/date'
-import { parseCost } from '@/utils/money'
+import { COMMON_CURRENCIES, HOME_CURRENCY, type ExchangeRates } from '@/types/currency'
+import { currencyName, formatTwd, parseCost, toTwd } from '@/utils/money'
 import { formatTime } from '@/utils/schedule'
 
 const props = withDefaults(
@@ -12,9 +13,13 @@ const props = withDefaults(
     dates: string[]
     activity?: Activity | null
     submit: (input: SaveActivityInput) => Promise<boolean>
+    rates?: ExchangeRates | null
+    defaultCurrency?: string
   }>(),
   {
     activity: null,
+    rates: null,
+    defaultCurrency: HOME_CURRENCY,
   },
 )
 
@@ -29,6 +34,7 @@ const date = ref(props.activity?.date ?? props.dates[0] ?? '')
 const startTime = ref(props.activity ? formatTime(props.activity.startTime) : '')
 const endTime = ref(props.activity ? formatTime(props.activity.endTime) : '')
 const cost = ref(props.activity && props.activity.cost > 0 ? props.activity.cost.toFixed(2) : '')
+const currency = ref(props.activity?.currency ?? props.defaultCurrency)
 const submitting = ref(false)
 
 const dateOptions = computed<SelectOption[]>(() =>
@@ -44,7 +50,25 @@ const endsAfterStart = computed(() => endTime.value > startTime.value)
 const timeError = computed(() =>
   timesAreFilled.value && !endsAfterStart.value ? 'End time must be later than start time.' : '',
 )
+const currencyOptions = computed<SelectOption[]>(() => {
+  const available = props.rates?.available ? new Set(props.rates.currencies) : null
+  const codes = COMMON_CURRENCIES.filter((code) => !available || available.has(code))
+  const withCurrent = codes.includes(currency.value as (typeof COMMON_CURRENCIES)[number])
+    ? codes
+    : [...codes, currency.value]
+
+  return withCurrent.map((code) => ({ value: code, label: code, hint: currencyName(code) }))
+})
+
 const parsedCost = computed(() => parseCost(cost.value))
+const costPreview = computed(() => {
+  if (!parsedCost.value.ok || parsedCost.value.value === 0 || currency.value === HOME_CURRENCY) {
+    return ''
+  }
+
+  const converted = toTwd(parsedCost.value.value, currency.value, props.rates)
+  return converted === null ? 'TWD amount unavailable' : `≈ ${formatTwd(converted)}`
+})
 const costError = computed(() => (parsedCost.value.ok ? '' : parsedCost.value.error))
 const canSubmit = computed(
   () =>
@@ -68,6 +92,7 @@ async function onSubmit() {
     startTime: startTime.value,
     endTime: endTime.value,
     cost: parsedCost.value.value,
+    currency: currency.value,
   })
 
   submitting.value = false
@@ -126,24 +151,35 @@ async function onSubmit() {
     </div>
     <p v-if="timeError" class="field-error" data-testid="time-error">{{ timeError }}</p>
 
-    <label class="field">
+    <div class="field">
       <span class="field-label">
         Cost
         <span class="field-optional">Optional</span>
       </span>
-      <span class="cost-input" :class="{ invalid: costError }">
+      <div class="cost-row" :class="{ invalid: costError }">
         <input
           v-model="cost"
-          class="text-input"
+          class="text-input cost-amount"
           name="cost"
           type="text"
           inputmode="decimal"
           placeholder="0.00"
           autocomplete="off"
+          aria-label="Cost"
           :aria-invalid="costError !== ''"
         />
+        <SelectMenu
+          v-model="currency"
+          class="cost-currency"
+          name="currency"
+          :options="currencyOptions"
+          data-testid="currency-select"
+        />
+      </div>
+      <span v-if="costPreview" class="cost-preview" data-testid="cost-preview">
+        {{ costPreview }}
       </span>
-    </label>
+    </div>
     <p v-if="costError" class="field-error" data-testid="cost-error">{{ costError }}</p>
 
     <div class="actions">
@@ -201,16 +237,38 @@ async function onSubmit() {
   color: var(--color-subtle);
 }
 
-.cost-input .text-input {
+.cost-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5rem;
+  gap: 0.5rem;
+}
+
+.cost-amount {
   font-variant-numeric: tabular-nums;
 }
 
-.cost-input.invalid .text-input {
+.cost-row.invalid .cost-amount {
   border-color: var(--color-danger);
 }
 
-.cost-input.invalid .text-input:focus {
+.cost-row.invalid .cost-amount:focus {
   box-shadow: 0 0 0 4px rgb(179 65 47 / 0.15);
+}
+
+.cost-currency :deep(.select-menu) {
+  left: auto;
+  width: 15rem;
+}
+
+.cost-currency :deep(.select-hint) {
+  display: none;
+}
+
+.cost-preview {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
 }
 
 .actions {

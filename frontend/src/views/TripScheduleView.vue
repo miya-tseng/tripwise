@@ -9,20 +9,50 @@ import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { UpdateTripInput } from '@/types/trip'
 import { formatDateRange } from '@/utils/date'
-import { formatMoney, tripTotal } from '@/utils/money'
+import { formatTotals, formatTwd, totalsByCurrency, tripTotalInTwd } from '@/utils/money'
+import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
 
 const props = defineProps<{
   id: string
 }>()
 
 const store = useScheduleStore()
-const { trip, days, loading, loadError, error, deletingId, editTripError } = storeToRefs(store)
+const {
+  trip,
+  days,
+  loading,
+  loadError,
+  error,
+  deletingId,
+  editTripError,
+  ratesAvailable,
+  ratesUpdatedAt,
+  exchangeRates,
+} = storeToRefs(store)
 
 const editing = ref<Activity | null>(null)
 const tripEditorOpen = ref(false)
 
 const dates = computed(() => days.value.map((day) => day.date))
-const budget = computed(() => formatMoney(tripTotal(days.value)))
+const defaultCurrency = ref(lastUsedCurrency(props.id))
+const budgetInTwd = computed(() => tripTotalInTwd(days.value))
+const budget = computed(() =>
+  budgetInTwd.value === null
+    ? formatTotals(totalsByCurrency(days.value.flatMap((day) => day.activities)))
+    : formatTwd(budgetInTwd.value),
+)
+const ratesNote = computed(() => {
+  if (!ratesAvailable.value) {
+    return 'Exchange rates are unavailable right now, so totals are shown per currency.'
+  }
+
+  const updated = ratesUpdatedAt.value
+    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(
+        new Date(ratesUpdatedAt.value),
+      )
+    : null
+  return updated ? `Totals in TWD · Rates by Exchange Rate API, updated ${updated}` : ''
+})
 const activityCount = computed(() =>
   days.value.reduce((total, day) => total + day.activities.length, 0),
 )
@@ -31,23 +61,27 @@ watch(
   () => props.id,
   (id) => {
     editing.value = null
+    defaultCurrency.value = lastUsedCurrency(id)
     store.load(id)
   },
   { immediate: true },
 )
 
 async function save(input: SaveActivityInput): Promise<boolean> {
-  if (!editing.value) {
-    return store.add(input)
+  const saved = editing.value ? await store.update(editing.value.id, input) : await store.add(input)
+
+  if (!saved) {
+    return false
   }
 
-  const saved = await store.update(editing.value.id, input)
+  editing.value = null
 
-  if (saved) {
-    editing.value = null
+  if (input.cost > 0) {
+    rememberCurrency(props.id, input.currency)
+    defaultCurrency.value = input.currency
   }
 
-  return saved
+  return true
 }
 
 function startEditing(activity: Activity) {
@@ -161,6 +195,8 @@ async function removeActivity(id: string) {
             :dates="dates"
             :activity="editing"
             :submit="save"
+            :rates="exchangeRates"
+            :default-currency="defaultCurrency"
             @cancel="cancelEditing"
           />
           <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">
@@ -178,7 +214,17 @@ async function removeActivity(id: string) {
         </section>
 
         <section class="schedule-panel">
-          <h2 class="section-title schedule-title">Schedule</h2>
+          <div class="schedule-header">
+            <h2 class="section-title schedule-title">Schedule</h2>
+            <p
+              v-if="ratesNote"
+              class="rates-note"
+              :class="{ warning: !ratesAvailable }"
+              data-testid="rates-note"
+            >
+              {{ ratesNote }}
+            </p>
+          </div>
           <ScheduleDays
             :days="days"
             :editing-id="editing?.id ?? null"
@@ -401,8 +447,27 @@ h1 {
   min-width: 0;
 }
 
+.schedule-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.rates-note {
+  font-size: 0.8rem;
+  color: var(--color-subtle);
+}
+
+.rates-note.warning {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 .schedule-title {
-  margin: 0.4rem 0 1rem;
+  margin: 0.4rem 0 0;
 }
 
 .loading {

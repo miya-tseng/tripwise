@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { addActivity, deleteActivity, fetchSchedule, updateActivity } from '@/api/activities'
+import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
 import type { Trip } from '@/types/trip'
@@ -8,6 +9,7 @@ import { useScheduleStore } from '../schedule'
 
 vi.mock('@/api/activities')
 vi.mock('@/api/trips')
+vi.mock('@/api/exchangeRates')
 
 const tokyo: Trip = {
   id: 'tokyo-id',
@@ -24,6 +26,8 @@ const shibuya: Activity = {
   startTime: '15:00:00',
   endTime: '16:00:00',
   cost: 0,
+  currency: 'TWD',
+  costInTwd: 0,
 }
 
 const sensoji: Activity = {
@@ -33,6 +37,8 @@ const sensoji: Activity = {
   startTime: '10:00:00',
   endTime: '11:00:00',
   cost: 0,
+  currency: 'TWD',
+  costInTwd: 0,
 }
 
 const input = {
@@ -41,12 +47,15 @@ const input = {
   startTime: '10:00',
   endTime: '11:00',
   cost: 0,
+  currency: 'TWD',
 }
 
 async function loadedStore() {
   vi.mocked(fetchTrip).mockResolvedValue(tokyo)
   vi.mocked(fetchSchedule).mockResolvedValue({
     tripId: tokyo.id,
+    ratesAvailable: true,
+    ratesUpdatedAt: '2026-01-01T00:00:00Z',
     days: [
       { date: '2026-12-01', activities: [shibuya] },
       { date: '2026-12-02', activities: [] },
@@ -65,6 +74,51 @@ describe('schedule store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
+  })
+
+  describe('exchange rates', () => {
+    it('loads the exchange rates with the schedule', async () => {
+      const rates = {
+        baseCurrency: 'TWD',
+        available: true,
+        updatedAt: '2026-01-01T00:00:00Z',
+        currencies: ['JPY', 'TWD'],
+        unitsPerBaseCurrency: { TWD: 1, JPY: 4.8 },
+      }
+      vi.mocked(fetchExchangeRates).mockResolvedValue(rates)
+
+      const store = await loadedStore()
+
+      expect(store.exchangeRates).toEqual(rates)
+      expect(store.ratesAvailable).toBe(true)
+      expect(store.ratesUpdatedAt).toBe('2026-01-01T00:00:00Z')
+    })
+
+    it('still loads the schedule when the exchange rates fail', async () => {
+      vi.mocked(fetchExchangeRates).mockRejectedValue(new Error('Cannot connect to the server.'))
+
+      const store = await loadedStore()
+
+      expect(store.exchangeRates).toBeNull()
+      expect(store.loadError).toBeNull()
+      expect(store.trip).toEqual(tokyo)
+    })
+
+    it('keeps whether the schedule rates are available', async () => {
+      vi.mocked(fetchTrip).mockResolvedValue(tokyo)
+      vi.mocked(fetchSchedule).mockResolvedValue({
+        tripId: tokyo.id,
+        ratesAvailable: false,
+        ratesUpdatedAt: null,
+        days: [],
+      })
+      const store = useScheduleStore()
+
+      await store.load(tokyo.id)
+
+      expect(store.ratesAvailable).toBe(false)
+      expect(store.ratesUpdatedAt).toBeNull()
+    })
   })
 
   describe('load', () => {
@@ -152,6 +206,8 @@ describe('schedule store', () => {
       vi.mocked(updateTrip).mockResolvedValue(updated)
       vi.mocked(fetchSchedule).mockResolvedValue({
         tripId: tokyo.id,
+        ratesAvailable: true,
+        ratesUpdatedAt: '2026-01-01T00:00:00Z',
         days: [
           { date: '2026-12-01', activities: [shibuya] },
           { date: '2026-12-02', activities: [] },

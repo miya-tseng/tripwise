@@ -8,8 +8,8 @@ public class BudgetTests : SchedulePageTest
     [Test]
     public async Task NewTrip_HasZeroBudget()
     {
-        await Expect(TripTotal()).ToHaveTextAsync("0.00");
-        await Expect(DayTotals()).ToHaveTextAsync(["0.00", "0.00", "0.00"]);
+        await Expect(TripTotal()).ToHaveTextAsync("NT$0.00");
+        await Expect(DayTotals()).ToHaveTextAsync(["NT$0.00", "NT$0.00", "NT$0.00"]);
     }
 
     [Test]
@@ -21,13 +21,13 @@ public class BudgetTests : SchedulePageTest
         await AddActivityAsync("teamLab Planets", day: 3, "13:00", "15:00", cost: "3800.25");
 
         await Expect(ScheduleDay(1).GetByTestId("activity-cost"))
-            .ToHaveTextAsync(["1,500.50", "Free", "2,200.00"]);
-        await Expect(DayTotals()).ToHaveTextAsync(["3,700.50", "0.00", "3,800.25"]);
-        await Expect(TripTotal()).ToHaveTextAsync("7,500.75");
+            .ToHaveTextAsync(["NT$1,500.50", "Free", "NT$2,200.00"]);
+        await Expect(DayTotals()).ToHaveTextAsync(["NT$3,700.50", "NT$0.00", "NT$3,800.25"]);
+        await Expect(TripTotal()).ToHaveTextAsync("NT$7,500.75");
 
         await Page.ReloadAsync();
-        await Expect(DayTotals()).ToHaveTextAsync(["3,700.50", "0.00", "3,800.25"]);
-        await Expect(TripTotal()).ToHaveTextAsync("7,500.75");
+        await Expect(DayTotals()).ToHaveTextAsync(["NT$3,700.50", "NT$0.00", "NT$3,800.25"]);
+        await Expect(TripTotal()).ToHaveTextAsync("NT$7,500.75");
     }
 
     [Test]
@@ -36,8 +36,8 @@ public class BudgetTests : SchedulePageTest
         await AddActivityAsync("Coffee", day: 2, "08:00", "08:30", cost: "0.10");
         await AddActivityAsync("Snack", day: 2, "09:00", "09:30", cost: "0.20");
 
-        await Expect(ScheduleDay(2).GetByTestId("day-total")).ToHaveTextAsync("0.30");
-        await Expect(TripTotal()).ToHaveTextAsync("0.30");
+        await Expect(ScheduleDay(2).GetByTestId("day-total")).ToHaveTextAsync("NT$0.30");
+        await Expect(TripTotal()).ToHaveTextAsync("NT$0.30");
     }
 
     [Test]
@@ -51,8 +51,8 @@ public class BudgetTests : SchedulePageTest
         await CostInput().FillAsync("2500");
         await SubmitButton("Save").ClickAsync();
 
-        await Expect(ScheduleDay(1).GetByTestId("day-total")).ToHaveTextAsync("2,500.00");
-        await Expect(TripTotal()).ToHaveTextAsync("6,300.00");
+        await Expect(ScheduleDay(1).GetByTestId("day-total")).ToHaveTextAsync("NT$2,500.00");
+        await Expect(TripTotal()).ToHaveTextAsync("NT$6,300.00");
     }
 
     [Test]
@@ -64,8 +64,8 @@ public class BudgetTests : SchedulePageTest
         await ChooseDayAsync(2);
         await SubmitButton("Save").ClickAsync();
 
-        await Expect(DayTotals()).ToHaveTextAsync(["0.00", "2,200.00", "0.00"]);
-        await Expect(TripTotal()).ToHaveTextAsync("2,200.00");
+        await Expect(DayTotals()).ToHaveTextAsync(["NT$0.00", "NT$2,200.00", "NT$0.00"]);
+        await Expect(TripTotal()).ToHaveTextAsync("NT$2,200.00");
     }
 
     [Test]
@@ -77,8 +77,8 @@ public class BudgetTests : SchedulePageTest
         await ActivityItem("Shibuya Sky").GetByTestId("delete-activity").ClickAsync();
         await Page.GetByRole(AriaRole.Alertdialog).GetByTestId("confirm-button").ClickAsync();
 
-        await Expect(DayTotals()).ToHaveTextAsync(["0.00", "0.00", "3,800.00"]);
-        await Expect(TripTotal()).ToHaveTextAsync("3,800.00");
+        await Expect(DayTotals()).ToHaveTextAsync(["NT$0.00", "NT$0.00", "NT$3,800.00"]);
+        await Expect(TripTotal()).ToHaveTextAsync("NT$3,800.00");
     }
 
     [Test]
@@ -93,7 +93,7 @@ public class BudgetTests : SchedulePageTest
         await Expect(Page.GetByTestId("cost-error"))
             .ToHaveTextAsync("Cost must be a positive amount with up to 2 decimal places.");
         await Expect(SubmitButton("Add")).ToBeDisabledAsync();
-        await Expect(TripTotal()).ToHaveTextAsync("0.00");
+        await Expect(TripTotal()).ToHaveTextAsync("NT$0.00");
     }
 
     private ILocator TripTotal() => Page.GetByTestId("trip-total");
