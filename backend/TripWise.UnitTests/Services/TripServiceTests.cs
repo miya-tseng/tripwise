@@ -117,4 +117,51 @@ public class TripServiceTests
         Assert.That(deleted, Is.False);
         await _repository.DidNotReceive().DeleteAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task UpdateAsync_WithValidDto_UpdatesTripAndSaves()
+    {
+        var trip = Trip.Create("Tokyo", Start, Start.AddDays(2));
+        _repository.GetByIdAsync(trip.Id, Arg.Any<CancellationToken>()).Returns(trip);
+        var dto = new UpdateTripDto { Name = " Osaka ", StartDate = Start, EndDate = Start.AddDays(4) };
+
+        var result = await _sut.UpdateAsync(trip.Id, dto);
+
+        await _repository.Received(1).UpdateAsync(trip, Arg.Any<CancellationToken>());
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Name, Is.EqualTo("Osaka"));
+            Assert.That(result.EndDate, Is.EqualTo(Start.AddDays(4)));
+            Assert.That(result.Days, Is.EqualTo(5));
+        });
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithUnknownTrip_ReturnsNullWithoutSaving()
+    {
+        var dto = new UpdateTripDto { Name = "Osaka", StartDate = Start, EndDate = Start };
+
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), dto);
+
+        Assert.That(result, Is.Null);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithActivitiesOutsideNewDates_ThrowsWithoutChangingOrSaving()
+    {
+        var trip = Trip.Create("Tokyo", Start, Start.AddDays(2));
+        trip.AddActivity("Tokyo Tower", Start.AddDays(2), new TimeSlot(new TimeOnly(18, 0), new TimeOnly(19, 0)));
+        _repository.GetByIdAsync(trip.Id, Arg.Any<CancellationToken>()).Returns(trip);
+        var dto = new UpdateTripDto { Name = "Osaka", StartDate = Start, EndDate = Start.AddDays(1) };
+
+        Assert.ThrowsAsync<TripDatesConflictException>(() => _sut.UpdateAsync(trip.Id, dto));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(trip.Name, Is.EqualTo("Tokyo"));
+            Assert.That(trip.Period.Days, Is.EqualTo(3));
+        });
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+    }
 }

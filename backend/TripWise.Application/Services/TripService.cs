@@ -28,6 +28,22 @@ public class TripService(ITripRepository repository)
         return trip is null ? null : ToDto(trip);
     }
 
+    public async Task<TripDto?> UpdateAsync(Guid id, UpdateTripDto dto, CancellationToken cancellationToken = default)
+    {
+        var trip = await repository.GetByIdAsync(id, cancellationToken);
+
+        if (trip is null)
+        {
+            return null;
+        }
+
+        trip.Reschedule(dto.StartDate!.Value, dto.EndDate!.Value);
+        trip.Rename(dto.Name);
+        await repository.UpdateAsync(trip, cancellationToken);
+
+        return ToDto(trip);
+    }
+
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var trip = await repository.GetByIdAsync(id, cancellationToken);

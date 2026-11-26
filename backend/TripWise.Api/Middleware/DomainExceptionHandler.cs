@@ -15,6 +15,7 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
         var (status, title) = exception switch
         {
             ActivityOverlapException => (StatusCodes.Status409Conflict, "Activity overlap"),
+            TripDatesConflictException => (StatusCodes.Status409Conflict, "Trip dates conflict"),
             ActivityNotFoundException => (StatusCodes.Status404NotFound, "Activity not found"),
             _ => (StatusCodes.Status400BadRequest, "Business rule violation"),
         };

@@ -49,6 +49,31 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
         response.Message = await client.GetAsync("/api/trips");
     }
 
+    [When("I update the trip to {string} from {DateOnly} to {DateOnly}")]
+    public async Task WhenIUpdateTheTrip(string name, DateOnly start, DateOnly end)
+    {
+        response.Message = await client.PutAsJsonAsync($"/api/trips/{existing.Trip.Id}", UpdatedTrip(name, start, end));
+    }
+
+    [When("I update an unknown trip to {string} from {DateOnly} to {DateOnly}")]
+    public async Task WhenIUpdateAnUnknownTrip(string name, DateOnly start, DateOnly end)
+    {
+        response.Message = await client.PutAsJsonAsync($"/api/trips/{Guid.NewGuid()}", UpdatedTrip(name, start, end));
+    }
+
+    [Then("the stored trip is {string} from {DateOnly} to {DateOnly}")]
+    public async Task ThenTheStoredTripIs(string name, DateOnly start, DateOnly end)
+    {
+        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}"))!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(trip.Name, Is.EqualTo(name));
+            Assert.That(trip.StartDate, Is.EqualTo(start));
+            Assert.That(trip.EndDate, Is.EqualTo(end));
+        });
+    }
+
     [When("I delete the trip")]
     public async Task WhenIDeleteTheTrip()
     {
@@ -104,6 +129,16 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
     {
         _responseTrip ??= await response.Message.Content.ReadFromJsonAsync<TripDto>();
         return _responseTrip!;
+    }
+
+    private static UpdateTripDto UpdatedTrip(string name, DateOnly start, DateOnly end)
+    {
+        return new UpdateTripDto
+        {
+            Name = name,
+            StartDate = start,
+            EndDate = end,
+        };
     }
 
     private static CreateTripDto NewTrip(string name, DateOnly start, DateOnly end)

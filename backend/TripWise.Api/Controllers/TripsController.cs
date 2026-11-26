@@ -30,6 +30,14 @@ public class TripsController(TripService tripService) : ControllerBase
         return trip is null ? NotFound() : trip;
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<TripDto>> Update(Guid id, UpdateTripDto dto, CancellationToken cancellationToken)
+    {
+        var trip = await tripService.UpdateAsync(id, dto, cancellationToken);
+
+        return trip is null ? NotFound() : trip;
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
