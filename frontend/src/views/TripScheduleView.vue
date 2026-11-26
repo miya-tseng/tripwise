@@ -11,6 +11,7 @@ import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import TableView from '@/components/TableView.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
+import TripTabs from '@/components/TripTabs.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, ActivityCategory, BookingStatus, SaveActivityInput } from '@/types/activity'
 import type { GeoPoint } from '@/types/place'
@@ -396,25 +397,12 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
                 >
               </p>
             </div>
+            <TripTabs :trip-id="id" active="itinerary" class="tabs" />
             <div class="budget" :title="ratesNote">
               <span class="budget-label">Budget</span>
               <span class="budget-value" data-testid="trip-total">{{ budget }}</span>
             </div>
             <div class="bar-actions">
-              <RouterLink
-                :to="{ name: 'trip-overview', params: { id } }"
-                class="btn btn-secondary btn-small"
-                data-testid="open-overview"
-              >
-                📊 Overview
-              </RouterLink>
-              <RouterLink
-                :to="{ name: 'trip-checklist', params: { id } }"
-                class="btn btn-secondary btn-small"
-                data-testid="open-checklist"
-              >
-                ✅ Checklist
-              </RouterLink>
               <button
                 type="button"
                 class="btn btn-secondary btn-small"

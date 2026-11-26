@@ -4,6 +4,7 @@ import { RouterLink, routerKey } from 'vue-router'
 import { fetchOverview } from '@/api/overview'
 import CategorySpendChart from '@/components/CategorySpendChart.vue'
 import SpendByDayChart from '@/components/SpendByDayChart.vue'
+import TripPageHeader from '@/components/TripPageHeader.vue'
 import type { TripOverview } from '@/types/overview'
 import { formatDateRange, formatDayLabel } from '@/utils/date'
 import { currencyName, formatCurrency, formatTwd } from '@/utils/money'
@@ -76,21 +77,25 @@ function twd(amount: number | null): string {
 </script>
 
 <template>
+  <TripPageHeader
+    v-if="overview"
+    :trip-id="id"
+    :name="overview.name"
+    :meta="formatDateRange(overview.startDate, overview.endDate)"
+    active="overview"
+  />
   <main class="page">
-    <RouterLink :to="tripLink" class="back-link" data-testid="back-to-trip">
-      ← Back to the itinerary
-    </RouterLink>
-
     <p v-if="loading" class="loading">Loading...</p>
     <div v-else-if="error" role="alert" class="alert" data-testid="overview-error">{{ error }}</div>
 
     <template v-else-if="overview">
       <header class="head">
-        <span class="eyebrow">Trip overview</span>
-        <h1 class="display">{{ overview.name }}</h1>
+        <span class="eyebrow">Where the money goes</span>
+        <h1 class="display">Overview</h1>
         <p class="dates">
-          {{ formatDateRange(overview.startDate, overview.endDate) }} · {{ overview.days }}
-          {{ overview.days === 1 ? 'day' : 'days' }}
+          {{ overview.days }} {{ overview.days === 1 ? 'day' : 'days' }} ·
+          {{ overview.activityCount }}
+          {{ overview.activityCount === 1 ? 'activity' : 'activities' }}
         </p>
       </header>
 
@@ -276,18 +281,6 @@ function twd(amount: number | null): string {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-
-.back-link {
-  align-self: flex-start;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.back-link:hover {
-  text-decoration: underline;
 }
 
 .loading,

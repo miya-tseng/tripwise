@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { fetchTrip } from '@/api/trips'
 import ChecklistSectionCard from '@/components/ChecklistSectionCard.vue'
+import TripPageHeader from '@/components/TripPageHeader.vue'
+import type { Trip } from '@/types/trip'
+import { formatDateRange } from '@/utils/date'
 import { useChecklistStore } from '@/stores/checklist'
 import type { ChecklistSection } from '@/types/checklist'
 import { SECTIONS, itemsIn, missingSuggestions, progressPercent } from '@/utils/checklist'
@@ -15,7 +18,7 @@ const props = withDefaults(defineProps<{ id: string; today?: string }>(), {
 const store = useChecklistStore()
 const { checklist, loading, loadError, error } = storeToRefs(store)
 
-const tripLink = computed(() => ({ name: 'trip-schedule', params: { id: props.id } }))
+const trip = ref<Trip | null>(null)
 const items = computed(() => checklist.value?.items ?? [])
 const percent = computed(() =>
   progressPercent(checklist.value?.done ?? 0, checklist.value?.total ?? 0),
@@ -24,7 +27,16 @@ const packingSuggestions = computed(() => missingSuggestions(itemsIn(items.value
 
 watch(
   () => props.id,
-  (id) => store.load(id),
+  async (id) => {
+    trip.value = null
+    void store.load(id)
+
+    try {
+      trip.value = await fetchTrip(id)
+    } catch {
+      trip.value = null
+    }
+  },
   { immediate: true },
 )
 
@@ -34,11 +46,14 @@ function add(section: ChecklistSection, text: string) {
 </script>
 
 <template>
+  <TripPageHeader
+    v-if="trip"
+    :trip-id="id"
+    :name="trip.name"
+    :meta="formatDateRange(trip.startDate, trip.endDate)"
+    active="checklist"
+  />
   <main class="page">
-    <RouterLink :to="tripLink" class="back-link" data-testid="back-to-trip">
-      ← Back to the itinerary
-    </RouterLink>
-
     <p v-if="loading" class="loading">Loading...</p>
     <div v-else-if="loadError" role="alert" class="alert" data-testid="checklist-load-error">
       {{ loadError }}
@@ -107,18 +122,6 @@ function add(section: ChecklistSection, text: string) {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.back-link {
-  align-self: flex-start;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.back-link:hover {
-  text-decoration: underline;
 }
 
 .loading {

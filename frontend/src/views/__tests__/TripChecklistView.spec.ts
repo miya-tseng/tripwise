@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { addChecklistItem, fetchChecklist, reorderChecklist } from '@/api/checklist'
+import { fetchTrip } from '@/api/trips'
 import ChecklistSectionCard from '@/components/ChecklistSectionCard.vue'
 import type { Checklist } from '@/types/checklist'
 import TripChecklistView from '../TripChecklistView.vue'
 
 vi.mock('@/api/checklist')
+vi.mock('@/api/trips')
 
 const checklist: Checklist = {
   tripId: 'tokyo-id',
@@ -40,6 +42,22 @@ async function mountView() {
 describe('TripChecklistView', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    vi.mocked(fetchTrip).mockResolvedValue({
+      id: 'tokyo-id',
+      name: 'Tokyo',
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
+      days: 3,
+    })
+  })
+
+  it('shows the trip header with the checklist tab active', async () => {
+    vi.mocked(fetchChecklist).mockResolvedValue(checklist)
+
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="header-trip-name"]').text()).toBe('Tokyo')
+    expect(wrapper.find('[data-testid="tab-checklist"]').attributes('aria-current')).toBe('page')
   })
 
   it('shows the progress and the three sections', async () => {

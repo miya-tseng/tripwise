@@ -725,22 +725,20 @@ describe('TripScheduleView', () => {
     })
   })
 
-  it('links to the trip overview and checklist', async () => {
+  it('links to the other trip sections', async () => {
     mockLoadedTrip()
 
     const wrapper = await mountView()
-    const link = wrapper
+    const targets = wrapper
       .findAllComponents(RouterLinkStub)
-      .find((item) => item.attributes('data-testid') === 'open-overview')
+      .filter((link) => link.attributes('data-testid')?.startsWith('tab-'))
+      .map((link) => [link.attributes('data-testid'), link.props('to')])
 
-    expect(link?.props('to')).toEqual({ name: 'trip-overview', params: { id: 'tokyo-id' } })
-    const checklistLink = wrapper
-      .findAllComponents(RouterLinkStub)
-      .find((item) => item.attributes('data-testid') === 'open-checklist')
-    expect(checklistLink?.props('to')).toEqual({
-      name: 'trip-checklist',
-      params: { id: 'tokyo-id' },
-    })
+    expect(targets).toEqual([
+      ['tab-itinerary', { name: 'trip-schedule', params: { id: 'tokyo-id' } }],
+      ['tab-overview', { name: 'trip-overview', params: { id: 'tokyo-id' } }],
+      ['tab-checklist', { name: 'trip-checklist', params: { id: 'tokyo-id' } }],
+    ])
   })
 
   describe('quick stays', () => {
