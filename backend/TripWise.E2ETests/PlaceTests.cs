@@ -6,19 +6,7 @@ namespace TripWise.E2ETests;
 public class PlaceTests : SchedulePageTest
 {
     [SetUp]
-    public async Task RequireFakePlaces()
-    {
-        var response = await Page.APIRequest.GetAsync("/api/places/autocomplete?query=Senso-ji");
-        var suggestions = (await response.JsonAsync())!.Value;
-        var firstPlaceId = suggestions.GetArrayLength() > 0
-            ? suggestions[0].GetProperty("placeId").GetString()
-            : null;
-
-        if (firstPlaceId?.StartsWith("fake-", StringComparison.Ordinal) != true)
-        {
-            Assert.Ignore("Place E2E tests need fake places. Start the API with GooglePlaces__Provider=Fake.");
-        }
-    }
+    public Task RequireFakePlaces() => RequireFakePlacesAsync();
 
     [Test]
     public async Task SearchAndAddPlace_ShowsItInTheScheduleWithAddress()
@@ -93,11 +81,4 @@ public class PlaceTests : SchedulePageTest
             .ToHaveTextAsync("2 Chome-24-12 Shibuya, Shibuya City, Tokyo, Japan");
     }
 
-    private async Task SearchPlaceAsync(string query)
-    {
-        await Page.GetByRole(AriaRole.Combobox, new() { Name = "Activity" }).FillAsync(query);
-    }
-
-    private ILocator PlaceOption(string name) =>
-        Page.GetByRole(AriaRole.Option).Filter(new() { HasText = name }).First;
 }

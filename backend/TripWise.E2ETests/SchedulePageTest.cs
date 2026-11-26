@@ -61,6 +61,46 @@ public abstract class SchedulePageTest : PageTest
         await Expect(added.Or(rejected)).ToBeVisibleAsync();
     }
 
+    protected async Task RequireFakePlacesAsync()
+    {
+        var response = await Page.APIRequest.GetAsync("/api/places/autocomplete?query=Senso-ji");
+        var suggestions = (await response.JsonAsync())!.Value;
+        var firstPlaceId = suggestions.GetArrayLength() > 0
+            ? suggestions[0].GetProperty("placeId").GetString()
+            : null;
+
+        if (firstPlaceId?.StartsWith("fake-", StringComparison.Ordinal) != true)
+        {
+            Assert.Ignore("Place E2E tests need fake places. Start the API with GooglePlaces__Provider=Fake.");
+        }
+    }
+
+    protected async Task SearchPlaceAsync(string query)
+    {
+        var usePlaceSearch = Page.GetByTestId("use-place-search");
+
+        if (await usePlaceSearch.IsVisibleAsync())
+        {
+            await usePlaceSearch.ClickAsync();
+        }
+
+        await Page.GetByRole(AriaRole.Combobox, new() { Name = "Activity" }).FillAsync(query);
+    }
+
+    protected ILocator PlaceOption(string name) =>
+        Page.GetByRole(AriaRole.Option).Filter(new() { HasText = name }).First;
+
+    protected async Task AddPlaceAsync(string query, string placeName, int day, string start, string end)
+    {
+        await SearchPlaceAsync(query);
+        await PlaceOption(placeName).ClickAsync();
+        await ChooseDayAsync(day);
+        await PickTimeAsync("Start", start);
+        await PickTimeAsync("End", end);
+        await SubmitButton("Add").ClickAsync();
+        await Expect(ActivityItem(placeName)).ToBeVisibleAsync();
+    }
+
     protected async Task TypeCustomActivityAsync(string name)
     {
         var useCustom = Page.GetByTestId("use-custom-activity");
