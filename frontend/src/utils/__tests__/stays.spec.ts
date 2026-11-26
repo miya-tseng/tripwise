@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { Stay } from '@/types/stay'
 import {
   checkOutDates,
+  extendedByOneNight,
   firstFreeNight,
   nextCheckInAfter,
   nightNumber,
   nightsLabel,
+  quickCheckOuts,
+  stayInput,
   stayRangeLabel,
 } from '../stays'
 import {
@@ -89,5 +92,65 @@ describe('stay costs', () => {
 
   it('ignores free stays', () => {
     expect(tripCosts([], [stay({ cost: 0, costInTwd: 0 })])).toEqual([])
+  })
+})
+
+describe('quick stay helpers', () => {
+  it('copies a stay into a save input with its place', () => {
+    const place = {
+      placeId: 'gracery',
+      name: 'Hotel Gracery',
+      address: 'Shinjuku',
+      latitude: 35.69,
+      longitude: 139.7,
+      googleMapsUri: 'https://maps.google.com/?cid=9',
+    }
+
+    expect(stayInput(stay({ place }))).toEqual({
+      name: 'Hotel Gracery',
+      checkIn: '2026-12-01',
+      checkOut: '2026-12-04',
+      cost: 100,
+      currency: 'TWD',
+      bookingStatus: 'Booked',
+      confirmationCode: '',
+      placeId: 'gracery',
+    })
+  })
+
+  it('extends a stay by one night at the same nightly price', () => {
+    const input = extendedByOneNight(stay({ cost: 9000, nights: 2, checkOut: '2026-12-03' }))
+
+    expect(input.checkOut).toBe('2026-12-04')
+    expect(input.cost).toBe(13500)
+    expect(input.placeId).toBeUndefined()
+  })
+
+  it('rounds the nightly price to cents when extending', () => {
+    expect(extendedByOneNight(stay({ cost: 100, nights: 3 })).cost).toBe(133.33)
+  })
+
+  it('keeps a free stay free when extending', () => {
+    expect(extendedByOneNight(stay({ cost: 0 })).cost).toBe(0)
+  })
+
+  it('offers 1 to 3 nights and every free night', () => {
+    expect(quickCheckOuts('2026-12-01', '2026-12-06')).toEqual([
+      { label: '1 night', checkOut: '2026-12-02' },
+      { label: '2 nights', checkOut: '2026-12-03' },
+      { label: '3 nights', checkOut: '2026-12-04' },
+      { label: 'All 5 nights', checkOut: '2026-12-06' },
+    ])
+  })
+
+  it('only offers choices that fit', () => {
+    expect(quickCheckOuts('2026-12-01', '2026-12-03')).toEqual([
+      { label: '1 night', checkOut: '2026-12-02' },
+      { label: 'All 2 nights', checkOut: '2026-12-03' },
+    ])
+    expect(quickCheckOuts('2026-12-01', '2026-12-02')).toEqual([
+      { label: '1 night', checkOut: '2026-12-02' },
+    ])
+    expect(quickCheckOuts('2026-12-03', '2026-12-02')).toEqual([])
   })
 })

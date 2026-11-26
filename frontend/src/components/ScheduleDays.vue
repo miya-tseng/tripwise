@@ -47,6 +47,7 @@ const emit = defineEmits<{
   add: [date: string]
   addStay: [date: string]
   editStay: [stay: Stay]
+  extendStay: [stay: Stay]
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
@@ -373,6 +374,27 @@ function confirmDelete() {
           {{ bookingStatusMeta(day.stay.bookingStatus).label }}
         </span>
       </button>
+      <div v-else-if="day.checkingOut" class="stay-row missing quick" data-testid="day-no-stay">
+        <span class="stay-icon" aria-hidden="true">🌙</span>
+        <span class="stay-label">Tonight</span>
+        <span class="stay-name">No stay yet</span>
+        <button
+          type="button"
+          class="extend-stay"
+          data-testid="day-extend-stay"
+          @click="emit('extendStay', day.checkingOut)"
+        >
+          Same as last night · {{ day.checkingOut.name }}
+        </button>
+        <button
+          type="button"
+          class="stay-action stay-action-button"
+          data-testid="day-add-stay"
+          @click="emit('addStay', day.date)"
+        >
+          + Add stay
+        </button>
+      </div>
       <button
         v-else
         type="button"
@@ -460,6 +482,49 @@ function confirmDelete() {
   margin-left: auto;
   font-weight: 600;
   color: var(--color-primary);
+}
+
+.stay-row.quick {
+  cursor: default;
+}
+
+.stay-row.quick:hover {
+  border-color: var(--color-border);
+}
+
+.extend-stay {
+  max-width: 100%;
+  padding: 0.25rem 0.7rem;
+  overflow: hidden;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border: 1px solid rgb(31 92 86 / 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.extend-stay:hover {
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.stay-action-button {
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.stay-action-button:hover {
+  text-decoration: underline;
 }
 
 .days {

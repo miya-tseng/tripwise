@@ -30,7 +30,13 @@ import {
 import { lastUsedCurrency, lastUsedView, rememberCurrency, rememberView } from '@/utils/preferences'
 import { filterDays, parseView, type ScheduleView } from '@/utils/activityTable'
 import { slotAfter } from '@/utils/schedule'
-import { firstFreeNight, nextCheckInAfter, nightsLabel, stayRangeLabel } from '@/utils/stays'
+import {
+  extendedByOneNight,
+  firstFreeNight,
+  nextCheckInAfter,
+  nightsLabel,
+  stayRangeLabel,
+} from '@/utils/stays'
 import { addDays } from '@/utils/date'
 import { todayIso } from '@/utils/trips'
 import { BOOKING_STATUSES, bookingStatusMeta } from '@/utils/activityDetails'
@@ -312,6 +318,17 @@ function openStayDialog(options: { stay?: Stay; checkIn?: string }) {
   stayDialogOpen.value = true
 }
 
+async function extendStay(stay: Stay) {
+  const extended = await store.saveStay(stay.id, extendedByOneNight(stay))
+
+  if (!extended) {
+    editingStay.value = stay
+    stayCheckIn.value = stay.checkIn
+    stayCheckOut.value = stay.checkOut
+    stayDialogOpen.value = true
+  }
+}
+
 function closeStayDialog() {
   stayDialogOpen.value = false
   editingStay.value = null
@@ -538,6 +555,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           @suggest="showSuggestions"
           @add-stay="(date) => openStayDialog({ checkIn: date })"
           @edit-stay="(stay) => openStayDialog({ stay })"
+          @extend-stay="extendStay"
         />
         <TableView v-else-if="scheduleView === 'table'" :days="visibleDays" @edit="startEditing" />
         <BoardView
@@ -584,6 +602,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         :open="stayDialogOpen"
         :dates="dates"
         :stay="editingStay"
+        :stays="stays"
         :initial-check-in="stayCheckIn"
         :initial-check-out="stayCheckOut"
         :submit="saveStay"

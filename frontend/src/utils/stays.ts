@@ -1,4 +1,4 @@
-import type { Stay } from '@/types/stay'
+import type { SaveStayInput, Stay } from '@/types/stay'
 import { addDays, countDays, formatDayLabel } from './date'
 
 export function nightsLabel(nights: number): string {
@@ -28,4 +28,47 @@ export function firstFreeNight(dates: string[], stays: Stay[]): string | null {
 export function nextCheckInAfter(date: string, stays: Stay[]): string | null {
   const later = stays.map((stay) => stay.checkIn).filter((checkIn) => checkIn > date)
   return later.length > 0 ? later.reduce((a, b) => (a < b ? a : b)) : null
+}
+
+export function stayInput(stay: Stay, changes: Partial<SaveStayInput> = {}): SaveStayInput {
+  return {
+    name: stay.name,
+    checkIn: stay.checkIn,
+    checkOut: stay.checkOut,
+    cost: stay.cost,
+    currency: stay.currency,
+    bookingStatus: stay.bookingStatus,
+    confirmationCode: stay.confirmationCode,
+    ...(stay.place ? { placeId: stay.place.placeId } : {}),
+    ...changes,
+  }
+}
+
+export function extendedByOneNight(stay: Stay): SaveStayInput {
+  const totalCents = Math.round(stay.cost * 100)
+  const perNightCents = Math.round(totalCents / stay.nights)
+
+  return stayInput(stay, {
+    checkOut: addDays(stay.checkOut, 1),
+    cost: (totalCents + perNightCents) / 100,
+  })
+}
+
+export interface QuickCheckOut {
+  label: string
+  checkOut: string
+}
+
+export function quickCheckOuts(checkIn: string, lastCheckOut: string): QuickCheckOut[] {
+  if (!checkIn || lastCheckOut <= checkIn) {
+    return []
+  }
+
+  const maxNights = countDays(checkIn, lastCheckOut) - 1
+  const choices: QuickCheckOut[] = [1, 2, 3]
+    .filter((nights) => nights < maxNights)
+    .map((nights) => ({ label: nightsLabel(nights), checkOut: addDays(checkIn, nights) }))
+
+  const allLabel = maxNights === 1 ? nightsLabel(1) : `All ${nightsLabel(maxNights)}`
+  return [...choices, { label: allLabel, checkOut: lastCheckOut }]
 }

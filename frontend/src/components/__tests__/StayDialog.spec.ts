@@ -150,4 +150,44 @@ describe('StayDialog', () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
     wrapper.unmount()
   })
+
+  it('sets the check-out from a quick choice up to the next stay', async () => {
+    const fourDays = ['2026-12-01', '2026-12-02', '2026-12-03', '2026-12-04', '2026-12-05']
+    const later: Stay = { ...hotel, id: 'later', checkIn: '2026-12-04', checkOut: '2026-12-06' }
+    const { wrapper } = mountDialog({
+      dates: fourDays,
+      stays: [later],
+      initialCheckIn: '2026-12-01',
+      initialCheckOut: '2026-12-02',
+    })
+    const chips = wrapper.findAll('[data-testid="quick-check-out"]')
+
+    expect(chips.map((chip) => chip.text())).toEqual(['1 night', '2 nights', 'All 3 nights'])
+    expect(chips[0]!.attributes('aria-pressed')).toBe('true')
+
+    await chips[2]!.trigger('click')
+
+    expect(wrapper.find('[data-testid="check-out-select"]').text()).toContain('Fri, Dec 4')
+    expect(wrapper.find('[data-testid="stay-nights"]').text()).toBe('3 nights')
+    expect(chips[2]!.attributes('aria-pressed')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('ignores the stay being edited when offering quick choices', () => {
+    const { wrapper } = mountDialog({ stay: hotel, stays: [hotel] })
+
+    expect(wrapper.findAll('[data-testid="quick-check-out"]').map((chip) => chip.text())).toEqual([
+      '1 night',
+      '2 nights',
+      'All 3 nights',
+    ])
+    wrapper.unmount()
+  })
+
+  it('hides quick choices when only one night is possible', () => {
+    const { wrapper } = mountDialog({ initialCheckIn: '2026-12-03', initialCheckOut: '2026-12-04' })
+
+    expect(wrapper.find('[data-testid="quick-check-out"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
 })

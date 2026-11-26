@@ -518,6 +518,26 @@ describe('ScheduleDays stays', () => {
     expect(wrapper.emitted('addStay')).toEqual([['2026-12-03']])
   })
 
+  it("offers to keep last night's stay on the next free night", async () => {
+    const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
+    const extend = wrapper.find('[data-testid="day-extend-stay"]')
+
+    expect(extend.text()).toBe('Same as last night · Hotel Gracery')
+    await extend.trigger('click')
+
+    expect(wrapper.emitted('extendStay')).toEqual([[hotel]])
+    expect(wrapper.emitted('addStay')).toBeUndefined()
+  })
+
+  it('does not offer to extend when no stay ended that morning', () => {
+    const wrapper = mount(ScheduleDays, {
+      props: { days: [{ date: '2026-12-01', activities: [], stay: null }] },
+    })
+
+    expect(wrapper.find('[data-testid="day-extend-stay"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="day-add-stay"]').exists()).toBe(true)
+  })
+
   it('opens the stay when its row is clicked', async () => {
     const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
 

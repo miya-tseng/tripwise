@@ -11,7 +11,7 @@ import { MAX_CONFIRMATION_CODE_LENGTH } from '@/types/activity'
 import { BOOKING_STATUSES } from '@/utils/activityDetails'
 import { countDays, formatDayLabel } from '@/utils/date'
 import { currencyName, formatCurrency, formatTwd, parseCost, toTwd } from '@/utils/money'
-import { checkOutDates, nightsLabel } from '@/utils/stays'
+import { checkOutDates, nextCheckInAfter, nightsLabel, quickCheckOuts } from '@/utils/stays'
 
 const props = withDefaults(
   defineProps<{
@@ -20,6 +20,7 @@ const props = withDefaults(
     submit: (input: SaveStayInput) => Promise<boolean>
     remove?: (stayId: string) => Promise<boolean>
     stay?: Stay | null
+    stays?: Stay[]
     initialCheckIn?: string | null
     initialCheckOut?: string | null
     rates?: ExchangeRates | null
@@ -30,6 +31,7 @@ const props = withDefaults(
   {
     remove: undefined,
     stay: null,
+    stays: () => [],
     initialCheckIn: null,
     initialCheckOut: null,
     rates: null,
@@ -122,6 +124,13 @@ const checkOutOptions = computed<SelectOption[]>(() =>
       hint: nightsLabel(countDays(checkIn.value, date) - 1),
     })),
 )
+
+const lastFreeCheckOut = computed(() => {
+  const others = props.stays.filter((other) => other.id !== props.stay?.id)
+  return nextCheckInAfter(checkIn.value, others) ?? checkOutDates(props.dates).at(-1) ?? ''
+})
+
+const quickChoices = computed(() => quickCheckOuts(checkIn.value, lastFreeCheckOut.value))
 
 const nights = computed(() =>
   checkIn.value && checkOut.value ? countDays(checkIn.value, checkOut.value) - 1 : 0,
@@ -291,7 +300,27 @@ async function onConfirmDelete() {
               />
             </div>
           </div>
-          <p class="nights" data-testid="stay-nights">{{ nightsLabel(nights) }}</p>
+          <div class="nights-row">
+            <p class="nights" data-testid="stay-nights">{{ nightsLabel(nights) }}</p>
+            <div
+              v-if="quickChoices.length > 1"
+              class="quick-nights"
+              role="group"
+              aria-label="Quick check-out"
+            >
+              <button
+                v-for="choice in quickChoices"
+                :key="choice.checkOut"
+                type="button"
+                class="quick-chip"
+                :aria-pressed="checkOut === choice.checkOut"
+                data-testid="quick-check-out"
+                @click="checkOut = choice.checkOut"
+              >
+                {{ choice.label }}
+              </button>
+            </div>
+          </div>
 
           <div class="field">
             <span class="field-label">
@@ -453,8 +482,45 @@ async function onConfirmDelete() {
   gap: 0.6rem;
 }
 
-.nights {
+.nights-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
   margin-top: -0.6rem;
+}
+
+.quick-nights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.quick-chip {
+  padding: 0.2rem 0.65rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.quick-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.quick-chip[aria-pressed='true'] {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.nights {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-muted);

@@ -11,6 +11,8 @@ import {
 } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
+import { updateStay } from '@/api/stays'
+import StayDialog from '@/components/StayDialog.vue'
 import type { Activity } from '@/types/activity'
 import ActivityForm from '@/components/ActivityForm.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
@@ -25,6 +27,7 @@ import TripScheduleView from '../TripScheduleView.vue'
 vi.mock('@/api/activities')
 vi.mock('@/api/trips')
 vi.mock('@/api/exchangeRates')
+vi.mock('@/api/stays')
 
 const shibuya: Activity = {
   id: 'shibuya-id',
@@ -719,6 +722,70 @@ describe('TripScheduleView', () => {
       expect(wrapper.find('[data-testid="schedule-error"]').text()).toContain(
         'The activity would end after midnight.',
       )
+    })
+  })
+
+  describe('quick stays', () => {
+    const inn = {
+      id: 'inn',
+      name: 'Asakusa Inn',
+      checkIn: '2026-12-01',
+      checkOut: '2026-12-02',
+      nights: 1,
+      cost: 3000,
+      currency: 'TWD',
+      costInTwd: 3000,
+      bookingStatus: 'Booked' as const,
+      confirmationCode: '',
+    }
+
+    function mockTripWithOneNight() {
+      mockLoadedTrip()
+      vi.mocked(fetchSchedule).mockResolvedValue({
+        tripId: 'tokyo-id',
+        ratesAvailable: true,
+        ratesUpdatedAt: '2026-01-01T00:00:00Z',
+        stays: [inn],
+        days: [
+          { date: '2026-12-01', activities: [], stay: inn },
+          { date: '2026-12-02', activities: [], stay: null, checkingOut: inn },
+        ],
+      })
+    }
+
+    it("extends last night's stay at the same nightly price", async () => {
+      mockTripWithOneNight()
+      vi.mocked(updateStay).mockResolvedValue({ ...inn, checkOut: '2026-12-03', nights: 2 })
+      const wrapper = await mountView()
+
+      await wrapper.find('[data-testid="day-extend-stay"]').trigger('click')
+      await flushPromises()
+
+      expect(updateStay).toHaveBeenCalledWith('tokyo-id', 'inn', {
+        name: 'Asakusa Inn',
+        checkIn: '2026-12-01',
+        checkOut: '2026-12-03',
+        cost: 6000,
+        currency: 'TWD',
+        bookingStatus: 'Booked',
+        confirmationCode: '',
+      })
+      expect(fetchSchedule).toHaveBeenCalledTimes(2)
+      expect(wrapper.findComponent(StayDialog).props('open')).toBe(false)
+    })
+
+    it('opens the stay with the error when extending fails', async () => {
+      mockTripWithOneNight()
+      vi.mocked(updateStay).mockRejectedValue(new Error('These nights overlap with "Hotel".'))
+      const wrapper = await mountView()
+
+      await wrapper.find('[data-testid="day-extend-stay"]').trigger('click')
+      await flushPromises()
+
+      const dialog = wrapper.findComponent(StayDialog)
+      expect(dialog.props('open')).toBe(true)
+      expect(dialog.props('stay')).toMatchObject({ id: 'inn' })
+      expect(dialog.props('error')).toBe('These nights overlap with "Hotel".')
     })
   })
 
