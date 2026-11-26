@@ -726,22 +726,6 @@ describe('TripScheduleView', () => {
     })
   })
 
-  it('links to the other trip sections', async () => {
-    mockLoadedTrip()
-
-    const wrapper = await mountView()
-    const targets = wrapper
-      .findAllComponents(RouterLinkStub)
-      .filter((link) => link.attributes('data-testid')?.startsWith('tab-'))
-      .map((link) => [link.attributes('data-testid'), link.props('to')])
-
-    expect(targets).toEqual([
-      ['tab-itinerary', { name: 'trip-schedule', params: { id: 'tokyo-id' } }],
-      ['tab-overview', { name: 'trip-overview', params: { id: 'tokyo-id' } }],
-      ['tab-checklist', { name: 'trip-checklist', params: { id: 'tokyo-id' } }],
-    ])
-  })
-
   describe('phone layout', () => {
     it('jumps to a day from the day strip', async () => {
       mockLoadedTrip()

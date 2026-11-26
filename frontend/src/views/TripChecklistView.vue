@@ -48,10 +48,8 @@ function add(section: ChecklistSection, text: string) {
 <template>
   <TripPageHeader
     v-if="trip"
-    :trip-id="id"
     :name="trip.name"
     :meta="formatDateRange(trip.startDate, trip.endDate)"
-    active="checklist"
   />
   <main class="page">
     <p v-if="loading" class="loading">Loading...</p>

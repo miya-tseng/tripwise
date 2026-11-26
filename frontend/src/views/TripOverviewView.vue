@@ -79,10 +79,8 @@ function twd(amount: number | null): string {
 <template>
   <TripPageHeader
     v-if="overview"
-    :trip-id="id"
     :name="overview.name"
     :meta="formatDateRange(overview.startDate, overview.endDate)"
-    active="overview"
   />
   <main class="page">
     <p v-if="loading" class="loading">Loading...</p>

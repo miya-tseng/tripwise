@@ -109,7 +109,6 @@ describe('TripOverviewView', () => {
     expect(fetchOverview).toHaveBeenCalledWith('tokyo-id')
     expect(wrapper.find('h1').text()).toBe('Overview')
     expect(wrapper.find('[data-testid="header-trip-name"]').text()).toBe('Tokyo')
-    expect(wrapper.find('[data-testid="tab-overview"]').attributes('aria-current')).toBe('page')
     expect(wrapper.find('[data-testid="total-spend"]').text()).toContain('NT$10,500.00')
     expect(wrapper.find('[data-testid="total-spend"]').text()).toContain('NT$3,500.00 per day')
     expect(wrapper.find('[data-testid="activity-total"]').text()).toContain('2 places')

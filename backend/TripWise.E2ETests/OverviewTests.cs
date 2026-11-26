@@ -23,7 +23,7 @@ public class OverviewTests : SchedulePageTest
         await Expect(Page.GetByTestId("attention-item").Filter(new() { HasText = "No stay for the night" }))
             .ToHaveCountAsync(3);
 
-        await Page.GetByTestId("tab-itinerary").ClickAsync();
+        await Page.GetByTestId("nav-itinerary").ClickAsync();
         await Page.GetByTestId("add-stay").ClickAsync();
         await Page.GetByTestId("use-custom-stay").ClickAsync();
         await Page.GetByLabel("Hotel or place").FillAsync("Hotel Gracery");
@@ -79,7 +79,7 @@ public class OverviewTests : SchedulePageTest
 
     private async Task OpenOverviewAsync()
     {
-        await Page.GetByTestId("tab-overview").ClickAsync();
+        await Page.GetByTestId("nav-overview").ClickAsync();
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Spend by day" })).ToBeVisibleAsync();
     }
 

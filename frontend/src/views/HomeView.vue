@@ -406,22 +406,13 @@ h1 {
   font-size: 0.9rem;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   .new-trip {
-    width: 2.6rem;
-    height: 2.6rem;
-    padding: 0;
-    border-radius: 50%;
-  }
-
-  .new-trip-label {
     display: none;
   }
+}
 
-  .new-trip-plus {
-    font-size: 1.5rem;
-  }
-
+@media (max-width: 560px) {
   .hero-route {
     width: 85%;
     opacity: 0.7;

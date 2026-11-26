@@ -100,7 +100,7 @@ public class ChecklistTests : SchedulePageTest
         await Expect(booking.GetByTestId("booking-checkbox")).Not.ToBeCheckedAsync();
         await Expect(booking.GetByTestId("booking-item-status")).ToHaveTextAsync("To book");
 
-        await Page.GetByTestId("tab-itinerary").ClickAsync();
+        await Page.GetByTestId("nav-itinerary").ClickAsync();
         await ActivityItem("teamLab").GetByTestId("edit-activity").ClickAsync();
         await ChooseBookingAsync("Booked");
         await SubmitButton("Save").ClickAsync();
@@ -125,7 +125,7 @@ public class ChecklistTests : SchedulePageTest
             .GetByTestId("booking-checkbox").CheckAsync();
         await Expect(Page.GetByTestId("checklist-progress")).ToHaveTextAsync("1 / 1 done");
 
-        await Page.GetByTestId("tab-itinerary").ClickAsync();
+        await Page.GetByTestId("nav-itinerary").ClickAsync();
         await Expect(ActivityItem("Sushi Dai").GetByTestId("booking-badge")).ToHaveTextAsync("Booked");
     }
 
@@ -148,7 +148,7 @@ public class ChecklistTests : SchedulePageTest
 
     private async Task OpenChecklistAsync()
     {
-        await Page.GetByTestId("tab-checklist").ClickAsync();
+        await Page.GetByTestId("nav-checklist").ClickAsync();
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Checklist", Level = 1 })).ToBeVisibleAsync();
     }
 

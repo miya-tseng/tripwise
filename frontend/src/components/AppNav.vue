@@ -109,4 +109,76 @@ defineProps<{
     color: var(--color-primary);
   }
 }
+@media (min-width: 721px) {
+  .app-nav {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    width: 5.5rem;
+    padding: 1rem 0.5rem;
+    background: rgb(255 255 255 / 0.7);
+    border-right: 1px solid var(--color-border);
+    backdrop-filter: saturate(1.4) blur(12px);
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.55rem 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    text-align: center;
+    text-decoration: none;
+    border-radius: 14px;
+    transition:
+      background 0.15s,
+      color 0.15s;
+  }
+
+  .nav-item:hover {
+    color: var(--color-text);
+    background: rgb(27 36 49 / 0.05);
+  }
+
+  .nav-icon {
+    font-size: 1.35rem;
+    line-height: 1.2;
+    filter: grayscale(1);
+    opacity: 0.7;
+  }
+
+  .nav-item.active {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  .nav-item.active .nav-icon {
+    filter: none;
+    opacity: 1;
+  }
+
+  .create {
+    color: var(--color-primary);
+  }
+
+  .create-icon {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #fff;
+    background: linear-gradient(140deg, #2a6b5f 0%, #1a4f4a 100%);
+    border-radius: 50%;
+    box-shadow: 0 8px 18px -8px rgb(31 92 86 / 0.7);
+  }
+}
 </style>

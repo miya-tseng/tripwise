@@ -28,4 +28,10 @@ const appSection = computed(() =>
     padding-bottom: calc(4rem + env(safe-area-inset-bottom));
   }
 }
+
+@media (min-width: 721px) {
+  .has-bottom-nav {
+    padding-left: 5.5rem;
+  }
+}
 </style>

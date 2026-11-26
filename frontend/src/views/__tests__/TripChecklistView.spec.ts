@@ -51,13 +51,12 @@ describe('TripChecklistView', () => {
     })
   })
 
-  it('shows the trip header with the checklist tab active', async () => {
+  it('shows the trip header', async () => {
     vi.mocked(fetchChecklist).mockResolvedValue(checklist)
 
     const wrapper = await mountView()
 
     expect(wrapper.find('[data-testid="header-trip-name"]').text()).toBe('Tokyo')
-    expect(wrapper.find('[data-testid="tab-checklist"]').attributes('aria-current')).toBe('page')
   })
 
   it('shows the progress and the three sections', async () => {
