@@ -21,6 +21,12 @@ const router = createRouter({
       component: () => import('@/views/TripOverviewView.vue'),
       props: true,
     },
+    {
+      path: '/trips/:id/checklist',
+      name: 'trip-checklist',
+      component: () => import('@/views/TripChecklistView.vue'),
+      props: true,
+    },
   ],
 })
 

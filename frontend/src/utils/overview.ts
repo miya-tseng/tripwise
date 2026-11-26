@@ -17,6 +17,13 @@ export function attentionView(item: AttentionItem, startDate: string): Attention
       return { icon: '🎟️', title: `Book ${item.name}`, detail: day, dayNumber }
     case 'StayToBook':
       return { icon: '🛏', title: `Book ${item.name}`, detail: `Check-in ${day}`, dayNumber }
+    case 'ChecklistOpen':
+      return {
+        icon: '✅',
+        title: item.name ?? 'Checklist items left',
+        detail: 'Checklist',
+        dayNumber,
+      }
     case 'NightWithoutStay':
       return { icon: '🌙', title: 'No stay for the night', detail: day, dayNumber }
     case 'EmptyDay':

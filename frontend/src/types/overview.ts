@@ -1,7 +1,8 @@
 import type { ActivityCategory } from './activity'
 import type { CurrencyAmount } from './currency'
 
-export type AttentionKind = 'ActivityToBook' | 'StayToBook' | 'NightWithoutStay' | 'EmptyDay'
+export type AttentionKind =
+  'ActivityToBook' | 'StayToBook' | 'ChecklistOpen' | 'NightWithoutStay' | 'EmptyDay'
 
 export interface CurrencySpend {
   currency: string
@@ -50,6 +51,8 @@ export interface TripOverview {
   nightsWithStay: number
   activityCount: number
   placeCount: number
+  checklistDone: number
+  checklistTotal: number
   ratesAvailable: boolean
   totalInTwd: number | null
   activitiesInTwd: number | null

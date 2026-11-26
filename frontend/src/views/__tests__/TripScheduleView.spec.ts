@@ -725,7 +725,7 @@ describe('TripScheduleView', () => {
     })
   })
 
-  it('links to the trip overview', async () => {
+  it('links to the trip overview and checklist', async () => {
     mockLoadedTrip()
 
     const wrapper = await mountView()
@@ -734,6 +734,13 @@ describe('TripScheduleView', () => {
       .find((item) => item.attributes('data-testid') === 'open-overview')
 
     expect(link?.props('to')).toEqual({ name: 'trip-overview', params: { id: 'tokyo-id' } })
+    const checklistLink = wrapper
+      .findAllComponents(RouterLinkStub)
+      .find((item) => item.attributes('data-testid') === 'open-checklist')
+    expect(checklistLink?.props('to')).toEqual({
+      name: 'trip-checklist',
+      params: { id: 'tokyo-id' },
+    })
   })
 
   describe('quick stays', () => {

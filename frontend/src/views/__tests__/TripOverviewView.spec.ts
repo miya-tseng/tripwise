@@ -18,6 +18,8 @@ const overview: TripOverview = {
   nightsWithStay: 2,
   activityCount: 4,
   placeCount: 2,
+  checklistDone: 0,
+  checklistTotal: 0,
   ratesAvailable: true,
   totalInTwd: 10500,
   activitiesInTwd: 1500,
@@ -148,6 +150,23 @@ describe('TripOverviewView', () => {
       params: { id: 'tokyo-id' },
       query: { view: 'timeline', day: '3' },
     })
+  })
+
+  it('links open checklist items to the checklist', async () => {
+    vi.mocked(fetchOverview).mockResolvedValue({
+      ...overview,
+      attention: [
+        { kind: 'ChecklistOpen', date: '2026-12-01', itemId: null, name: '2 checklist items left' },
+      ],
+    })
+
+    const wrapper = await mountView()
+    const link = wrapper
+      .findAllComponents(RouterLinkStub)
+      .find((item) => item.attributes('data-testid') === 'attention-item')!
+
+    expect(link.text()).toContain('2 checklist items left')
+    expect(link.props('to')).toEqual({ name: 'trip-checklist', params: { id: 'tokyo-id' } })
   })
 
   it('says all is set when nothing needs attention', async () => {

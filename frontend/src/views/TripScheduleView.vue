@@ -408,6 +408,13 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
               >
                 📊 Overview
               </RouterLink>
+              <RouterLink
+                :to="{ name: 'trip-checklist', params: { id } }"
+                class="btn btn-secondary btn-small"
+                data-testid="open-checklist"
+              >
+                ✅ Checklist
+              </RouterLink>
               <button
                 type="button"
                 class="btn btn-secondary btn-small"

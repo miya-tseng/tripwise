@@ -60,6 +60,12 @@ function dayLink(dayNumber: number) {
   return { ...tripLink.value, query: { view: 'timeline', day: String(dayNumber) } }
 }
 
+function attentionLink(kind: string, dayNumber: number) {
+  return kind === 'ChecklistOpen'
+    ? { name: 'trip-checklist', params: { id: props.id } }
+    : dayLink(dayNumber)
+}
+
 function openDay(dayNumber: number) {
   router?.push(dayLink(dayNumber))
 }
@@ -162,7 +168,7 @@ function twd(amount: number | null): string {
               :key="`${entry.item.kind}-${entry.item.date}-${entry.item.itemId}`"
             >
               <RouterLink
-                :to="dayLink(entry.view.dayNumber)"
+                :to="attentionLink(entry.item.kind, entry.view.dayNumber)"
                 class="attention-item"
                 :class="`kind-${entry.item.kind}`"
                 data-testid="attention-item"
