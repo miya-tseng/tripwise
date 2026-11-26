@@ -89,6 +89,8 @@ jobs:
           pwsh backend/TripWise.E2ETests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Start API
+        env:
+          ExchangeRates__Provider: Fake
         run: |
           dotnet run --project backend/TripWise.Api --launch-profile http > api.log 2>&1 &
 

@@ -77,6 +77,14 @@ npm run dev
 
 Check the API is connected to the database: http://localhost:5022/health should return `Healthy`.
 
+### Exchange rates
+
+Costs are converted to TWD with the latest rates from [open.er-api.com](https://www.exchangerate-api.com) (no API key, cached for 6 hours). To work offline or run E2E tests without calling the real API, start the API with fixed rates:
+
+```bash
+ExchangeRates__Provider=Fake dotnet run --project backend/TripWise.Api
+```
+
 ### Add a migration
 
 ```bash

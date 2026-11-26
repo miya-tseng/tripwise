@@ -76,7 +76,7 @@ public class ActivityStepDefinitions(
     {
         var schedule = await GetScheduleAsync();
 
-        Assert.That(schedule.Total, Is.EqualTo(total));
+        Assert.That(schedule.TotalInTwd, Is.EqualTo(total));
     }
 
     [Then("the schedule total on {DateOnly} is {decimal}")]
@@ -84,7 +84,138 @@ public class ActivityStepDefinitions(
     {
         var schedule = await GetScheduleAsync();
 
-        Assert.That(schedule.Days.Single(day => day.Date == date).Total, Is.EqualTo(total));
+        Assert.That(schedule.Days.Single(day => day.Date == date).TotalInTwd, Is.EqualTo(total));
+    }
+
+    [Given("the trip has an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal} {word}")]
+    public async Task GivenTheTripHasAnActivityCostingIn(
+        string name,
+        DateOnly date,
+        TimeOnly start,
+        TimeOnly end,
+        decimal cost,
+        string currency)
+    {
+        var created = await client.PostAsJsonAsync(ActivitiesUrl, NewActivity(name, date, start, end, cost, currency));
+        created.EnsureSuccessStatusCode();
+        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
+    }
+
+    [When("I add an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal} {word}")]
+    public async Task WhenIAddAnActivityCostingIn(
+        string name,
+        DateOnly date,
+        TimeOnly start,
+        TimeOnly end,
+        decimal cost,
+        string currency)
+    {
+        response.Message = await client.PostAsJsonAsync(
+            ActivitiesUrl,
+            NewActivity(name, date, start, end, cost, currency));
+    }
+
+    [When("I change the cost of {string} to {decimal} {word}")]
+    public async Task WhenIChangeTheCostOfIn(string name, decimal cost, string currency)
+    {
+        var activity = _activitiesByName[name];
+
+        response.Message = await client.PutAsJsonAsync(
+            $"{ActivitiesUrl}/{activity.Id}",
+            NewActivity(activity.Name, activity.Date, activity.StartTime, activity.EndTime, cost, currency));
+    }
+
+    [Given("the exchange rates are unavailable")]
+    public void GivenTheExchangeRatesAreUnavailable()
+    {
+        factory.ExchangeRates.Available = false;
+    }
+
+    [When("I get the exchange rates")]
+    public async Task WhenIGetTheExchangeRates()
+    {
+        response.Message = await client.GetAsync("/api/exchange-rates");
+    }
+
+    [Then("the response activity costs {decimal} {word} worth {decimal} TWD")]
+    public async Task ThenTheResponseActivityCostsWorth(decimal cost, string currency, decimal costInTwd)
+    {
+        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+
+        AssertCost(activity, cost, currency, costInTwd);
+    }
+
+    [Then("the activity {string} costs {decimal} {word} worth {decimal} TWD in the schedule")]
+    public async Task ThenTheActivityCostsWorthInTheSchedule(string name, decimal cost, string currency, decimal costInTwd)
+    {
+        AssertCost(await ScheduledActivityAsync(name), cost, currency, costInTwd);
+    }
+
+    [Then("the activity {string} costs {decimal} {word} in the schedule")]
+    public async Task ThenTheActivityCostsInInTheSchedule(string name, decimal cost, string currency)
+    {
+        AssertCost(await ScheduledActivityAsync(name), cost, currency, null);
+    }
+
+    [Then("the schedule totals per currency are {string}")]
+    public async Task ThenTheScheduleTotalsPerCurrencyAre(string expected)
+    {
+        var schedule = await GetScheduleAsync();
+        var totals = schedule.Totals.Select(total => $"{total.Amount:0.##} {total.Currency}");
+
+        Assert.That(totals, Is.EqualTo(SplitList(expected)));
+    }
+
+    [Then("the schedule has no TWD total")]
+    public async Task ThenTheScheduleHasNoTwdTotal()
+    {
+        var schedule = await GetScheduleAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(schedule.RatesAvailable, Is.False);
+            Assert.That(schedule.TotalInTwd, Is.Null);
+            Assert.That(schedule.Days.Select(day => day.TotalInTwd), Is.All.Null);
+        });
+    }
+
+    [Then("the exchange rates in the schedule are available")]
+    public async Task ThenTheExchangeRatesInTheScheduleAreAvailable()
+    {
+        var schedule = await GetScheduleAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(schedule.RatesAvailable, Is.True);
+            Assert.That(schedule.RatesUpdatedAt, Is.Not.Null);
+        });
+    }
+
+    [Then("the exchange rates are available with {string}")]
+    public async Task ThenTheExchangeRatesAreAvailableWith(string currencies)
+    {
+        var rates = (await response.Message.Content.ReadFromJsonAsync<ExchangeRatesDto>())!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rates.Available, Is.True);
+            Assert.That(rates.BaseCurrency, Is.EqualTo("TWD"));
+            Assert.That(rates.Currencies, Is.SupersetOf(SplitList(currencies)));
+            Assert.That(rates.UnitsPerBaseCurrency["TWD"], Is.EqualTo(1m));
+        });
+    }
+
+    [Then("the exchange rates are unavailable with only TWD")]
+    public async Task ThenTheExchangeRatesAreUnavailableWithOnlyTwd()
+    {
+        var rates = (await response.Message.Content.ReadFromJsonAsync<ExchangeRatesDto>())!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rates.Available, Is.False);
+            Assert.That(rates.UpdatedAt, Is.Null);
+            Assert.That(rates.Currencies, Is.EqualTo(new[] { "TWD" }));
+        });
     }
 
     [When("I add an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly}")]
@@ -226,6 +357,22 @@ public class ActivityStepDefinitions(
         Assert.That(remaining, Is.Zero);
     }
 
+    private async Task<ActivityDto> ScheduledActivityAsync(string name)
+    {
+        var schedule = await GetScheduleAsync();
+        return schedule.Days.SelectMany(day => day.Activities).Single(activity => activity.Name == name);
+    }
+
+    private static void AssertCost(ActivityDto activity, decimal cost, string currency, decimal? costInTwd)
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(activity.Cost, Is.EqualTo(cost));
+            Assert.That(activity.Currency, Is.EqualTo(currency));
+            Assert.That(activity.CostInTwd, Is.EqualTo(costInTwd));
+        });
+    }
+
     private async Task<ScheduleDto> GetScheduleAsync()
     {
         return (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
@@ -239,7 +386,8 @@ public class ActivityStepDefinitions(
         DateOnly date,
         TimeOnly start,
         TimeOnly end,
-        decimal? cost = null)
+        decimal? cost = null,
+        string? currency = null)
     {
         return new SaveActivityDto
         {
@@ -248,6 +396,7 @@ public class ActivityStepDefinitions(
             StartTime = start,
             EndTime = end,
             Cost = cost,
+            Currency = currency,
         };
     }
 }

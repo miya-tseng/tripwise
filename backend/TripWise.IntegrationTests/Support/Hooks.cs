@@ -26,5 +26,6 @@ public class Hooks(IObjectContainer container)
     {
         container.RegisterInstanceAs(_factory.CreateClient(), dispose: true);
         container.RegisterInstanceAs(_factory);
+        _factory.ExchangeRates.Available = true;
     }
 }

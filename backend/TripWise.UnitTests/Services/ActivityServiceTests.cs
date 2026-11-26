@@ -1,4 +1,5 @@
 using NSubstitute;
+using TripWise.Application.Currencies;
 using TripWise.Domain;
 using TripWise.Application.Dtos;
 using TripWise.Application.Services;
@@ -9,7 +10,12 @@ public class ActivityServiceTests
 {
     private static readonly DateOnly FirstDay = new(2021, 05, 01);
 
+    private static readonly ExchangeRates Rates = new(
+        new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        new Dictionary<string, decimal> { ["JPY"] = 4.8m, ["USD"] = 0.032m });
+
     private ITripRepository _repository = null!;
+    private IExchangeRateProvider _exchangeRates = null!;
     private ActivityService _sut = null!;
     private Trip _trip = null!;
 
@@ -17,7 +23,9 @@ public class ActivityServiceTests
     public void SetUp()
     {
         _repository = Substitute.For<ITripRepository>();
-        _sut = new ActivityService(_repository);
+        _exchangeRates = Substitute.For<IExchangeRateProvider>();
+        _exchangeRates.GetLatestAsync(Arg.Any<CancellationToken>()).Returns(Rates);
+        _sut = new ActivityService(_repository, _exchangeRates);
         _trip = Trip.Create("Tokyo", FirstDay, FirstDay.AddDays(2));
         _repository.GetByIdAsync(_trip.Id, Arg.Any<CancellationToken>()).Returns(_trip);
     }
@@ -218,9 +226,112 @@ public class ActivityServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(schedule!.Days.Select(day => day.Total), Is.EqualTo(new[] { 3700.5m, 0m, 3800.25m }));
-            Assert.That(schedule.Total, Is.EqualTo(7500.75m));
+            Assert.That(schedule!.Days.Select(day => day.TotalInTwd), Is.EqualTo(new decimal?[] { 3700.5m, 0m, 3800.25m }));
+            Assert.That(schedule.TotalInTwd, Is.EqualTo(7500.75m));
             Assert.That(schedule.Days[0].Activities.Select(activity => activity.Cost), Is.EqualTo(new[] { 1500.5m, 2200m }));
+        });
+    }
+
+    [Test]
+    public async Task AddAsync_WithForeignCurrency_KeepsOriginalAndConvertsToTwd()
+    {
+        var dto = Dto("Shibuya Sky", FirstDay, "17:00", "18:00");
+        dto.Cost = 2200m;
+        dto.Currency = "jpy";
+
+        var result = await _sut.AddAsync(_trip.Id, dto);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Cost, Is.EqualTo(2200m));
+            Assert.That(result.Currency, Is.EqualTo("JPY"));
+            Assert.That(result.CostInTwd, Is.EqualTo(458.33m));
+            Assert.That(_trip.Activities.Single().Cost, Is.EqualTo(new Money(2200m, "JPY")));
+        });
+    }
+
+    [Test]
+    public async Task AddAsync_WithoutCurrency_UsesTwd()
+    {
+        var dto = Dto("Senso-ji", FirstDay, "10:00", "11:00");
+        dto.Cost = 150m;
+
+        var result = await _sut.AddAsync(_trip.Id, dto);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Currency, Is.EqualTo("TWD"));
+            Assert.That(result.CostInTwd, Is.EqualTo(150m));
+        });
+    }
+
+    [Test]
+    public async Task AddAsync_WithUnsupportedCurrency_ThrowsWithoutSaving()
+    {
+        var dto = Dto("Senso-ji", FirstDay, "10:00", "11:00");
+        dto.Cost = 10m;
+        dto.Currency = "XYZ";
+
+        var ex = Assert.ThrowsAsync<DomainException>(() => _sut.AddAsync(_trip.Id, dto));
+
+        Assert.That(ex!.Message, Is.EqualTo("Currency XYZ is not supported."));
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AddAsync_WhenRatesAreUnavailable_AcceptsAnyValidCurrency()
+    {
+        _exchangeRates.GetLatestAsync(Arg.Any<CancellationToken>()).Returns((ExchangeRates?)null);
+        var dto = Dto("Senso-ji", FirstDay, "10:00", "11:00");
+        dto.Cost = 10m;
+        dto.Currency = "XYZ";
+
+        var result = await _sut.AddAsync(_trip.Id, dto);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Currency, Is.EqualTo("XYZ"));
+            Assert.That(result.CostInTwd, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task GetScheduleAsync_WithSeveralCurrencies_ConvertsTotalsToTwd()
+    {
+        _trip.AddActivity("Tsukiji", FirstDay, Slot("07:00", "08:00"), new Money(3000m, "JPY"));
+        _trip.AddActivity("Senso-ji", FirstDay, Slot("10:00", "11:00"), new Money(150m));
+        _trip.AddActivity("Airport bus", FirstDay.AddDays(1), Slot("13:00", "15:00"), new Money(10m, "USD"));
+
+        var schedule = await _sut.GetScheduleAsync(_trip.Id);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(schedule!.RatesAvailable, Is.True);
+            Assert.That(schedule.RatesUpdatedAt, Is.EqualTo(Rates.UpdatedAt));
+            Assert.That(schedule.Days[0].Activities.Select(activity => activity.CostInTwd), Is.EqualTo(new decimal?[] { 625m, 150m }));
+            Assert.That(schedule.Days.Select(day => day.TotalInTwd), Is.EqualTo(new decimal?[] { 775m, 312.5m, 0m }));
+            Assert.That(schedule.TotalInTwd, Is.EqualTo(1087.5m));
+            Assert.That(schedule.Totals.Select(total => (total.Amount, total.Currency)), Is.EqualTo(new[] { (150m, "TWD"), (3000m, "JPY"), (10m, "USD") }));
+            Assert.That(schedule.Days[0].Totals.Select(total => total.Currency), Is.EqualTo(new[] { "TWD", "JPY" }));
+        });
+    }
+
+    [Test]
+    public async Task GetScheduleAsync_WhenRatesAreUnavailable_KeepsOriginalTotals()
+    {
+        _exchangeRates.GetLatestAsync(Arg.Any<CancellationToken>()).Returns((ExchangeRates?)null);
+        _trip.AddActivity("Tsukiji", FirstDay, Slot("07:00", "08:00"), new Money(3000m, "JPY"));
+
+        var schedule = await _sut.GetScheduleAsync(_trip.Id);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(schedule!.RatesAvailable, Is.False);
+            Assert.That(schedule.RatesUpdatedAt, Is.Null);
+            Assert.That(schedule.TotalInTwd, Is.Null);
+            Assert.That(schedule.Days[0].TotalInTwd, Is.Null);
+            Assert.That(schedule.Days[0].Activities[0].CostInTwd, Is.Null);
+            Assert.That(schedule.Totals.Single().Amount, Is.EqualTo(3000m));
         });
     }
 }

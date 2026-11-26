@@ -19,4 +19,6 @@ public class SaveActivityDto
     public TimeOnly? EndTime { get; set; }
 
     public decimal? Cost { get; set; }
+
+    public string? Currency { get; set; }
 }
