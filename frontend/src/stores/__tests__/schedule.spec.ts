@@ -10,6 +10,8 @@ import {
 } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
+import { addStay, deleteStay, updateStay } from '@/api/stays'
+import type { SaveStayInput, Stay } from '@/types/stay'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { Trip } from '@/types/trip'
 import { useScheduleStore } from '../schedule'
@@ -17,6 +19,7 @@ import { useScheduleStore } from '../schedule'
 vi.mock('@/api/activities')
 vi.mock('@/api/trips')
 vi.mock('@/api/exchangeRates')
+vi.mock('@/api/stays')
 
 const tokyo: Trip = {
   id: 'tokyo-id',
@@ -380,6 +383,85 @@ describe('schedule store', () => {
       expect(moved).toBe(false)
       expect(store.error).toBe('The activity overlaps with "Senso-ji"')
       expect(namesPerDay(store)).toEqual([['Shibuya'], []])
+    })
+  })
+
+  describe('stays', () => {
+    const hotel: Stay = {
+      id: 'hotel',
+      name: 'Hotel Gracery',
+      checkIn: '2026-12-01',
+      checkOut: '2026-12-02',
+      nights: 1,
+      cost: 0,
+      currency: 'TWD',
+      costInTwd: 0,
+      bookingStatus: 'NotNeeded',
+      confirmationCode: '',
+    }
+    const stayInput: SaveStayInput = {
+      name: 'Hotel Gracery',
+      checkIn: '2026-12-01',
+      checkOut: '2026-12-02',
+      cost: 0,
+      currency: 'TWD',
+      bookingStatus: 'NotNeeded',
+      confirmationCode: '',
+    }
+
+    function scheduleWith(stays: Stay[]) {
+      return {
+        tripId: tokyo.id,
+        ratesAvailable: true,
+        ratesUpdatedAt: null,
+        stays,
+        days: [{ date: '2026-12-01', activities: [], stay: stays[0] ?? null }],
+      }
+    }
+
+    it('adds a stay and reloads the schedule', async () => {
+      const store = await loadedStore()
+      vi.mocked(addStay).mockResolvedValue(hotel)
+      vi.mocked(fetchSchedule).mockResolvedValue(scheduleWith([hotel]))
+
+      const saved = await store.saveStay(null, stayInput)
+
+      expect(saved).toBe(true)
+      expect(addStay).toHaveBeenCalledWith(tokyo.id, stayInput)
+      expect(store.stays).toEqual([hotel])
+      expect(store.days[0]!.stay).toEqual(hotel)
+    })
+
+    it('updates an existing stay', async () => {
+      const store = await loadedStore()
+      vi.mocked(updateStay).mockResolvedValue(hotel)
+      vi.mocked(fetchSchedule).mockResolvedValue(scheduleWith([hotel]))
+
+      await store.saveStay('hotel', stayInput)
+
+      expect(updateStay).toHaveBeenCalledWith(tokyo.id, 'hotel', stayInput)
+    })
+
+    it('keeps the error when saving fails', async () => {
+      const store = await loadedStore()
+      vi.mocked(addStay).mockRejectedValue(new Error('These nights overlap.'))
+
+      const saved = await store.saveStay(null, stayInput)
+
+      expect(saved).toBe(false)
+      expect(store.stayError).toBe('These nights overlap.')
+    })
+
+    it('removes a stay and reloads the schedule', async () => {
+      const store = await loadedStore()
+      vi.mocked(deleteStay).mockResolvedValue()
+      vi.mocked(fetchSchedule).mockResolvedValue(scheduleWith([]))
+
+      const removed = await store.removeStay('hotel')
+
+      expect(removed).toBe(true)
+      expect(deleteStay).toHaveBeenCalledWith(tokyo.id, 'hotel')
+      expect(store.stays).toEqual([])
     })
   })
 })

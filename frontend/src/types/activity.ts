@@ -1,4 +1,5 @@
 import type { Place } from './place'
+import type { Stay } from './stay'
 
 export type ActivityCategory =
   'Sightseeing' | 'Food' | 'Transport' | 'Shopping' | 'Experience' | 'Other'
@@ -39,12 +40,15 @@ export interface SaveActivityInput extends ActivityDetails {
 export interface ScheduleDay {
   date: string
   activities: Activity[]
+  stay?: Stay | null
+  checkingOut?: Stay | null
 }
 
 export interface Schedule {
   tripId: string
   ratesAvailable: boolean
   ratesUpdatedAt: string | null
+  stays?: Stay[]
   days: ScheduleDay[]
 }
 

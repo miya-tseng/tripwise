@@ -48,3 +48,9 @@ const millisecondsPerDay = 24 * 60 * 60 * 1000
 export function countDays(start: string, end: string): number {
   return (parseIsoDate(end).getTime() - parseIsoDate(start).getTime()) / millisecondsPerDay + 1
 }
+
+export function addDays(date: string, days: number): string {
+  const parsed = parseIsoDate(date)
+  parsed.setUTCDate(parsed.getUTCDate() + days)
+  return parsed.toISOString().slice(0, 10)
+}

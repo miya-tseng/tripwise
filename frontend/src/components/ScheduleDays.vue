@@ -3,9 +3,11 @@ import { computed, nextTick, ref } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DayMap, { type DayMapStop } from '@/components/DayMap.vue'
 import type { Activity, ScheduleDay } from '@/types/activity'
+import type { Stay } from '@/types/stay'
 import { dateParts, formatDayLabel } from '@/utils/date'
 import { HOME_CURRENCY } from '@/types/currency'
 import {
+  dayCosts,
   dayTotalInTwd,
   formatCurrency,
   formatTotals,
@@ -22,6 +24,7 @@ import {
 import { hasMapsKey } from '@/utils/googleMaps'
 import { bookingStatusMeta, categoryMeta, notesPreview } from '@/utils/activityDetails'
 import { formatTime } from '@/utils/schedule'
+import { nightNumber } from '@/utils/stays'
 
 withDefaults(
   defineProps<{
@@ -40,6 +43,8 @@ const emit = defineEmits<{
   delete: [id: string]
   suggest: [activity: Activity]
   add: [date: string]
+  addStay: [date: string]
+  editStay: [stay: Stay]
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
@@ -93,7 +98,7 @@ function isForeign(activity: Activity): boolean {
 
 function dayTotalText(day: ScheduleDay): string {
   const total = dayTotalInTwd(day)
-  return total === null ? formatTotals(totalsByCurrency(day.activities)) : formatTwd(total)
+  return total === null ? formatTotals(totalsByCurrency(dayCosts(day))) : formatTwd(total)
 }
 
 const confirmMessage = computed(() =>
@@ -157,6 +162,18 @@ function confirmDelete() {
           </a>
         </div>
       </header>
+
+      <button
+        v-if="day.checkingOut"
+        type="button"
+        class="stay-row checkout"
+        data-testid="day-checkout"
+        @click="emit('editStay', day.checkingOut)"
+      >
+        <span class="stay-icon" aria-hidden="true">🧳</span>
+        <span class="stay-label">Check out</span>
+        <span class="stay-name">{{ day.checkingOut.name }}</span>
+      </button>
 
       <DayMap
         v-if="canShowMap(day) && openMaps.has(day.date)"
@@ -320,6 +337,40 @@ function confirmDelete() {
           </li>
         </template>
       </ul>
+
+      <button
+        v-if="day.stay"
+        type="button"
+        class="stay-row tonight"
+        data-testid="day-stay"
+        @click="emit('editStay', day.stay)"
+      >
+        <span class="stay-icon" aria-hidden="true">🌙</span>
+        <span class="stay-label">Tonight</span>
+        <span class="stay-name" data-testid="day-stay-name">{{ day.stay.name }}</span>
+        <span class="stay-night">
+          Night {{ nightNumber(day.stay, day.date) }} of {{ day.stay.nights }}
+        </span>
+        <span
+          v-if="day.stay.bookingStatus !== 'NotNeeded'"
+          class="booking-badge"
+          :class="`tone-${bookingStatusMeta(day.stay.bookingStatus).tone}`"
+        >
+          {{ bookingStatusMeta(day.stay.bookingStatus).label }}
+        </span>
+      </button>
+      <button
+        v-else
+        type="button"
+        class="stay-row missing"
+        data-testid="day-add-stay"
+        @click="emit('addStay', day.date)"
+      >
+        <span class="stay-icon" aria-hidden="true">🌙</span>
+        <span class="stay-label">Tonight</span>
+        <span class="stay-name">No stay yet</span>
+        <span class="stay-action">+ Add stay</span>
+      </button>
     </li>
   </ol>
 
@@ -334,6 +385,69 @@ function confirmDelete() {
 </template>
 
 <style scoped>
+.stay-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.9rem;
+  padding: 0.6rem 0.85rem;
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-surface-muted, rgb(245 241 234));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+}
+
+.stay-row:hover {
+  border-color: var(--color-primary);
+}
+
+.stay-row.tonight {
+  background: rgb(46 74 98 / 0.07);
+  border-color: rgb(46 74 98 / 0.18);
+}
+
+.stay-row.missing {
+  color: var(--color-muted);
+  background: transparent;
+  border-style: dashed;
+}
+
+.stay-row.checkout {
+  margin-top: 0.6rem;
+  margin-bottom: 0.2rem;
+  background: transparent;
+}
+
+.stay-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.stay-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.stay-night {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.stay-action {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 .days {
   list-style: none;
   margin: 0;

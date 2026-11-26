@@ -465,3 +465,64 @@ describe('ScheduleDays', () => {
     })
   })
 })
+
+describe('ScheduleDays stays', () => {
+  const hotel = {
+    id: 'hotel',
+    name: 'Hotel Gracery',
+    checkIn: '2026-12-01',
+    checkOut: '2026-12-03',
+    nights: 2,
+    cost: 9000,
+    currency: 'TWD',
+    costInTwd: 9000,
+    bookingStatus: 'Booked' as const,
+    confirmationCode: '',
+  }
+  const stayDays: ScheduleDay[] = [
+    { date: '2026-12-01', activities: [], stay: hotel },
+    { date: '2026-12-02', activities: [], stay: hotel },
+    { date: '2026-12-03', activities: [], stay: null, checkingOut: hotel },
+  ]
+
+  it("shows tonight's stay with the night number", () => {
+    const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
+
+    const rows = wrapper.findAll('[data-testid="day-stay"]')
+    expect(rows.map((row) => row.text())).toEqual([
+      expect.stringContaining('Night 1 of 2'),
+      expect.stringContaining('Night 2 of 2'),
+    ])
+    expect(rows[0]!.text()).toContain('Hotel Gracery')
+  })
+
+  it('shows check-out on the day after the last night', () => {
+    const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
+
+    const days = wrapper.findAll('[data-testid="schedule-day"]')
+    expect(days[2]!.find('[data-testid="day-checkout"]').text()).toContain('Hotel Gracery')
+    expect(days[0]!.find('[data-testid="day-checkout"]').exists()).toBe(false)
+  })
+
+  it('includes the nightly share in the day total', () => {
+    const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
+
+    expect(wrapper.findAll('[data-testid="day-total"]')[0]!.text()).toBe('NT$4,500.00')
+  })
+
+  it('asks to add a stay on nights without one', async () => {
+    const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
+
+    await wrapper.find('[data-testid="day-add-stay"]').trigger('click')
+
+    expect(wrapper.emitted('addStay')).toEqual([['2026-12-03']])
+  })
+
+  it('opens the stay when its row is clicked', async () => {
+    const wrapper = mount(ScheduleDays, { props: { days: stayDays } })
+
+    await wrapper.find('[data-testid="day-stay"]').trigger('click')
+
+    expect(wrapper.emitted('editStay')).toEqual([[hotel]])
+  })
+})

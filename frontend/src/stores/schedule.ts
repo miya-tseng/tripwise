@@ -10,9 +10,11 @@ import {
   type MoveActivityInput,
 } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
+import { addStay, deleteStay, updateStay } from '@/api/stays'
 import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity, SaveActivityInput, Schedule, ScheduleDay } from '@/types/activity'
 import type { ExchangeRates } from '@/types/currency'
+import type { SaveStayInput, Stay } from '@/types/stay'
 import type { Suggestion } from '@/types/suggestion'
 import type { Trip, UpdateTripInput } from '@/types/trip'
 import { withActivity, withoutActivity } from '@/utils/schedule'
@@ -24,6 +26,8 @@ function toMessage(error: unknown): string {
 export const useScheduleStore = defineStore('schedule', () => {
   const trip = ref<Trip | null>(null)
   const days = ref<ScheduleDay[]>([])
+  const stays = ref<Stay[]>([])
+  const stayError = ref<string | null>(null)
   const loading = ref(false)
   const loadError = ref<string | null>(null)
   const error = ref<string | null>(null)
@@ -40,6 +44,7 @@ export const useScheduleStore = defineStore('schedule', () => {
 
   function applySchedule(schedule: Schedule): void {
     days.value = schedule.days
+    stays.value = schedule.stays ?? []
     ratesAvailable.value = schedule.ratesAvailable
     ratesUpdatedAt.value = schedule.ratesUpdatedAt
   }
@@ -58,6 +63,8 @@ export const useScheduleStore = defineStore('schedule', () => {
     error.value = null
     trip.value = null
     days.value = []
+    stays.value = []
+    stayError.value = null
 
     try {
       const [loadedTrip, schedule] = await Promise.all([
@@ -143,6 +150,48 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  async function saveStay(stayId: string | null, input: SaveStayInput): Promise<boolean> {
+    if (!trip.value) {
+      return false
+    }
+
+    stayError.value = null
+
+    try {
+      if (stayId) {
+        await updateStay(trip.value.id, stayId, input)
+      } else {
+        await addStay(trip.value.id, input)
+      }
+      applySchedule(await fetchSchedule(trip.value.id))
+      return true
+    } catch (e) {
+      stayError.value = toMessage(e)
+      return false
+    }
+  }
+
+  async function removeStay(stayId: string): Promise<boolean> {
+    if (!trip.value) {
+      return false
+    }
+
+    stayError.value = null
+
+    try {
+      await deleteStay(trip.value.id, stayId)
+      applySchedule(await fetchSchedule(trip.value.id))
+      return true
+    } catch (e) {
+      stayError.value = toMessage(e)
+      return false
+    }
+  }
+
+  function clearStayError(): void {
+    stayError.value = null
+  }
+
   async function editTrip(input: UpdateTripInput): Promise<boolean> {
     if (!trip.value) {
       return false
@@ -214,6 +263,8 @@ export const useScheduleStore = defineStore('schedule', () => {
   return {
     trip,
     days,
+    stays,
+    stayError,
     loading,
     loadError,
     error,
@@ -231,6 +282,9 @@ export const useScheduleStore = defineStore('schedule', () => {
     update,
     move,
     remove,
+    saveStay,
+    removeStay,
+    clearStayError,
     clearError,
     editTrip,
     clearEditTripError,

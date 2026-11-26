@@ -1,4 +1,6 @@
-import { MAX_COST, type Activity, type ScheduleDay } from '@/types/activity'
+import { MAX_COST, type ScheduleDay } from '@/types/activity'
+import type { Stay } from '@/types/stay'
+import { countDays } from './date'
 import { HOME_CURRENCY, type CurrencyAmount, type ExchangeRates } from '@/types/currency'
 
 const costPattern = /^\d+(\.\d{1,2})?$/
@@ -56,24 +58,60 @@ export function sumMoney(amounts: number[]): number {
   return amounts.reduce((total, amount) => total + toCents(amount), 0) / 100
 }
 
-function totalInTwd(activities: Activity[]): number | null {
-  const converted = activities.map((activity) => activity.costInTwd)
+export interface CostItem {
+  cost: number
+  currency: string
+  costInTwd: number | null
+}
+
+function splitForNight(total: number, nights: number, nightIndex: number): number {
+  const totalCents = toCents(total)
+  const perNight = Math.floor(totalCents / nights)
+  const isLastNight = nightIndex === nights - 1
+  return (isLastNight ? totalCents - perNight * (nights - 1) : perNight) / 100
+}
+
+export function stayCostForNight(stay: Stay, date: string): CostItem {
+  const index = countDays(stay.checkIn, date) - 1
+
+  if (index < 0 || index >= stay.nights) {
+    return { cost: 0, currency: stay.currency, costInTwd: 0 }
+  }
+
+  return {
+    cost: splitForNight(stay.cost, stay.nights, index),
+    currency: stay.currency,
+    costInTwd: stay.costInTwd === null ? null : splitForNight(stay.costInTwd, stay.nights, index),
+  }
+}
+
+export function dayCosts(day: ScheduleDay): CostItem[] {
+  const stay = day.stay && day.stay.cost > 0 ? [stayCostForNight(day.stay, day.date)] : []
+  return [...day.activities, ...stay]
+}
+
+export function tripCosts(days: ScheduleDay[], stays: Stay[] = []): CostItem[] {
+  return [...days.flatMap((day) => day.activities), ...stays.filter((stay) => stay.cost > 0)]
+}
+
+export function totalInTwd(items: CostItem[]): number | null {
+  const converted = items.map((item) => item.costInTwd)
   return converted.every((amount): amount is number => amount !== null) ? sumMoney(converted) : null
 }
 
 export function dayTotalInTwd(day: ScheduleDay): number | null {
-  return totalInTwd(day.activities)
+  return totalInTwd(dayCosts(day))
 }
 
-export function tripTotalInTwd(days: ScheduleDay[]): number | null {
-  return totalInTwd(days.flatMap((day) => day.activities))
+export function tripTotalInTwd(days: ScheduleDay[], stays: Stay[] = []): number | null {
+  return totalInTwd(tripCosts(days, stays))
 }
 
-export function totalsByCurrency(activities: Activity[]): CurrencyAmount[] {
+export function totalsByCurrency(items: CostItem[]): CurrencyAmount[] {
   const totals = new Map<string, number[]>()
 
-  for (const activity of activities) {
-    totals.set(activity.currency, [...(totals.get(activity.currency) ?? []), activity.cost])
+  for (const item of items) {
+    totals.set(item.currency, [...(totals.get(item.currency) ?? []), item.cost])
   }
 
   return [...totals.entries()]

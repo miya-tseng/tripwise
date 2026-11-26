@@ -6,18 +6,30 @@ import ActivityDialog from '@/components/ActivityDialog.vue'
 import type { ActivityPrefill } from '@/components/ActivityForm.vue'
 import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
+import StayDialog from '@/components/StayDialog.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, ActivityCategory, SaveActivityInput } from '@/types/activity'
 import type { GeoPoint } from '@/types/place'
+import type { SaveStayInput, Stay } from '@/types/stay'
 import type { Suggestion } from '@/types/suggestion'
 import type { UpdateTripInput } from '@/types/trip'
 import { CATEGORIES } from '@/utils/activityDetails'
 import { formatDateRange } from '@/utils/date'
-import { formatTotals, formatTwd, totalsByCurrency, tripTotalInTwd } from '@/utils/money'
+import {
+  formatCurrency,
+  formatTotals,
+  formatTwd,
+  totalsByCurrency,
+  tripCosts,
+  tripTotalInTwd,
+} from '@/utils/money'
 import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
 import { slotAfter } from '@/utils/schedule'
+import { firstFreeNight, nextCheckInAfter, nightsLabel, stayRangeLabel } from '@/utils/stays'
+import { addDays } from '@/utils/date'
+import { bookingStatusMeta } from '@/utils/activityDetails'
 
 const props = defineProps<{
   id: string
@@ -27,6 +39,8 @@ const store = useScheduleStore()
 const {
   trip,
   days,
+  stays,
+  stayError,
   loading,
   loadError,
   error,
@@ -51,6 +65,10 @@ const scheduleView = ref<'timeline' | 'board'>('timeline')
 const categoryFilter = ref<ActivityCategory | null>(null)
 const movingId = ref<string | null>(null)
 const defaultCurrency = ref(lastUsedCurrency(props.id))
+const stayDialogOpen = ref(false)
+const editingStay = ref<Stay | null>(null)
+const stayCheckIn = ref<string | null>(null)
+const stayCheckOut = ref<string | null>(null)
 
 const dates = computed(() => days.value.map((day) => day.date))
 const formKey = computed(() => editing.value?.id ?? `new-${formVersion.value}`)
@@ -78,12 +96,13 @@ const searchNear = computed<GeoPoint | null>(() => {
   const last = places.at(-1)
   return last ? { latitude: last.latitude, longitude: last.longitude } : null
 })
-const budgetInTwd = computed(() => tripTotalInTwd(days.value))
+const budgetInTwd = computed(() => tripTotalInTwd(days.value, stays.value))
 const budget = computed(() =>
   budgetInTwd.value === null
-    ? formatTotals(totalsByCurrency(days.value.flatMap((day) => day.activities)))
+    ? formatTotals(totalsByCurrency(tripCosts(days.value, stays.value)))
     : formatTwd(budgetInTwd.value),
 )
+const nightsWithoutStay = computed(() => days.value.filter((day) => !day.stay).length)
 const ratesNote = computed(() => {
   if (!ratesAvailable.value) {
     return 'Exchange rates are unavailable right now, so totals are shown per currency.'
@@ -196,6 +215,35 @@ function openTripEditor() {
 
 function closeTripEditor() {
   tripEditorOpen.value = false
+}
+
+function openStayDialog(options: { stay?: Stay; checkIn?: string }) {
+  store.clearStayError()
+  editingStay.value = options.stay ?? null
+  const checkIn =
+    options.checkIn ?? firstFreeNight(dates.value, stays.value) ?? dates.value[0] ?? null
+  stayCheckIn.value = checkIn
+  stayCheckOut.value = checkIn
+    ? (nextCheckInAfter(checkIn, stays.value) ?? addDays(checkIn, 1))
+    : null
+  stayDialogOpen.value = true
+}
+
+function closeStayDialog() {
+  stayDialogOpen.value = false
+  editingStay.value = null
+  store.clearStayError()
+}
+
+async function saveStay(input: SaveStayInput): Promise<boolean> {
+  const saved = await store.saveStay(editingStay.value?.id ?? null, input)
+
+  if (saved && input.cost > 0) {
+    rememberCurrency(props.id, input.currency)
+    defaultCurrency.value = input.currency
+  }
+
+  return saved
 }
 
 async function saveTrip(input: UpdateTripInput): Promise<boolean> {
@@ -350,6 +398,50 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           </button>
         </div>
 
+        <section class="stays" aria-label="Stays" data-testid="stays-section">
+          <div class="stays-head">
+            <h2 class="stays-title">Stays</h2>
+            <span v-if="nightsWithoutStay > 0" class="stays-hint" data-testid="nights-without-stay">
+              {{ nightsLabel(nightsWithoutStay) }} without a stay
+            </span>
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              data-testid="add-stay"
+              @click="openStayDialog({})"
+            >
+              + Add stay
+            </button>
+          </div>
+          <ul v-if="stays.length > 0" class="stay-cards">
+            <li v-for="stay in stays" :key="stay.id">
+              <button
+                type="button"
+                class="stay-card"
+                data-testid="stay-card"
+                @click="openStayDialog({ stay })"
+              >
+                <span class="stay-card-name" data-testid="stay-card-name">🛏 {{ stay.name }}</span>
+                <span class="stay-card-dates">
+                  {{ stayRangeLabel(stay) }} · {{ nightsLabel(stay.nights) }}
+                </span>
+                <span class="stay-card-foot">
+                  <span v-if="stay.cost > 0" data-testid="stay-card-cost">{{
+                    formatCurrency(stay.cost, stay.currency)
+                  }}</span>
+                  <span
+                    v-if="stay.bookingStatus !== 'NotNeeded'"
+                    class="booking-badge"
+                    :class="`tone-${bookingStatusMeta(stay.bookingStatus).tone}`"
+                  >
+                    {{ bookingStatusMeta(stay.bookingStatus).label }}
+                  </span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </section>
+
         <ScheduleDays
           v-if="scheduleView === 'timeline'"
           :days="visibleDays"
@@ -359,6 +451,8 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           @edit="startEditing"
           @delete="removeActivity"
           @suggest="showSuggestions"
+          @add-stay="(date) => openStayDialog({ checkIn: date })"
+          @edit-stay="(stay) => openStayDialog({ stay })"
         />
         <BoardView
           v-else
@@ -399,6 +493,22 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         @dismiss-error="store.clearError"
       />
 
+      <StayDialog
+        :open="stayDialogOpen"
+        :dates="dates"
+        :stay="editingStay"
+        :initial-check-in="stayCheckIn"
+        :initial-check-out="stayCheckOut"
+        :submit="saveStay"
+        :remove="store.removeStay"
+        :rates="exchangeRates"
+        :default-currency="defaultCurrency"
+        :near="searchNear"
+        :error="stayError"
+        @close="closeStayDialog"
+        @dismiss-error="store.clearStayError"
+      />
+
       <TripEditDialog
         :open="tripEditorOpen"
         :trip="trip"
@@ -411,6 +521,76 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
 </template>
 
 <style scoped>
+.stays {
+  margin-bottom: 1.25rem;
+}
+
+.stays-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.stays-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.stays-hint {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.stays-head .btn {
+  margin-left: auto;
+}
+
+.stay-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.stay-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.stay-card:hover {
+  border-color: var(--color-primary);
+}
+
+.stay-card-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.stay-card-dates {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.stay-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .page {
   min-height: 100vh;
   padding-bottom: 4.5rem;
