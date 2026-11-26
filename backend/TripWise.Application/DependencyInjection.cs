@@ -9,6 +9,8 @@ public static class DependencyInjection
     {
         services.AddScoped<TripService>();
         services.AddScoped<ActivityService>();
+        services.AddScoped<StayService>();
+        services.AddScoped<PlaceResolver>();
         services.AddScoped<ExchangeRateService>();
         services.AddScoped<PlaceService>();
         services.AddScoped<SuggestionService>();

@@ -1,6 +1,5 @@
 using TripWise.Application.Currencies;
 using TripWise.Application.Dtos;
-using TripWise.Application.Places;
 using TripWise.Domain;
 
 namespace TripWise.Application.Services;
@@ -8,7 +7,7 @@ namespace TripWise.Application.Services;
 public class ActivityService(
     ITripRepository repository,
     IExchangeRateProvider exchangeRateProvider,
-    IPlaceSearch placeSearch)
+    PlaceResolver placeResolver)
 {
     public async Task<ActivityDto?> AddAsync(Guid tripId, SaveActivityDto dto, CancellationToken cancellationToken = default)
     {
@@ -20,12 +19,12 @@ public class ActivityService(
         }
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
-        var place = await ResolvePlaceAsync(dto, currentPlace: null, cancellationToken);
+        var place = await placeResolver.ResolveAsync(dto.PlaceId, dto.PlaceSessionToken, currentPlace: null, cancellationToken);
         var activity = trip.AddActivity(
             dto.Name,
             dto.Date!.Value,
             ToTimeSlot(dto),
-            ToCost(dto, rates),
+            CostMapping.ToCost(dto.Cost, dto.Currency, rates),
             place,
             ToDetails(dto));
         await repository.UpdateAsync(trip, cancellationToken);
@@ -44,13 +43,13 @@ public class ActivityService(
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
         var currentPlace = trip.Activities.FirstOrDefault(activity => activity.Id == activityId)?.Place;
-        var place = await ResolvePlaceAsync(dto, currentPlace, cancellationToken);
+        var place = await placeResolver.ResolveAsync(dto.PlaceId, dto.PlaceSessionToken, currentPlace, cancellationToken);
         var activity = trip.UpdateActivity(
             activityId,
             dto.Name,
             dto.Date!.Value,
             ToTimeSlot(dto),
-            ToCost(dto, rates),
+            CostMapping.ToCost(dto.Cost, dto.Currency, rates),
             place,
             ToDetails(dto));
         await repository.UpdateAsync(trip, cancellationToken);
@@ -104,6 +103,7 @@ public class ActivityService(
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
         var activitiesByDate = trip.Activities.ToLookup(activity => activity.Date);
+        var stays = trip.Stays.OrderBy(stay => stay.CheckIn).Select(stay => StayService.ToDto(stay, rates)).ToList();
 
         var days = Enumerable.Range(0, trip.Period.Days)
             .Select(trip.Period.Start.AddDays)
@@ -114,9 +114,11 @@ public class ActivityService(
                 return new ScheduleDayDto
                 {
                     Date = date,
-                    TotalInTwd = TotalInHomeCurrency(activities, rates),
-                    Totals = trip.GetDailyTotals(date).Select(ToMoneyDto).ToList(),
+                    TotalInTwd = CostMapping.TotalInHomeCurrency(trip.GetDailyCosts(date), rates),
+                    Totals = trip.GetDailyTotals(date).Select(CostMapping.ToMoneyDto).ToList(),
                     Activities = activities.Select(activity => ToDto(activity, rates)).ToList(),
+                    Stay = stays.FirstOrDefault(stay => stay.CheckIn <= date && date < stay.CheckOut),
+                    CheckingOut = stays.FirstOrDefault(stay => stay.CheckOut == date),
                 };
             })
             .ToList();
@@ -126,43 +128,11 @@ public class ActivityService(
             TripId = trip.Id,
             RatesAvailable = rates is not null,
             RatesUpdatedAt = rates?.UpdatedAt,
-            TotalInTwd = TotalInHomeCurrency(trip.Activities, rates),
-            Totals = trip.GetTotals().Select(ToMoneyDto).ToList(),
+            TotalInTwd = CostMapping.TotalInHomeCurrency(trip.GetAllCosts(), rates),
+            Totals = trip.GetTotals().Select(CostMapping.ToMoneyDto).ToList(),
+            Stays = stays,
             Days = days,
         };
-    }
-
-    private static decimal? TotalInHomeCurrency(IEnumerable<Activity> activities, ExchangeRates? rates)
-    {
-        if (rates is null)
-        {
-            return null;
-        }
-
-        var converted = activities.Select(activity => rates.ToHomeCurrency(activity.Cost)).ToList();
-
-        return converted.Any(amount => amount is null) ? null : converted.Sum(amount => amount!.Value);
-    }
-
-    private async Task<Place?> ResolvePlaceAsync(
-        SaveActivityDto dto,
-        Place? currentPlace,
-        CancellationToken cancellationToken)
-    {
-        var placeId = dto.PlaceId?.Trim();
-
-        if (string.IsNullOrEmpty(placeId))
-        {
-            return null;
-        }
-
-        if (currentPlace?.PlaceId == placeId)
-        {
-            return currentPlace;
-        }
-
-        return await placeSearch.GetDetailsAsync(placeId, dto.PlaceSessionToken, cancellationToken)
-            ?? throw new DomainException("Place not found.");
     }
 
     private static ActivityDetails ToDetails(SaveActivityDto dto) => new(
@@ -174,29 +144,6 @@ public class ActivityService(
 
     private static TimeSlot ToTimeSlot(SaveActivityDto dto) =>
         new(dto.StartTime!.Value, dto.EndTime!.Value);
-
-    private static Money? ToCost(SaveActivityDto dto, ExchangeRates? rates)
-    {
-        if (dto.Cost is not { } amount)
-        {
-            return null;
-        }
-
-        var cost = new Money(amount, dto.Currency ?? Money.HomeCurrency);
-
-        if (rates is not null && !rates.Supports(cost.Currency))
-        {
-            throw new DomainException($"Currency {cost.Currency} is not supported.");
-        }
-
-        return cost;
-    }
-
-    private static MoneyDto ToMoneyDto(Money money) => new()
-    {
-        Amount = money.Amount,
-        Currency = money.Currency,
-    };
 
     private static ActivityDto ToDto(Activity activity, ExchangeRates? rates)
     {

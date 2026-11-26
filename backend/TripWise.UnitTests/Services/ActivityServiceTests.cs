@@ -38,7 +38,7 @@ public class ActivityServiceTests
         _exchangeRates.GetLatestAsync(Arg.Any<CancellationToken>()).Returns(Rates);
         _placeSearch = Substitute.For<IPlaceSearch>();
         _placeSearch.GetDetailsAsync(SensoJi.PlaceId, Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(SensoJi);
-        _sut = new ActivityService(_repository, _exchangeRates, _placeSearch);
+        _sut = new ActivityService(_repository, _exchangeRates, new PlaceResolver(_placeSearch));
         _trip = Trip.Create("Tokyo", FirstDay, FirstDay.AddDays(2));
         _repository.GetByIdAsync(_trip.Id, Arg.Any<CancellationToken>()).Returns(_trip);
     }

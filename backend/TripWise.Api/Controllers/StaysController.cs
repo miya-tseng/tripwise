@@ -1,0 +1,36 @@
+using Microsoft.AspNetCore.Mvc;
+using TripWise.Application.Dtos;
+using TripWise.Application.Services;
+
+namespace TripWise.Api.Controllers;
+
+[ApiController]
+[Route("api/trips/{tripId:guid}/stays")]
+public class StaysController(StayService stayService) : ControllerBase
+{
+    [HttpPost]
+    public async Task<ActionResult<StayDto>> Add(Guid tripId, SaveStayDto dto, CancellationToken cancellationToken)
+    {
+        var stay = await stayService.AddAsync(tripId, dto, cancellationToken);
+
+        return stay is null
+            ? NotFound()
+            : CreatedAtAction(nameof(ActivitiesController.GetSchedule), "Activities", new { tripId }, stay);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<StayDto>> Update(Guid tripId, Guid id, SaveStayDto dto, CancellationToken cancellationToken)
+    {
+        var stay = await stayService.UpdateAsync(tripId, id, dto, cancellationToken);
+
+        return stay is null ? NotFound() : stay;
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid tripId, Guid id, CancellationToken cancellationToken)
+    {
+        var deleted = await stayService.DeleteAsync(tripId, id, cancellationToken);
+
+        return deleted ? NoContent() : NotFound();
+    }
+}
