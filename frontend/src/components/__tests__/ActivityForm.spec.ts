@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ActivityForm from '../ActivityForm.vue'
+import PlaceSearch from '../PlaceSearch.vue'
 import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { ExchangeRates } from '@/types/currency'
 
@@ -30,7 +31,11 @@ const rates: ExchangeRates = {
 function mountForm(
   submit: Submit = vi.fn<Submit>().mockResolvedValue(true),
   activity?: Activity,
-  options: { rates?: ExchangeRates | null; defaultCurrency?: string } = {},
+  options: {
+    rates?: ExchangeRates | null
+    defaultCurrency?: string
+    near?: { latitude: number; longitude: number } | null
+  } = {},
 ) {
   return mount(ActivityForm, { props: { dates, submit, activity, ...options } })
 }
@@ -63,11 +68,19 @@ async function pickTime(wrapper: VueWrapper, name: 'startTime' | 'endTime', time
   await minuteOption!.trigger('click')
 }
 
+async function typeCustomName(wrapper: VueWrapper, name: string) {
+  const useCustom = wrapper.find('[data-testid="use-custom-activity"]')
+  if (useCustom.exists()) {
+    await useCustom.trigger('click')
+  }
+  await wrapper.find('input[name="name"]').setValue(name)
+}
+
 async function fill(
   wrapper: ReturnType<typeof mountForm>,
   values: { name?: string; date?: string; startTime?: string; endTime?: string },
 ) {
-  if (values.name !== undefined) await wrapper.find('input[name="name"]').setValue(values.name)
+  if (values.name !== undefined) await typeCustomName(wrapper, values.name)
   if (values.date !== undefined) await chooseDay(wrapper, values.date)
   if (values.startTime !== undefined) await pickTime(wrapper, 'startTime', values.startTime)
   if (values.endTime !== undefined) await pickTime(wrapper, 'endTime', values.endTime)
@@ -308,5 +321,125 @@ describe('ActivityForm', () => {
     await chooseCurrency(wrapper, 'JPY')
 
     expect(wrapper.find('[data-testid="cost-preview"]').text()).toBe('TWD amount unavailable')
+  })
+
+  describe('place search', () => {
+    const senso = { placeId: 'senso-ji-id', name: 'Senso-ji', description: 'Asakusa, Tokyo' }
+
+    it('searches for a real place by default', () => {
+      const wrapper = mountForm()
+
+      expect(wrapper.findComponent(PlaceSearch).exists()).toBe(true)
+      expect(wrapper.find('input[name="name"]').exists()).toBe(false)
+    })
+
+    it('submits the selected place with its session token', async () => {
+      const submit = vi.fn<Submit>().mockResolvedValue(true)
+      const wrapper = mountForm(submit, undefined, { near: { latitude: 35.7, longitude: 139.8 } })
+      const search = wrapper.findComponent(PlaceSearch)
+      expect(search.props('near')).toEqual({ latitude: 35.7, longitude: 139.8 })
+
+      const token = search.props('sessionToken')
+      expect(token).toBeTruthy()
+      search.vm.$emit('update:modelValue', senso)
+      await fill(wrapper, { startTime: '10:00', endTime: '11:00' })
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Senso-ji',
+          placeId: 'senso-ji-id',
+          placeSessionToken: token,
+        }),
+      )
+    })
+
+    it('needs a place before it can be added', async () => {
+      const wrapper = mountForm()
+
+      await fill(wrapper, { startTime: '10:00', endTime: '11:00' })
+      expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+
+      wrapper.findComponent(PlaceSearch).vm.$emit('update:modelValue', senso)
+      await flushPromises()
+      expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('clears the place and starts a new session after adding', async () => {
+      const wrapper = mountForm()
+      const firstToken = wrapper.findComponent(PlaceSearch).props('sessionToken')
+
+      wrapper.findComponent(PlaceSearch).vm.$emit('update:modelValue', senso)
+      await fill(wrapper, { startTime: '10:00', endTime: '11:00' })
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(wrapper.findComponent(PlaceSearch).props('modelValue')).toBeNull()
+      expect(wrapper.findComponent(PlaceSearch).props('sessionToken')).not.toBe(firstToken)
+    })
+
+    it('shows the place of an activity being edited', () => {
+      const wrapper = mountForm(undefined, {
+        ...sensoji,
+        place: {
+          placeId: 'senso-ji-id',
+          name: 'Senso-ji',
+          address: 'Asakusa, Tokyo',
+          latitude: 35.7,
+          longitude: 139.8,
+          googleMapsUri: 'https://maps.google.com/?cid=1',
+        },
+      })
+
+      expect(wrapper.findComponent(PlaceSearch).props('modelValue')).toEqual({
+        placeId: 'senso-ji-id',
+        name: 'Senso-ji',
+        description: 'Asakusa, Tokyo',
+      })
+    })
+
+    it('edits an activity without a place as a custom activity', () => {
+      const wrapper = mountForm(undefined, sensoji)
+
+      expect(wrapper.findComponent(PlaceSearch).exists()).toBe(false)
+      expect((wrapper.find('input[name="name"]').element as HTMLInputElement).value).toBe(
+        'Senso-ji',
+      )
+    })
+
+    it('submits a custom activity without a place', async () => {
+      const submit = vi.fn<Submit>().mockResolvedValue(true)
+      const wrapper = mountForm(submit)
+
+      await fill(wrapper, { name: 'Free time', startTime: '15:00', endTime: '16:00' })
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      const input = submit.mock.calls[0]![0]
+      expect(input.name).toBe('Free time')
+      expect(input.placeId).toBeUndefined()
+    })
+
+    it('switches back to place search', async () => {
+      const wrapper = mountForm()
+
+      await wrapper.find('[data-testid="use-custom-activity"]').trigger('click')
+      await wrapper.find('[data-testid="use-place-search"]').trigger('click')
+
+      expect(wrapper.findComponent(PlaceSearch).exists()).toBe(true)
+    })
+
+    it('keeps the selected place name when switching to a custom activity', async () => {
+      const wrapper = mountForm()
+
+      wrapper.findComponent(PlaceSearch).vm.$emit('update:modelValue', senso)
+      await flushPromises()
+      await wrapper.find('[data-testid="use-custom-activity"]').trigger('click')
+
+      expect((wrapper.find('input[name="name"]').element as HTMLInputElement).value).toBe(
+        'Senso-ji',
+      )
+    })
   })
 })

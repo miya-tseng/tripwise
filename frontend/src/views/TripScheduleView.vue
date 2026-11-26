@@ -7,6 +7,7 @@ import ScheduleDays from '@/components/ScheduleDays.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, SaveActivityInput } from '@/types/activity'
+import type { GeoPoint } from '@/types/place'
 import type { UpdateTripInput } from '@/types/trip'
 import { formatDateRange } from '@/utils/date'
 import { formatTotals, formatTwd, totalsByCurrency, tripTotalInTwd } from '@/utils/money'
@@ -35,6 +36,13 @@ const tripEditorOpen = ref(false)
 
 const dates = computed(() => days.value.map((day) => day.date))
 const defaultCurrency = ref(lastUsedCurrency(props.id))
+const searchNear = computed<GeoPoint | null>(() => {
+  const places = days.value.flatMap((day) =>
+    day.activities.flatMap((activity) => activity.place ?? []),
+  )
+  const last = places.at(-1)
+  return last ? { latitude: last.latitude, longitude: last.longitude } : null
+})
 const budgetInTwd = computed(() => tripTotalInTwd(days.value))
 const budget = computed(() =>
   budgetInTwd.value === null
@@ -197,6 +205,7 @@ async function removeActivity(id: string) {
             :submit="save"
             :rates="exchangeRates"
             :default-currency="defaultCurrency"
+            :near="searchNear"
             @cancel="cancelEditing"
           />
           <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">

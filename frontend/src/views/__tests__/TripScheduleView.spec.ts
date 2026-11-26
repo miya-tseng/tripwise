@@ -72,6 +72,7 @@ async function submitActivity(
   wrapper: Awaited<ReturnType<typeof mountView>>,
   values: { name: string; startTime: string; endTime: string; cost?: string },
 ) {
+  await wrapper.find('[data-testid="use-custom-activity"]').trigger('click')
   await wrapper.find('input[name="name"]').setValue(values.name)
   await pickTime(wrapper, 'startTime', values.startTime)
   await pickTime(wrapper, 'endTime', values.endTime)
@@ -372,5 +373,40 @@ describe('TripScheduleView', () => {
     expect(localStorage.getItem('tripwise.currency.tokyo-id')).toBe('JPY')
     expect(wrapper.findComponent(ActivityForm).props('defaultCurrency')).toBe('JPY')
     vi.unstubAllGlobals()
+  })
+
+  it('biases place search near the last place of the trip', async () => {
+    mockLoadedTrip()
+    vi.mocked(fetchSchedule).mockResolvedValue({
+      tripId: 'tokyo-id',
+      ratesAvailable: true,
+      ratesUpdatedAt: '2026-01-01T00:00:00Z',
+      days: [
+        {
+          date: '2026-12-01',
+          activities: [
+            {
+              ...shibuya,
+              place: {
+                placeId: 'shibuya-id',
+                name: 'Shibuya Sky',
+                address: 'Shibuya, Tokyo',
+                latitude: 35.658,
+                longitude: 139.702,
+                googleMapsUri: 'https://maps.google.com/?cid=3',
+              },
+            },
+          ],
+        },
+        { date: '2026-12-02', activities: [] },
+      ],
+    })
+
+    const wrapper = await mountView()
+
+    expect(wrapper.findComponent(ActivityForm).props('near')).toEqual({
+      latitude: 35.658,
+      longitude: 139.702,
+    })
   })
 })

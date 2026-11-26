@@ -167,4 +167,25 @@ describe('ScheduleDays', () => {
     expect(wrapper.find('[data-testid="activity-cost-twd"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="day-total"]').text()).toBe('NT$1,500.50 + ¥3,000')
   })
+
+  it('shows the address of activities with a place', () => {
+    const withPlace: Activity = {
+      ...tsukiji,
+      place: {
+        placeId: 'tsukiji-id',
+        name: 'Tsukiji Outer Market',
+        address: '4 Chome-16-2 Tsukiji, Chuo City, Tokyo',
+        latitude: 35.66,
+        longitude: 139.77,
+        googleMapsUri: 'https://maps.google.com/?cid=2',
+      },
+    }
+    const wrapper = mount(ScheduleDays, {
+      props: { days: [{ date: '2026-12-01', activities: [withPlace, sensoji] }] },
+    })
+
+    expect(wrapper.findAll('[data-testid="activity-address"]').map((item) => item.text())).toEqual([
+      '4 Chome-16-2 Tsukiji, Chuo City, Tokyo',
+    ])
+  })
 })

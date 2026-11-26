@@ -89,7 +89,12 @@ function confirmDelete() {
           <span class="activity-time" data-testid="activity-time">
             {{ formatTime(activity.startTime) }} – {{ formatTime(activity.endTime) }}
           </span>
-          <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
+          <span class="activity-main">
+            <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
+            <span v-if="activity.place" class="activity-address" data-testid="activity-address">
+              {{ activity.place.address }}
+            </span>
+          </span>
           <span class="activity-cost" :class="{ free: activity.cost === 0 }">
             <span data-testid="activity-cost">
               {{ activity.cost === 0 ? 'Free' : formatCurrency(activity.cost, activity.currency) }}
@@ -300,8 +305,22 @@ function confirmDelete() {
   color: var(--color-muted);
 }
 
-.activity-name {
+.activity-main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.activity-address {
+  overflow: hidden;
+  font-size: 0.78rem;
+  color: var(--color-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-name {
   min-width: 0;
   overflow: hidden;
   font-weight: 600;
@@ -394,8 +413,11 @@ function confirmDelete() {
     font-size: 0.82rem;
   }
 
-  .activity-name {
+  .activity-main {
     grid-area: name;
+  }
+
+  .activity-name {
     white-space: normal;
   }
 

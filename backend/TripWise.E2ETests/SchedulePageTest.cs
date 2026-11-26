@@ -46,7 +46,7 @@ public abstract class SchedulePageTest : PageTest
 
     protected async Task AddActivityAsync(string name, int day, string start, string end, string? cost = null)
     {
-        await Page.GetByRole(AriaRole.Textbox, new() { Name = "Activity" }).FillAsync(name);
+        await TypeCustomActivityAsync(name);
         await ChooseDayAsync(day);
         await PickTimeAsync("Start", start);
         await PickTimeAsync("End", end);
@@ -59,6 +59,18 @@ public abstract class SchedulePageTest : PageTest
         var added = ActivityItem(name);
         var rejected = Page.GetByTestId("schedule-error");
         await Expect(added.Or(rejected)).ToBeVisibleAsync();
+    }
+
+    protected async Task TypeCustomActivityAsync(string name)
+    {
+        var useCustom = Page.GetByTestId("use-custom-activity");
+
+        if (await useCustom.IsVisibleAsync())
+        {
+            await useCustom.ClickAsync();
+        }
+
+        await Page.GetByRole(AriaRole.Textbox, new() { Name = "Activity" }).FillAsync(name);
     }
 
     protected async Task ChooseDayAsync(int day)

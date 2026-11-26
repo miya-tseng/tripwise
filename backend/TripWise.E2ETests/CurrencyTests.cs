@@ -91,7 +91,7 @@ public class CurrencyTests : SchedulePageTest
 
     private async Task AddActivityInCurrencyAsync(string name, int day, string start, string end, string cost, string currency)
     {
-        await Page.GetByRole(AriaRole.Textbox, new() { Name = "Activity" }).FillAsync(name);
+        await TypeCustomActivityAsync(name);
         await ChooseDayAsync(day);
         await PickTimeAsync("Start", start);
         await PickTimeAsync("End", end);

@@ -1,3 +1,5 @@
+import type { Place } from './place'
+
 export interface Activity {
   id: string
   name: string
@@ -7,6 +9,7 @@ export interface Activity {
   cost: number
   currency: string
   costInTwd: number | null
+  place?: Place | null
 }
 
 export interface SaveActivityInput {
@@ -16,6 +19,8 @@ export interface SaveActivityInput {
   endTime: string
   cost: number
   currency: string
+  placeId?: string
+  placeSessionToken?: string
 }
 
 export interface ScheduleDay {

@@ -84,7 +84,7 @@ public class BudgetTests : SchedulePageTest
     [Test]
     public async Task InvalidCost_IsRejectedBeforeSaving()
     {
-        await Page.GetByRole(AriaRole.Textbox, new() { Name = "Activity" }).FillAsync("Shibuya Sky");
+        await TypeCustomActivityAsync("Shibuya Sky");
         await PickTimeAsync("Start", "17:00");
         await PickTimeAsync("End", "18:00");
 

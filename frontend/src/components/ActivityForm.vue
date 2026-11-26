@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
+import PlaceSearch from '@/components/PlaceSearch.vue'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import TimePicker from '@/components/TimePicker.vue'
 import { MAX_ACTIVITY_NAME_LENGTH, type Activity, type SaveActivityInput } from '@/types/activity'
 import { formatDayLabel } from '@/utils/date'
 import { COMMON_CURRENCIES, HOME_CURRENCY, type ExchangeRates } from '@/types/currency'
+import type { GeoPoint, PlaceSuggestion } from '@/types/place'
 import { currencyName, formatTwd, parseCost, toTwd } from '@/utils/money'
 import { formatTime } from '@/utils/schedule'
 
@@ -15,11 +17,13 @@ const props = withDefaults(
     submit: (input: SaveActivityInput) => Promise<boolean>
     rates?: ExchangeRates | null
     defaultCurrency?: string
+    near?: GeoPoint | null
   }>(),
   {
     activity: null,
     rates: null,
     defaultCurrency: HOME_CURRENCY,
+    near: null,
   },
 )
 
@@ -29,7 +33,24 @@ const emit = defineEmits<{
 
 const isEditing = computed(() => props.activity !== null)
 
+const activityFieldId = useId()
+
+function newSessionToken(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 const name = ref(props.activity?.name ?? '')
+const mode = ref<'place' | 'custom'>(props.activity && !props.activity.place ? 'custom' : 'place')
+const sessionToken = ref(newSessionToken())
+const selectedPlace = ref<PlaceSuggestion | null>(
+  props.activity?.place
+    ? {
+        placeId: props.activity.place.placeId,
+        name: props.activity.name,
+        description: props.activity.place.address,
+      }
+    : null,
+)
 const date = ref(props.activity?.date ?? props.dates[0] ?? '')
 const startTime = ref(props.activity ? formatTime(props.activity.startTime) : '')
 const endTime = ref(props.activity ? formatTime(props.activity.endTime) : '')
@@ -70,9 +91,24 @@ const costPreview = computed(() => {
   return converted === null ? 'TWD amount unavailable' : `≈ ${formatTwd(converted)}`
 })
 const costError = computed(() => (parsedCost.value.ok ? '' : parsedCost.value.error))
+const hasActivity = computed(() =>
+  mode.value === 'place' ? selectedPlace.value !== null : name.value.trim() !== '',
+)
+
+function useCustomActivity() {
+  mode.value = 'custom'
+  if (selectedPlace.value && name.value.trim() === '') {
+    name.value = selectedPlace.value.name
+  }
+}
+
+function usePlaceSearch() {
+  mode.value = 'place'
+}
+
 const canSubmit = computed(
   () =>
-    name.value.trim() !== '' &&
+    hasActivity.value &&
     date.value !== '' &&
     timesAreFilled.value &&
     endsAfterStart.value &&
@@ -86,8 +122,10 @@ async function onSubmit() {
 
   submitting.value = true
 
+  const place = mode.value === 'place' ? selectedPlace.value : null
   const saved = await props.submit({
-    name: name.value,
+    name: place ? place.name : name.value,
+    ...(place ? { placeId: place.placeId, placeSessionToken: sessionToken.value } : {}),
     date: date.value,
     startTime: startTime.value,
     endTime: endTime.value,
@@ -97,8 +135,13 @@ async function onSubmit() {
 
   submitting.value = false
 
+  if (saved && place) {
+    sessionToken.value = newSessionToken()
+  }
+
   if (saved && !isEditing.value) {
     name.value = ''
+    selectedPlace.value = null
     startTime.value = ''
     endTime.value = ''
     cost.value = ''
@@ -108,19 +151,46 @@ async function onSubmit() {
 
 <template>
   <form class="activity-form" data-testid="activity-form" @submit.prevent="onSubmit">
-    <label class="field">
-      <span class="field-label">Activity</span>
+    <div class="field">
+      <label class="field-label" :for="activityFieldId">Activity</label>
+      <PlaceSearch
+        v-if="mode === 'place'"
+        v-model="selectedPlace"
+        :input-id="activityFieldId"
+        :session-token="sessionToken"
+        :near="near"
+      />
       <input
+        v-else
+        :id="activityFieldId"
         v-model="name"
         class="text-input"
         name="name"
         type="text"
-        placeholder="e.g. Senso-ji"
+        placeholder="e.g. Free time"
         autocomplete="off"
         required
         :maxlength="MAX_ACTIVITY_NAME_LENGTH"
       />
-    </label>
+      <button
+        v-if="mode === 'place'"
+        type="button"
+        class="mode-switch"
+        data-testid="use-custom-activity"
+        @click="useCustomActivity"
+      >
+        Not a place? Add a custom activity
+      </button>
+      <button
+        v-else
+        type="button"
+        class="mode-switch"
+        data-testid="use-place-search"
+        @click="usePlaceSearch"
+      >
+        Search a real place instead
+      </button>
+    </div>
 
     <div class="field">
       <span class="field-label">Day</span>
@@ -224,6 +294,21 @@ async function onSubmit() {
 .time-separator svg {
   width: 1.1rem;
   height: 1.1rem;
+}
+
+.mode-switch {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.mode-switch:hover {
+  text-decoration: underline;
 }
 
 .field-error {
