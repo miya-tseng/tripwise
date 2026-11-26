@@ -9,9 +9,10 @@ public class ActivityTests : SchedulePageTest
     [Test]
     public async Task OpenTripFromList_ShowsEveryDayOfTheTrip()
     {
-        await Page.GotoAsync("/");
+        await Page.GotoAsync("/trips");
+        await Page.GetByTestId("trip-search").FillAsync(TripName);
 
-        await Page.GetByTestId("trip-item").Filter(new() { HasText = TripName }).ClickAsync();
+        await Page.GetByTestId("trip-row-link").Filter(new() { HasText = TripName }).ClickAsync();
 
         await Expect(Page).ToHaveURLAsync(new Regex($"/trips/{TripId}$"));
         await Expect(Page.GetByTestId("schedule-day")).ToHaveCountAsync(3);

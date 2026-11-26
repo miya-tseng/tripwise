@@ -65,3 +65,45 @@ export function countdownLabel(trip: Trip, today: string): string {
 export function daysLabel(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`
 }
+
+export interface MonthGroup {
+  key: string
+  label: string
+  trips: Trip[]
+}
+
+const monthFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+export function groupByMonth(trips: Trip[]): MonthGroup[] {
+  const groups = new Map<string, Trip[]>()
+
+  for (const trip of trips) {
+    const key = trip.startDate.slice(0, 7)
+    groups.set(key, [...(groups.get(key) ?? []), trip])
+  }
+
+  return [...groups.entries()].map(([key, items]) => ({
+    key,
+    label: monthFormatter.format(new Date(`${key}-01T00:00:00Z`)),
+    trips: items,
+  }))
+}
+
+export function searchTrips(trips: Trip[], query: string): Trip[] {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+
+  if (words.length === 0) {
+    return trips
+  }
+
+  return trips.filter((trip) => {
+    const text = [trip.name, trip.destination?.name ?? '', trip.destination?.address ?? '']
+      .join(' ')
+      .toLowerCase()
+    return words.every((word) => text.includes(word))
+  })
+}

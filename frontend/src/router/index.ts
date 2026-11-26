@@ -8,6 +8,12 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+      props: (route) => ({ create: route.query.new }),
+    },
+    {
+      path: '/trips',
+      name: 'all-trips',
+      component: () => import('@/views/AllTripsView.vue'),
     },
     {
       path: '/trips/:id',

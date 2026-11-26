@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { Trip } from '@/types/trip'
-import { countdownLabel, daysLabel, groupTrips, progressLabel, todayIso, tripPhase } from '../trips'
+import {
+  countdownLabel,
+  daysLabel,
+  groupByMonth,
+  groupTrips,
+  progressLabel,
+  searchTrips,
+  todayIso,
+  tripPhase,
+} from '../trips'
 
 function trip(id: string, startDate: string, endDate: string, days = 1): Trip {
   return { id, name: id, startDate, endDate, days }
@@ -66,5 +75,46 @@ describe('daysLabel', () => {
   it('uses the singular for one day', () => {
     expect(daysLabel(1)).toBe('1 day')
     expect(daysLabel(3)).toBe('3 days')
+  })
+})
+
+describe('groupByMonth', () => {
+  it('groups trips by the month they start, keeping their order', () => {
+    const groups = groupByMonth([
+      trip('a', '2026-12-01', '2026-12-03'),
+      trip('b', '2026-12-20', '2027-01-02'),
+      trip('c', '2027-02-03', '2027-02-05'),
+    ])
+
+    expect(groups.map((group) => [group.label, group.trips.map((t) => t.id)])).toEqual([
+      ['Dec 2026', ['a', 'b']],
+      ['Feb 2027', ['c']],
+    ])
+  })
+})
+
+describe('searchTrips', () => {
+  const kyoto: Trip = {
+    ...trip('Autumn leaves', '2026-11-24', '2026-11-28'),
+    destination: {
+      placeId: 'kyoto',
+      name: 'Kyoto',
+      address: 'Japan',
+      latitude: 0,
+      longitude: 0,
+      googleMapsUri: 'https://maps.google.com',
+    },
+  }
+  const seoul = trip('Seoul food', '2027-02-03', '2027-02-05')
+
+  it('matches the name or the destination, ignoring case and word order', () => {
+    expect(searchTrips([kyoto, seoul], 'kyoto')).toEqual([kyoto])
+    expect(searchTrips([kyoto, seoul], 'japan autumn')).toEqual([kyoto])
+    expect(searchTrips([kyoto, seoul], 'FOOD')).toEqual([seoul])
+    expect(searchTrips([kyoto, seoul], 'paris')).toEqual([])
+  })
+
+  it('returns everything for an empty search', () => {
+    expect(searchTrips([kyoto, seoul], '  ')).toEqual([kyoto, seoul])
   })
 })

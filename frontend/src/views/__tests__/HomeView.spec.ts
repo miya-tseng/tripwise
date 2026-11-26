@@ -67,25 +67,39 @@ describe('HomeView', () => {
     expect(view.findComponent(NewTripDialog).props('open')).toBe(true)
   })
 
-  it('splits trips into happening now, upcoming and past', async () => {
+  it('shows the trip happening now and what is coming up', async () => {
     const view = await mountHomeView([upcoming, past, ongoing])
 
     expect(names(view, 'ongoing-section')).toEqual(['Kyoto'])
     expect(names(view, 'upcoming-section')).toEqual(['Tokyo'])
-    expect(view.find('[data-testid="past-section"]').text()).toContain('Past trips')
+    expect(view.find('[data-testid="past-section"]').exists()).toBe(false)
   })
 
-  it('keeps past trips collapsed until asked', async () => {
-    const view = await mountHomeView([upcoming, past])
-    const toggle = view.find('[data-testid="toggle-past"]')
+  it('keeps the home page short: three trips and a link to the rest', async () => {
+    const later = [1, 2, 3, 4, 5].map((n) => trip(`Later ${n}`, `2027-0${n}-01`, `2027-0${n}-02`))
+    const view = await mountHomeView([...later, past])
 
-    expect(names(view, 'past-section')).toEqual([])
-    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(names(view, 'upcoming-section')).toEqual(['Later 1', 'Later 2', 'Later 3'])
+    expect(view.find('[data-testid="see-all-upcoming"]').text()).toBe('See all 5')
+    const allTrips = view.find('[data-testid="all-trips-link"]')
+    expect(allTrips.text()).toContain('6 trips · 1 past')
+    expect(
+      view
+        .findAllComponents(RouterLinkStub)
+        .find((link) => link.attributes('data-testid') === 'all-trips-link')!
+        .props('to'),
+    ).toEqual({ name: 'all-trips' })
+  })
 
-    await toggle.trigger('click')
+  it('opens the new trip dialog when asked from the bottom menu', async () => {
+    vi.mocked(fetchTrips).mockResolvedValue([upcoming])
+    wrapper = mount(HomeView, {
+      props: { today, create: '1' },
+      global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
 
-    expect(names(view, 'past-section')).toEqual(['Taipei'])
-    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.findComponent(NewTripDialog).props('open')).toBe(true)
   })
 
   it('hides sections that have nothing to show', async () => {

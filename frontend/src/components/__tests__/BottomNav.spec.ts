@@ -16,7 +16,7 @@ describe('BottomNav', () => {
       '📊Overview',
       '✅Checklist',
     ])
-    expect(links[0]!.props('to')).toBe('/')
+    expect(links[0]!.props('to')).toEqual({ name: 'home' })
     expect(links[3]!.props('to')).toEqual({ name: 'trip-checklist', params: { id: 'tokyo-id' } })
     expect(wrapper.find('[data-testid="nav-overview"]').attributes('aria-current')).toBe('page')
     expect(wrapper.find('[data-testid="nav-itinerary"]').attributes('aria-current')).toBeUndefined()

@@ -135,6 +135,24 @@ public class PhoneTests : SchedulePageTest
         await Expect(ScheduleDay(1)).ToBeHiddenAsync();
     }
 
+    [Test]
+    public async Task HomeBottomMenu_OpensAllTripsAndNewTrip()
+    {
+        await Page.GotoAsync("/");
+        await Expect(Page.GetByTestId("app-nav")).ToBeVisibleAsync();
+
+        await Page.GetByTestId("nav-all-trips").TapAsync();
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "All trips", Level = 1 })).ToBeVisibleAsync();
+        await Page.GetByTestId("trip-search").FillAsync(TripName);
+        await Expect(Page.GetByTestId("trip-row").Filter(new() { HasText = TripName })).ToHaveCountAsync(1);
+
+        await Page.GetByTestId("nav-new-trip").TapAsync();
+        await Expect(Page.GetByTestId("new-trip-dialog")).ToBeVisibleAsync();
+        await Page.GetByTestId("cancel-new-trip").TapAsync();
+        await Expect(Page.GetByTestId("new-trip-dialog")).ToHaveCountAsync(0);
+        await Expect(Page).ToHaveURLAsync(new Regex(@"/$"));
+    }
+
     private async Task AddFromFabAsync(string name, string start, string end)
     {
         await Page.GetByTestId("fab").TapAsync();

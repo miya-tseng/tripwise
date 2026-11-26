@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import TripActionsMenu from '@/components/TripActionsMenu.vue'
 import type { Trip } from '@/types/trip'
 import { dateParts, formatDateRange } from '@/utils/date'
 import { coverFor, coverStyle, flagFor } from '@/utils/tripTheme'
@@ -28,9 +29,6 @@ const emit = defineEmits<{
   delete: [trip: Trip]
 }>()
 
-const menuRoot = ref<HTMLElement | null>(null)
-const menuOpen = ref(false)
-
 const start = computed(() => dateParts(props.trip.startDate))
 const cover = computed(() => coverFor(props.trip))
 const flag = computed(() => flagFor(props.trip))
@@ -50,29 +48,6 @@ const dayNumber = computed(() => currentDayNumber(props.trip, props.today))
 const progress = computed(() => Math.round((dayNumber.value / props.trip.days) * 100))
 const tripLink = computed(() => ({ name: 'trip-schedule', params: { id: props.trip.id } }))
 const todayLink = computed(() => ({ ...tripLink.value, query: { day: String(dayNumber.value) } }))
-
-function onDocumentPointerDown(event: PointerEvent) {
-  if (menuRoot.value && !menuRoot.value.contains(event.target as Node)) {
-    menuOpen.value = false
-  }
-}
-
-watch(menuOpen, (open) => {
-  if (open) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-  } else {
-    document.removeEventListener('pointerdown', onDocumentPointerDown)
-  }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-})
-
-function askToDelete() {
-  menuOpen.value = false
-  emit('delete', props.trip)
-}
 </script>
 
 <template>
@@ -143,41 +118,12 @@ function askToDelete() {
       Open today
     </RouterLink>
 
-    <div ref="menuRoot" class="menu">
-      <button
-        type="button"
-        class="btn btn-ghost btn-small menu-button"
-        aria-haspopup="menu"
-        :aria-expanded="menuOpen"
-        :aria-label="`More actions for ${trip.name}`"
-        data-testid="trip-menu"
-        :disabled="deleting"
-        @click="menuOpen = !menuOpen"
-        @keydown.esc="menuOpen = false"
-      >
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <circle cx="4.5" cy="10" r="1.5" fill="currentColor" />
-          <circle cx="10" cy="10" r="1.5" fill="currentColor" />
-          <circle cx="15.5" cy="10" r="1.5" fill="currentColor" />
-        </svg>
-      </button>
-      <div
-        v-if="menuOpen"
-        class="popover-menu menu-panel"
-        role="menu"
-        @keydown.esc="menuOpen = false"
-      >
-        <button
-          type="button"
-          class="menu-item danger"
-          role="menuitem"
-          data-testid="delete-button"
-          @click="askToDelete"
-        >
-          Delete trip
-        </button>
-      </div>
-    </div>
+    <TripActionsMenu
+      :trip-name="trip.name"
+      :disabled="deleting"
+      :placement="phase === 'ongoing' ? 'below' : 'side'"
+      @delete="emit('delete', trip)"
+    />
   </li>
 </template>
 
@@ -446,8 +392,7 @@ function askToDelete() {
   color: var(--color-primary);
 }
 
-.open-today,
-.menu {
+.open-today {
   position: relative;
   z-index: 1;
 }
@@ -467,54 +412,6 @@ function askToDelete() {
 
 .trip-length {
   color: var(--color-subtle);
-}
-
-.menu-button {
-  width: 2.25rem;
-  padding: 0;
-  color: var(--color-subtle);
-}
-
-.menu-button svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-
-.menu-panel {
-  position: absolute;
-  top: calc(100% + 0.3rem);
-  right: 0;
-  min-width: 9.5rem;
-  padding: 0.3rem;
-}
-
-.menu-item {
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  font: inherit;
-  font-size: 0.92rem;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.menu-item.danger {
-  color: var(--color-danger);
-}
-
-.menu-item.danger:hover,
-.menu-item.danger:focus-visible {
-  background: var(--color-danger-soft);
-  outline: none;
-}
-
-.upcoming .menu-panel,
-.past .menu-panel {
-  top: 50%;
-  right: calc(100% + 0.25rem);
-  transform: translateY(-50%);
 }
 
 @media (max-width: 560px) {

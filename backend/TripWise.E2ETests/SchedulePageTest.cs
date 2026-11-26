@@ -19,6 +19,7 @@ public abstract class SchedulePageTest : PageTest
     [SetUp]
     public async Task CreateTripAndOpenSchedule()
     {
+        await DevToolsOverlay.HideAsync(Context);
         TripName = $"E2E {Guid.NewGuid():N}"[..16];
 
         var response = await Page.APIRequest.PostAsync("/api/trips", new()

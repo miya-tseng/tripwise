@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, ref, watch } from 'vue'
+import { RouterLink, routerKey } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppBar from '@/components/AppBar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -11,19 +12,28 @@ import { dateParts } from '@/utils/date'
 import { greeting, tripsSummary } from '@/utils/tripTheme'
 import { groupTrips, todayIso } from '@/utils/trips'
 
-const props = withDefaults(defineProps<{ today?: string }>(), { today: () => todayIso() })
+const props = withDefaults(defineProps<{ today?: string; create?: string }>(), {
+  today: () => todayIso(),
+  create: undefined,
+})
+
+const HOME_UPCOMING_LIMIT = 3
+const router = inject(routerKey, null)
 
 const store = useTripsStore()
 const { trips, loading, error, deletingId } = storeToRefs(store)
 
 const newTripOpen = ref(false)
-const upcomingList = ref<InstanceType<typeof TripList> | null>(null)
-const pastOpen = ref(false)
 const tripToDelete = ref<Trip | null>(null)
 
 const groups = computed(() => groupTrips(trips.value, props.today))
 const hasTrips = computed(() => trips.value.length > 0)
 const greetingText = greeting()
+const allTripsDetail = computed(() => {
+  const count = `${trips.value.length} ${trips.value.length === 1 ? 'trip' : 'trips'}`
+  const past = groups.value.past.length > 0 ? ` · ${groups.value.past.length} past` : ''
+  return `${count}${past} · search and browse by month`
+})
 const summary = computed(() => tripsSummary(groups.value))
 const todayLabel = computed(() => {
   const { weekday, month, day } = dateParts(props.today)
@@ -47,7 +57,21 @@ function openNewTrip() {
 function closeNewTrip() {
   newTripOpen.value = false
   store.clearError()
+
+  if (props.create) {
+    router?.replace({ name: 'home' })
+  }
 }
+
+watch(
+  () => props.create,
+  (create) => {
+    if (create) {
+      openNewTrip()
+    }
+  },
+  { immediate: true },
+)
 
 async function createTrip(input: CreateTripInput): Promise<boolean> {
   return store.create(input)
@@ -147,38 +171,19 @@ function confirmDelete() {
 
       <section class="group" data-testid="upcoming-section">
         <div class="section-header">
-          <h2 class="section-title">Upcoming</h2>
-          <span class="chip">{{ groups.upcoming.length }}</span>
-          <div
-            v-if="upcomingList && (upcomingList.canScrollBack || upcomingList.canScrollForward)"
-            class="row-arrows"
+          <h2 class="section-title">Coming up</h2>
+          <RouterLink
+            v-if="groups.upcoming.length > HOME_UPCOMING_LIMIT"
+            :to="{ name: 'all-trips' }"
+            class="see-all"
+            data-testid="see-all-upcoming"
           >
-            <button
-              type="button"
-              class="arrow"
-              aria-label="Earlier trips"
-              :disabled="!upcomingList.canScrollBack"
-              data-testid="upcoming-back"
-              @click="upcomingList.scroll(-1)"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              class="arrow"
-              aria-label="Later trips"
-              :disabled="!upcomingList.canScrollForward"
-              data-testid="upcoming-forward"
-              @click="upcomingList.scroll(1)"
-            >
-              ›
-            </button>
-          </div>
+            See all {{ groups.upcoming.length }}
+          </RouterLink>
         </div>
         <TripList
           v-if="groups.upcoming.length > 0"
-          ref="upcomingList"
-          :trips="groups.upcoming"
+          :trips="groups.upcoming.slice(0, HOME_UPCOMING_LIMIT)"
           phase="upcoming"
           :today="today"
           :deleting-id="deletingId"
@@ -195,36 +200,14 @@ function confirmDelete() {
         </button>
       </section>
 
-      <section v-if="groups.past.length > 0" class="group past" data-testid="past-section">
-        <button
-          type="button"
-          class="past-toggle"
-          :aria-expanded="pastOpen"
-          data-testid="toggle-past"
-          @click="pastOpen = !pastOpen"
-        >
-          <svg class="caret" :class="{ open: pastOpen }" viewBox="0 0 20 20" aria-hidden="true">
-            <path
-              d="m8 5 5 5-5 5"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-          <span class="section-title">Past trips</span>
-          <span class="chip">{{ groups.past.length }}</span>
-        </button>
-        <TripList
-          v-if="pastOpen"
-          :trips="groups.past"
-          phase="past"
-          :today="today"
-          :deleting-id="deletingId"
-          @delete="tripToDelete = $event"
-        />
-      </section>
+      <RouterLink :to="{ name: 'all-trips' }" class="all-trips card" data-testid="all-trips-link">
+        <span class="all-trips-icon" aria-hidden="true">🧳</span>
+        <span class="all-trips-text">
+          <span class="all-trips-title">All trips</span>
+          <span class="all-trips-detail">{{ allTripsDetail }}</span>
+        </span>
+        <span class="all-trips-go" aria-hidden="true">→</span>
+      </RouterLink>
     </template>
 
     <NewTripDialog :open="newTripOpen" :submit="createTrip" :error="error" @close="closeNewTrip" />
@@ -305,37 +288,64 @@ h1 {
   gap: 0.6rem;
 }
 
-.row-arrows {
+.see-all {
   margin-left: auto;
-  display: flex;
-  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
 }
 
-.arrow {
+.see-all:hover {
+  text-decoration: underline;
+}
+
+.all-trips {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.all-trips:hover {
+  border-color: rgb(31 92 86 / 0.3);
+  transform: translateY(-1px);
+}
+
+.all-trips-icon {
   display: grid;
   place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  padding: 0;
-  font-size: 1.3rem;
-  line-height: 1;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  cursor: pointer;
+  width: 2.6rem;
+  height: 2.6rem;
+  font-size: 1.25rem;
+  background: var(--color-primary-soft);
+  border-radius: 12px;
 }
 
-.arrow:disabled {
-  color: var(--color-subtle);
-  cursor: default;
-  opacity: 0.5;
+.all-trips-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-@media (max-width: 720px) {
-  .row-arrows {
-    display: none;
-  }
+.all-trips-title {
+  font-weight: 700;
+}
+
+.all-trips-detail {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.all-trips-go {
+  font-size: 1.2rem;
+  color: var(--color-primary);
 }
 
 .add-upcoming {
@@ -352,39 +362,6 @@ h1 {
 .add-upcoming:hover {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
-}
-
-.past-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  align-self: flex-start;
-  padding: 0.25rem 0.5rem 0.25rem 0.15rem;
-  font: inherit;
-  color: var(--color-muted);
-  background: none;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.past-toggle .section-title {
-  color: var(--color-muted);
-}
-
-.past-toggle:hover .section-title {
-  color: var(--color-text);
-}
-
-.caret {
-  flex-shrink: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  transition: transform 0.18s ease;
-}
-
-.caret.open {
-  transform: rotate(90deg);
 }
 
 .loading {

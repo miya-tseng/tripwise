@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
   <nav class="bottom-nav" aria-label="Trip navigation" data-testid="bottom-nav">
-    <RouterLink to="/" class="nav-item" data-testid="nav-trips">
+    <RouterLink :to="{ name: 'home' }" class="nav-item" data-testid="nav-trips">
       <span class="nav-icon" aria-hidden="true">🏠</span>
       <span class="nav-label">Trips</span>
     </RouterLink>

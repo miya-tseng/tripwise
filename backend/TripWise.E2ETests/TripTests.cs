@@ -24,6 +24,7 @@ public class TripTests : PageTest
     [SetUp]
     public async Task OpenHomePage()
     {
+        await DevToolsOverlay.HideAsync(Context);
         await Page.GotoAsync("/");
         await Expect(Page.GetByTestId("app-bar")).ToBeVisibleAsync();
     }
@@ -58,9 +59,8 @@ public class TripTests : PageTest
         await SelectDatesAsync(start, start.AddDays(2));
         await CreateAsync(name);
 
-        var trip = UpcomingSection().GetByTestId("trip-item").Filter(new() { HasText = name });
-        await Expect(trip).ToBeVisibleAsync();
-        await Expect(trip.GetByTestId("trip-countdown")).ToHaveTextAsync(new Regex("^In "));
+        var row = await FindInAllTripsAsync(name);
+        await Expect(row.GetByTestId("trip-row-status")).ToHaveTextAsync(new Regex("^In "));
     }
 
     [Test]
@@ -80,7 +80,9 @@ public class TripTests : PageTest
         await SelectDatesAsync(start, start.AddDays(1));
         await CreateAsync(name);
 
-        await Expect(TripItem(name).GetByTestId("trip-destination")).ToHaveTextAsync("Osaka, Japan");
+        var row = await FindInAllTripsAsync(name);
+        await Expect(row.GetByTestId("trip-row-meta")).ToContainTextAsync("Osaka");
+        await Expect(row).ToContainTextAsync("🇯🇵");
     }
 
     [Test]
@@ -101,27 +103,42 @@ public class TripTests : PageTest
     }
 
     [Test]
-    public async Task PastTrips_AreCollapsedUntilOpened()
+    public async Task PastTrips_AreOnTheAllTripsPage()
     {
-        await CreateTripThroughApiAsync(FirstDayOfNextMonth.AddDays(1), FirstDayOfNextMonth.AddDays(2));
         var name = await CreateTripThroughApiAsync(Today.AddYears(-1), Today.AddYears(-1).AddDays(2));
         await Page.ReloadAsync();
+        await Expect(Page.GetByTestId("trip-item").Filter(new() { HasText = name })).ToHaveCountAsync(0);
 
-        var pastTrip = Page.GetByTestId("past-section").GetByTestId("trip-item").Filter(new() { HasText = name });
-        await Expect(pastTrip).ToHaveCountAsync(0);
+        await Page.GetByTestId("all-trips-link").ClickAsync();
+        await Page.GetByTestId("trip-search").FillAsync(name);
+        await Expect(Page.GetByTestId("no-trips")).ToBeVisibleAsync();
+        await Page.GetByTestId("tab-past").ClickAsync();
 
-        await Page.GetByTestId("toggle-past").ClickAsync();
+        var row = Page.GetByTestId("trip-row").Filter(new() { HasText = name });
+        await Expect(row.GetByTestId("trip-row-status")).ToHaveTextAsync("3 days");
+    }
 
-        await Expect(pastTrip).ToBeVisibleAsync();
-        await Expect(pastTrip).ToContainTextAsync("3 days");
+    [Test]
+    public async Task Home_ShowsOnlyTheNextThreeTrips()
+    {
+        for (var index = 0; index < 4; index++)
+        {
+            await CreateTripThroughApiAsync(Today.AddDays(1 + index), Today.AddDays(1 + index));
+        }
+        await Page.ReloadAsync();
+
+        await Expect(UpcomingSection().GetByTestId("trip-item")).ToHaveCountAsync(3);
+        await Expect(UpcomingSection().GetByTestId("see-all-upcoming")).ToBeVisibleAsync();
+
+        await UpcomingSection().GetByTestId("see-all-upcoming").ClickAsync();
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "All trips", Level = 1 })).ToBeVisibleAsync();
     }
 
     [Test]
     public async Task DeleteTrip_FromTheMenu_RemovesIt()
     {
         var name = await CreateTripThroughApiAsync(FirstDayOfNextMonth.AddDays(4), FirstDayOfNextMonth.AddDays(4));
-        await Page.ReloadAsync();
-        var trip = TripItem(name);
+        var trip = await FindInAllTripsAsync(name);
 
         await trip.GetByTestId("trip-menu").ClickAsync();
         await trip.GetByRole(AriaRole.Menuitem, new() { Name = "Delete trip" }).ClickAsync();
@@ -137,8 +154,7 @@ public class TripTests : PageTest
     public async Task CancelDelete_KeepsTheTrip()
     {
         var name = await CreateTripThroughApiAsync(FirstDayOfNextMonth.AddDays(14), FirstDayOfNextMonth.AddDays(15));
-        await Page.ReloadAsync();
-        var trip = TripItem(name);
+        var trip = await FindInAllTripsAsync(name);
 
         await trip.GetByTestId("trip-menu").ClickAsync();
         await trip.GetByTestId("delete-button").ClickAsync();
@@ -179,8 +195,15 @@ public class TripTests : PageTest
 
     private ILocator UpcomingSection() => Page.GetByTestId("upcoming-section");
 
-    private ILocator TripItem(string name) =>
-        Page.GetByTestId("trip-item").Filter(new() { HasText = name });
+    private async Task<ILocator> FindInAllTripsAsync(string name)
+    {
+        await Page.GotoAsync("/trips");
+        await Page.GetByTestId("trip-search").FillAsync(name);
+        var row = Page.GetByTestId("trip-row").Filter(new() { HasText = name });
+        await Expect(row).ToHaveCountAsync(1);
+        return row;
+    }
+
 
     private ILocator DayCell(DateOnly date) =>
         Page.Locator($"[data-test-id='dp-{date:yyyy-MM-dd}']");
