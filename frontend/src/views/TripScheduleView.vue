@@ -93,6 +93,7 @@ const fabOpen = ref(false)
 const staysOpen = ref(false)
 let headerObserver: ResizeObserver | undefined
 let scrollFrame = 0
+let jumpLockUntil = 0
 const editingStay = ref<Stay | null>(null)
 const stayCheckIn = ref<string | null>(null)
 const stayCheckOut = ref<string | null>(null)
@@ -228,11 +229,26 @@ function dayElements(): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>('[data-testid="schedule-day"]'))
 }
 
+function isVisible(element: HTMLElement | undefined): boolean {
+  if (!element) {
+    return false
+  }
+
+  const box = element.getBoundingClientRect()
+  return box.bottom > headerOffset.value && box.top < window.innerHeight
+}
+
 function updateActiveDay() {
   scrollFrame = 0
   const days = dayElements()
 
-  if (days.length === 0) {
+  if (days.length === 0 || Date.now() < jumpLockUntil) {
+    return
+  }
+
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
+
+  if (atBottom && isVisible(days[activeDayIndex.value])) {
     return
   }
 
@@ -249,6 +265,7 @@ function onScroll() {
 
 function jumpToDay(index: number) {
   activeDayIndex.value = index
+  jumpLockUntil = Date.now() + 900
   dayElements()[index]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
 }
 
