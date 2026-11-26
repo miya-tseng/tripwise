@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { searchPlaces } from '@/api/places'
+import { useFloatingPanel } from '@/composables/useFloatingPanel'
 import { MIN_PLACE_QUERY_LENGTH, type GeoPoint, type PlaceSuggestion } from '@/types/place'
 
 const props = withDefaults(
@@ -31,12 +32,15 @@ const open = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const activeIndex = ref(-1)
+const searchBox = ref<HTMLElement | null>(null)
+const panelElement = ref<HTMLElement | null>(null)
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 let latestRequest = 0
 
 const trimmedQuery = computed(() => query.value.trim())
 const showPanel = computed(() => open.value && trimmedQuery.value.length >= MIN_PLACE_QUERY_LENGTH)
+const floating = useFloatingPanel(searchBox, panelElement, showPanel)
 const activeOptionId = computed(() =>
   showPanel.value && activeIndex.value >= 0 ? `${listboxId}-${activeIndex.value}` : undefined,
 )
@@ -188,7 +192,7 @@ function onKeydown(event: KeyboardEvent) {
     </div>
 
     <template v-else>
-      <div class="search-input">
+      <div ref="searchBox" class="search-input">
         <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true">
           <circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.7" />
           <path
@@ -221,7 +225,13 @@ function onKeydown(event: KeyboardEvent) {
         <span v-if="loading && showPanel" class="spinner" aria-hidden="true" />
       </div>
 
-      <div v-show="showPanel" class="popover-menu place-panel" data-testid="place-panel">
+      <div
+        v-show="showPanel"
+        ref="panelElement"
+        class="popover-menu place-panel"
+        :style="floating.style.value"
+        data-testid="place-panel"
+      >
         <p v-if="error" class="panel-message error" role="alert" data-testid="place-search-error">
           {{ error }}
         </p>
@@ -307,15 +317,15 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .place-panel {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  right: 0;
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
   padding: 0.35rem;
 }
 
 .place-options {
+  min-height: 0;
   max-height: 18rem;
   margin: 0;
   padding: 0;

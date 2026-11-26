@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { useFloatingPanel } from '@/composables/useFloatingPanel'
 
 const props = withDefaults(
   defineProps<{
@@ -28,6 +29,7 @@ const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
 const panel = ref<HTMLElement | null>(null)
 const open = ref(false)
+const floating = useFloatingPanel(trigger, panel, open, { align: props.align, matchWidth: false })
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
@@ -157,7 +159,8 @@ function onPanelKeydown(event: KeyboardEvent) {
         :id="panelId"
         ref="panel"
         class="popover-menu time-panel"
-        :class="`align-${align}`"
+        :class="`placement-${floating.placement.value}`"
+        :style="floating.style.value"
         role="dialog"
         :aria-label="label ? `Choose ${label.toLowerCase()} time` : 'Choose time'"
         data-testid="time-panel"
@@ -239,23 +242,17 @@ function onPanelKeydown(event: KeyboardEvent) {
 }
 
 .time-panel {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 0.4rem);
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
   width: 10.5rem;
   padding: 0.5rem;
 }
 
-.align-start {
-  left: 0;
-}
-
-.align-end {
-  right: 0;
-}
-
 .column-labels,
 .columns {
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.35rem;

@@ -289,6 +289,7 @@ async function onSubmit() {
         <SelectMenu
           v-model="currency"
           class="cost-currency"
+          align="end"
           name="currency"
           :options="currencyOptions"
           data-testid="currency-select"
@@ -543,7 +544,6 @@ async function onSubmit() {
 }
 
 .cost-currency :deep(.select-menu) {
-  left: auto;
   width: 15rem;
 }
 

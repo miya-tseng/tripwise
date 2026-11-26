@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { useFloatingPanel } from '@/composables/useFloatingPanel'
 
 export interface SelectOption {
   value: string
@@ -7,12 +8,20 @@ export interface SelectOption {
   hint?: string
 }
 
-const props = defineProps<{
-  modelValue: string
-  options: SelectOption[]
-  name?: string
-  placeholder?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    options: SelectOption[]
+    name?: string
+    placeholder?: string
+    align?: 'start' | 'end'
+  }>(),
+  {
+    name: undefined,
+    placeholder: undefined,
+    align: 'start',
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -24,6 +33,7 @@ const trigger = ref<HTMLButtonElement | null>(null)
 const listbox = ref<HTMLUListElement | null>(null)
 const open = ref(false)
 const activeIndex = ref(-1)
+const floating = useFloatingPanel(trigger, listbox, open, { align: props.align })
 
 const selectedIndex = computed(() =>
   props.options.findIndex((option) => option.value === props.modelValue),
@@ -178,6 +188,8 @@ function onKeydown(event: KeyboardEvent) {
         :id="listboxId"
         ref="listbox"
         class="popover-menu select-menu"
+        :class="`placement-${floating.placement.value}`"
+        :style="floating.style.value"
         role="listbox"
         tabindex="-1"
         data-testid="select-menu"
@@ -273,11 +285,8 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .select-menu {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  right: 0;
+  position: fixed;
+  z-index: 300;
   max-height: 16rem;
   margin: 0;
   padding: 0.35rem;
