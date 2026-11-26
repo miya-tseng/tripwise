@@ -401,6 +401,13 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
               <span class="budget-value" data-testid="trip-total">{{ budget }}</span>
             </div>
             <div class="bar-actions">
+              <RouterLink
+                :to="{ name: 'trip-overview', params: { id } }"
+                class="btn btn-secondary btn-small"
+                data-testid="open-overview"
+              >
+                📊 Overview
+              </RouterLink>
               <button
                 type="button"
                 class="btn btn-secondary btn-small"

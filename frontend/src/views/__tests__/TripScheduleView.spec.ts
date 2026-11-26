@@ -725,6 +725,17 @@ describe('TripScheduleView', () => {
     })
   })
 
+  it('links to the trip overview', async () => {
+    mockLoadedTrip()
+
+    const wrapper = await mountView()
+    const link = wrapper
+      .findAllComponents(RouterLinkStub)
+      .find((item) => item.attributes('data-testid') === 'open-overview')
+
+    expect(link?.props('to')).toEqual({ name: 'trip-overview', params: { id: 'tokyo-id' } })
+  })
+
   describe('quick stays', () => {
     const inn = {
       id: 'inn',
