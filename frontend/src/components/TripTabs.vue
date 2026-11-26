@@ -28,32 +28,33 @@ defineProps<{
 <style scoped>
 .trip-tabs {
   display: inline-flex;
-  gap: 0.25rem;
+  align-self: stretch;
+  gap: 1.4rem;
 }
 
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.86rem;
+  gap: 0.4rem;
+  margin-bottom: -1px;
+  padding: 0.55rem 0.1rem 0.6rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-muted);
   text-decoration: none;
-  border-radius: 999px;
+  border-bottom: 2px solid transparent;
   transition:
-    background 0.15s,
-    color 0.15s;
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .tab:hover {
   color: var(--color-text);
-  background: rgb(27 36 49 / 0.05);
 }
 
 .tab.active {
   color: var(--color-primary);
-  background: var(--color-primary-soft);
+  border-bottom-color: var(--color-primary);
 }
 
 @media (max-width: 720px) {

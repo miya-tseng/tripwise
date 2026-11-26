@@ -543,7 +543,6 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
                 >
               </p>
             </div>
-            <TripTabs :trip-id="id" active="itinerary" class="tabs" />
             <div class="budget" :title="ratesNote">
               <span class="budget-label">Budget</span>
               <span class="budget-value" data-testid="trip-total">{{ budget }}</span>
@@ -572,6 +571,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           </div>
 
           <div class="bar-bottom">
+            <TripTabs :trip-id="id" active="itinerary" class="tabs" />
             <div class="view-toggle" role="group" aria-label="Schedule view">
               <button
                 v-for="option in viewOptions"
@@ -935,7 +935,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
 .bar-inner {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0.85rem clamp(1rem, 3vw, 2rem) 0.7rem;
+  padding: 0.85rem clamp(1rem, 3vw, 2rem) 0;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -1033,13 +1033,21 @@ h1 {
   min-width: 0;
 }
 
-.bar-bottom .day-strip-row {
-  flex: 1;
-  min-width: 0;
+.bar-bottom {
+  align-items: flex-end;
 }
 
-.bar-bottom .filters {
+.bar-bottom .view-toggle {
   margin-left: auto;
+}
+
+.bar-bottom .view-toggle,
+.bar-bottom .filters {
+  margin-bottom: 0.5rem;
+}
+
+.bar-bottom .day-strip-row {
+  display: none;
 }
 
 .view-toggle {
@@ -1304,7 +1312,29 @@ h1 {
     gap: 0.5rem;
   }
 
+  .bar-inner {
+    padding-bottom: 0.5rem;
+  }
+
+  .bar-bottom {
+    align-items: center;
+  }
+
+  .bar-bottom .view-toggle,
+  .bar-bottom .filters {
+    margin-bottom: 0;
+  }
+
+  .bar-bottom .view-toggle {
+    margin-left: 0;
+  }
+
+  .bar-bottom .filters {
+    margin-left: auto;
+  }
+
   .bar-bottom .day-strip-row {
+    display: flex;
     order: 3;
     flex-basis: 100%;
   }

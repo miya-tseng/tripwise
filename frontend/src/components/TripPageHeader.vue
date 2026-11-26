@@ -30,6 +30,8 @@ defineProps<{
         <p class="trip-name" data-testid="header-trip-name">{{ name }}</p>
         <p v-if="meta" class="trip-meta">{{ meta }}</p>
       </div>
+    </div>
+    <div class="tabs-row">
       <TripTabs :trip-id="tripId" :active="active" />
     </div>
   </header>
@@ -51,7 +53,14 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  padding: 0.7rem clamp(1rem, 3vw, 2rem);
+  padding: 0.7rem clamp(1rem, 3vw, 2rem) 0.2rem;
+}
+
+.tabs-row {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3vw, 2rem);
+  display: flex;
 }
 
 .back-link {
@@ -91,5 +100,14 @@ defineProps<{
 .trip-meta {
   font-size: 0.8rem;
   color: var(--color-muted);
+}
+@media (max-width: 720px) {
+  .header-inner {
+    padding-bottom: 0.7rem;
+  }
+
+  .tabs-row {
+    display: none;
+  }
 }
 </style>
