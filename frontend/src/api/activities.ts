@@ -36,3 +36,20 @@ export async function fetchSuggestions(tripId: string, activityId: string): Prom
   const response = await request(`${tripUrl(tripId)}/activities/${activityId}/suggestions`)
   return response.json()
 }
+
+export interface MoveActivityInput {
+  date: string
+  startTime: string
+}
+
+export async function moveActivity(
+  tripId: string,
+  activityId: string,
+  input: MoveActivityInput,
+): Promise<Activity> {
+  const response = await request(
+    `${tripUrl(tripId)}/activities/${activityId}/move`,
+    jsonBody('PATCH', input),
+  )
+  return response.json()
+}

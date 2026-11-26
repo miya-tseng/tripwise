@@ -5,7 +5,9 @@ import {
   deleteActivity,
   fetchSchedule,
   fetchSuggestions,
+  moveActivity,
   updateActivity,
+  type MoveActivityInput,
 } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
@@ -98,6 +100,23 @@ export const useScheduleStore = defineStore('schedule', () => {
 
     try {
       const activity = await updateActivity(trip.value.id, activityId, input)
+      days.value = withActivity(days.value, activity)
+      return true
+    } catch (e) {
+      error.value = toMessage(e)
+      return false
+    }
+  }
+
+  async function move(activityId: string, input: MoveActivityInput): Promise<boolean> {
+    if (!trip.value) {
+      return false
+    }
+
+    error.value = null
+
+    try {
+      const activity = await moveActivity(trip.value.id, activityId, input)
       days.value = withActivity(days.value, activity)
       return true
     } catch (e) {
@@ -210,6 +229,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     load,
     add,
     update,
+    move,
     remove,
     clearError,
     editTrip,

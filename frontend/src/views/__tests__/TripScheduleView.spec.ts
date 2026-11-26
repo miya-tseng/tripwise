@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { addActivity, fetchSchedule, fetchSuggestions, updateActivity } from '@/api/activities'
+import {
+  addActivity,
+  fetchSchedule,
+  fetchSuggestions,
+  moveActivity,
+  updateActivity,
+} from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
 import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
 import ActivityForm from '@/components/ActivityForm.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
+import BoardView from '@/components/BoardView.vue'
+import ScheduleDays from '@/components/ScheduleDays.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import { createMemoryStorage } from '@/test/memoryStorage'
 import TripScheduleView from '../TripScheduleView.vue'
@@ -522,6 +530,54 @@ describe('TripScheduleView', () => {
       await flushPromises()
 
       expect(wrapper.findComponent(SuggestionsPanel).exists()).toBe(false)
+    })
+  })
+
+  describe('board view', () => {
+    it('switches between the timeline and the board', async () => {
+      mockLoadedTrip()
+      const wrapper = await mountView()
+      expect(wrapper.findComponent(ScheduleDays).exists()).toBe(true)
+
+      await wrapper.find('[data-testid="view-board"]').trigger('click')
+
+      expect(wrapper.findComponent(BoardView).exists()).toBe(true)
+      expect(wrapper.findComponent(ScheduleDays).exists()).toBe(false)
+      expect(wrapper.find('[data-testid="view-board"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('moves an activity dropped on the board', async () => {
+      mockLoadedTrip()
+      vi.mocked(moveActivity).mockResolvedValue({ ...shibuya, date: '2026-12-02' })
+      const wrapper = await mountView()
+      await wrapper.find('[data-testid="view-board"]').trigger('click')
+
+      wrapper
+        .findComponent(BoardView)
+        .vm.$emit('move', { activityId: 'shibuya-id', date: '2026-12-02', startTime: '15:00' })
+      await flushPromises()
+
+      expect(moveActivity).toHaveBeenCalledWith('tokyo-id', 'shibuya-id', {
+        date: '2026-12-02',
+        startTime: '15:00',
+      })
+      expect(wrapper.findComponent(BoardView).props('days')[1]?.activities[0]?.name).toBe('Shibuya')
+    })
+
+    it('shows the error when a move is rejected', async () => {
+      mockLoadedTrip()
+      vi.mocked(moveActivity).mockRejectedValue(new Error('The activity would end after midnight.'))
+      const wrapper = await mountView()
+      await wrapper.find('[data-testid="view-board"]').trigger('click')
+
+      wrapper
+        .findComponent(BoardView)
+        .vm.$emit('move', { activityId: 'shibuya-id', date: '2026-12-01', startTime: '23:30' })
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="schedule-error"]').text()).toContain(
+        'The activity would end after midnight.',
+      )
     })
   })
 })

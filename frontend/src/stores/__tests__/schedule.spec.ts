@@ -5,6 +5,7 @@ import {
   deleteActivity,
   fetchSchedule,
   fetchSuggestions,
+  moveActivity,
   updateActivity,
 } from '@/api/activities'
 import { fetchExchangeRates } from '@/api/exchangeRates'
@@ -337,6 +338,33 @@ describe('schedule store', () => {
       store.dropSuggestion('skytree-id')
 
       expect(store.suggestions).toEqual([])
+    })
+  })
+
+  describe('move', () => {
+    it('moves the activity to its new day', async () => {
+      const store = await loadedStore()
+      vi.mocked(moveActivity).mockResolvedValue({ ...shibuya, date: '2026-12-02' })
+
+      const moved = await store.move(shibuya.id, { date: '2026-12-02', startTime: '15:00' })
+
+      expect(moved).toBe(true)
+      expect(moveActivity).toHaveBeenCalledWith('tokyo-id', 'shibuya-id', {
+        date: '2026-12-02',
+        startTime: '15:00',
+      })
+      expect(namesPerDay(store)).toEqual([[], ['Shibuya']])
+    })
+
+    it('keeps the schedule and the error when the move is rejected', async () => {
+      const store = await loadedStore()
+      vi.mocked(moveActivity).mockRejectedValue(new Error('The activity overlaps with "Senso-ji"'))
+
+      const moved = await store.move(shibuya.id, { date: '2026-12-02', startTime: '15:00' })
+
+      expect(moved).toBe(false)
+      expect(store.error).toBe('The activity overlaps with "Senso-ji"')
+      expect(namesPerDay(store)).toEqual([['Shibuya'], []])
     })
   })
 })

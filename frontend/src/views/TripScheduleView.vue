@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import ActivityForm, { type ActivityPrefill } from '@/components/ActivityForm.vue'
+import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
@@ -41,6 +42,14 @@ const {
 const editing = ref<Activity | null>(null)
 const tripEditorOpen = ref(false)
 const prefill = ref<ActivityPrefill | null>(null)
+const scheduleView = ref<'timeline' | 'board'>('timeline')
+const movingId = ref<string | null>(null)
+
+async function moveActivity(request: MoveRequest) {
+  movingId.value = request.activityId
+  await store.move(request.activityId, { date: request.date, startTime: request.startTime })
+  movingId.value = null
+}
 const formVersion = ref(0)
 const formKey = computed(() => editing.value?.id ?? `new-${formVersion.value}`)
 
@@ -281,7 +290,27 @@ async function removeActivity(id: string) {
 
         <section class="schedule-panel">
           <div class="schedule-header">
-            <h2 class="section-title schedule-title">Schedule</h2>
+            <div class="schedule-heading">
+              <h2 class="section-title schedule-title">Schedule</h2>
+              <div class="view-toggle" role="group" aria-label="Schedule view">
+                <button
+                  type="button"
+                  :aria-pressed="scheduleView === 'timeline'"
+                  data-testid="view-timeline"
+                  @click="scheduleView = 'timeline'"
+                >
+                  Timeline
+                </button>
+                <button
+                  type="button"
+                  :aria-pressed="scheduleView === 'board'"
+                  data-testid="view-board"
+                  @click="scheduleView = 'board'"
+                >
+                  Board
+                </button>
+              </div>
+            </div>
             <p
               v-if="ratesNote"
               class="rates-note"
@@ -292,12 +321,20 @@ async function removeActivity(id: string) {
             </p>
           </div>
           <ScheduleDays
+            v-if="scheduleView === 'timeline'"
             :days="days"
             :editing-id="editing?.id ?? null"
             :deleting-id="deletingId"
             @edit="startEditing"
             @delete="removeActivity"
             @suggest="showSuggestions"
+          />
+          <BoardView
+            v-else
+            :days="days"
+            :moving-id="movingId"
+            @move="moveActivity"
+            @edit="startEditing"
           />
         </section>
       </div>
@@ -522,6 +559,36 @@ h1 {
 
 .schedule-panel {
   min-width: 0;
+}
+
+.schedule-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.view-toggle {
+  display: inline-flex;
+  padding: 0.2rem;
+  background: rgb(27 36 49 / 0.05);
+  border-radius: 10px;
+}
+
+.view-toggle button {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.view-toggle button[aria-pressed='true'] {
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .schedule-header {

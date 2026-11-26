@@ -5,6 +5,7 @@ import {
   deleteActivity,
   fetchSchedule,
   fetchSuggestions,
+  moveActivity,
   updateActivity,
 } from '../activities'
 
@@ -125,6 +126,18 @@ describe('activities api', () => {
     await expect(fetchSuggestions(tripId, sensoji.id)).rejects.toMatchObject({
       status: 503,
       message: detail,
+    })
+  })
+
+  it('patches the new day and start time of an activity', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(sensoji))
+
+    await moveActivity(tripId, sensoji.id, { date: '2026-12-02', startTime: '14:00' })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/trips/trip-id/activities/senso-ji-id/move', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-12-02', startTime: '14:00' }),
     })
   })
 })
