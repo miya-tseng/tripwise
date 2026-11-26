@@ -6,7 +6,7 @@ namespace TripWise.Api.Controllers;
 
 [ApiController]
 [Route("api/trips/{tripId:guid}")]
-public class ActivitiesController(ActivityService activityService) : ControllerBase
+public class ActivitiesController(ActivityService activityService, SuggestionService suggestionService) : ControllerBase
 {
     [HttpPost("activities")]
     public async Task<ActionResult<ActivityDto>> Add(Guid tripId, SaveActivityDto dto, CancellationToken cancellationToken)
@@ -32,6 +32,17 @@ public class ActivitiesController(ActivityService activityService) : ControllerB
         var deleted = await activityService.DeleteAsync(tripId, id, cancellationToken);
 
         return deleted ? NoContent() : NotFound();
+    }
+
+    [HttpGet("activities/{id:guid}/suggestions")]
+    public async Task<ActionResult<IReadOnlyList<SuggestionDto>>> GetSuggestions(
+        Guid tripId,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var suggestions = await suggestionService.GetSuggestionsAsync(tripId, id, cancellationToken);
+
+        return suggestions is null ? NotFound() : Ok(suggestions);
     }
 
     [HttpGet("schedule")]

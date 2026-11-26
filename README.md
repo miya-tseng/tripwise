@@ -98,8 +98,18 @@ Optional settings: `GooglePlaces:LanguageCode` (default `zh-TW`) and `GooglePlac
 E2E tests expect fake places and fixed rates. If you configured real keys, run the API for E2E with:
 
 ```bash
-GooglePlaces__Provider=Fake ExchangeRates__Provider=Fake dotnet run --project backend/TripWise.Api
+GooglePlaces__Provider=Fake ExchangeRates__Provider=Fake Gemini__Provider=Fake dotnet run --project backend/TripWise.Api
 ```
+
+### AI suggestions (Gemini)
+
+"Suggestions" asks Gemini for places that are usually planned together with an activity's place, then resolves each one to a real place with Google Places. Without a key, fake suggestions are used.
+
+```bash
+dotnet user-secrets set "Gemini:ApiKey" "<gemini key>" --project backend/TripWise.Api
+```
+
+Defaults: `Gemini:Model=gemini-3.5-flash-lite` with fallback `gemini-3.1-flash-lite`, results cached per place for 24 hours. Use a key from a project **without billing** to stay on the free tier.
 
 ### Day map
 

@@ -92,6 +92,7 @@ jobs:
         env:
           ExchangeRates__Provider: Fake
           GooglePlaces__Provider: Fake
+          Gemini__Provider: Fake
         run: |
           dotnet run --project backend/TripWise.Api --launch-profile http > api.log 2>&1 &
 

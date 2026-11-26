@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 using TripWise.Application.Currencies;
 using TripWise.Application.Places;
+using TripWise.Application.Suggestions;
 using TripWise.Infrastructure.Data;
 
 namespace TripWise.IntegrationTests.Support;
@@ -18,6 +19,8 @@ public class TripWiseApiFactory : WebApplicationFactory<Program>
     public TestExchangeRateProvider ExchangeRates { get; } = new();
 
     public TestPlaceSearch PlaceSearch { get; } = new();
+
+    public TestSuggestionGenerator Suggestions { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -35,6 +38,7 @@ public class TripWiseApiFactory : WebApplicationFactory<Program>
         {
             services.Replace(ServiceDescriptor.Singleton<IExchangeRateProvider>(ExchangeRates));
             services.Replace(ServiceDescriptor.Singleton<IPlaceSearch>(PlaceSearch));
+            services.Replace(ServiceDescriptor.Singleton<ISuggestionGenerator>(Suggestions));
         });
     }
 

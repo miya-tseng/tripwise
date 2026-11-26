@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using TripWise.Application;
+using TripWise.Application.Suggestions;
 
 namespace TripWise.Api.Middleware;
 
@@ -12,7 +13,11 @@ public class ExternalServiceExceptionHandler(IProblemDetailsService problemDetai
             return false;
         }
 
-        httpContext.Response.StatusCode = StatusCodes.Status502BadGateway;
+        var (status, title) = exception is SuggestionsUnavailableException
+            ? (StatusCodes.Status503ServiceUnavailable, "Suggestions unavailable")
+            : (StatusCodes.Status502BadGateway, "External service unavailable");
+
+        httpContext.Response.StatusCode = status;
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
@@ -20,9 +25,9 @@ public class ExternalServiceExceptionHandler(IProblemDetailsService problemDetai
             Exception = exception,
             ProblemDetails =
             {
-                Title = "External service unavailable",
+                Title = title,
                 Detail = exception.Message,
-                Status = StatusCodes.Status502BadGateway,
+                Status = status,
             },
         });
     }

@@ -28,5 +28,6 @@ public class Hooks(IObjectContainer container)
         container.RegisterInstanceAs(_factory);
         _factory.ExchangeRates.Available = true;
         _factory.PlaceSearch.Reset();
+        _factory.Suggestions.Reset();
     }
 }
