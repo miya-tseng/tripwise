@@ -4,8 +4,10 @@ import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import ActivityForm from '@/components/ActivityForm.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
+import TripEditDialog from '@/components/TripEditDialog.vue'
 import { useScheduleStore } from '@/stores/schedule'
 import type { Activity, SaveActivityInput } from '@/types/activity'
+import type { UpdateTripInput } from '@/types/trip'
 import { formatDateRange } from '@/utils/date'
 import { formatMoney, tripTotal } from '@/utils/money'
 
@@ -14,9 +16,10 @@ const props = defineProps<{
 }>()
 
 const store = useScheduleStore()
-const { trip, days, loading, loadError, error, deletingId } = storeToRefs(store)
+const { trip, days, loading, loadError, error, deletingId, editTripError } = storeToRefs(store)
 
 const editing = ref<Activity | null>(null)
+const tripEditorOpen = ref(false)
 
 const dates = computed(() => days.value.map((day) => day.date))
 const budget = computed(() => formatMoney(tripTotal(days.value)))
@@ -55,6 +58,25 @@ function startEditing(activity: Activity) {
 function cancelEditing() {
   store.clearError()
   editing.value = null
+}
+
+function openTripEditor() {
+  store.clearEditTripError()
+  tripEditorOpen.value = true
+}
+
+function closeTripEditor() {
+  tripEditorOpen.value = false
+}
+
+async function saveTrip(input: UpdateTripInput): Promise<boolean> {
+  const saved = await store.editTrip(input)
+
+  if (saved) {
+    editing.value = null
+  }
+
+  return saved
 }
 
 async function removeActivity(id: string) {
@@ -98,6 +120,19 @@ async function removeActivity(id: string) {
           <p class="hero-dates" data-testid="trip-dates">
             {{ formatDateRange(trip.startDate, trip.endDate) }}
           </p>
+          <button type="button" class="hero-edit" data-testid="edit-trip" @click="openTripEditor">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path
+                d="m12.5 4.5 3 3M4 16l.8-3.6 8.5-8.5a1.4 1.4 0 0 1 2 0l.8.8a1.4 1.4 0 0 1 0 2l-8.5 8.5L4 16Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Edit trip
+          </button>
         </div>
         <dl class="hero-stats">
           <div class="stat">
@@ -153,6 +188,13 @@ async function removeActivity(id: string) {
           />
         </section>
       </div>
+      <TripEditDialog
+        :open="tripEditorOpen"
+        :trip="trip"
+        :submit="saveTrip"
+        :error="editTripError"
+        @close="closeTripEditor"
+      />
     </template>
   </main>
 </template>
@@ -250,6 +292,39 @@ h1 {
   margin-top: 0.6rem;
   font-size: 1.05rem;
   color: rgb(255 255 255 / 0.78);
+}
+
+.hero-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding: 0.4rem 0.85rem 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.hero-edit svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.hero-edit:hover {
+  background: rgb(255 255 255 / 0.2);
+  border-color: rgb(255 255 255 / 0.35);
+}
+
+.hero-edit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.3);
 }
 
 .hero-stats {

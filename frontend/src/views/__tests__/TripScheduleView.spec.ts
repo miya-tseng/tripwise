@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { addActivity, fetchSchedule, updateActivity } from '@/api/activities'
-import { fetchTrip } from '@/api/trips'
+import { fetchTrip, updateTrip } from '@/api/trips'
 import type { Activity } from '@/types/activity'
 import ActivityForm from '@/components/ActivityForm.vue'
+import TripEditDialog from '@/components/TripEditDialog.vue'
 import TripScheduleView from '../TripScheduleView.vue'
 
 vi.mock('@/api/activities')
@@ -233,5 +234,58 @@ describe('TripScheduleView', () => {
     await wrapper.find('[data-testid="cancel-edit"]').trigger('click')
 
     expect(wrapper.find('.section-title').text()).toBe('Add activity')
+  })
+
+  it('edits the trip from the hero and shows the new details', async () => {
+    mockLoadedTrip()
+    vi.mocked(updateTrip).mockResolvedValue({
+      id: 'tokyo-id',
+      name: 'Osaka',
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
+      days: 3,
+    })
+    const wrapper = await mountView()
+    vi.mocked(fetchSchedule).mockResolvedValue({
+      tripId: 'tokyo-id',
+      days: [
+        { date: '2026-12-01', activities: [shibuya] },
+        { date: '2026-12-02', activities: [] },
+        { date: '2026-12-03', activities: [] },
+      ],
+    })
+
+    await wrapper.find('[data-testid="edit-trip"]').trigger('click')
+    const dialog = wrapper.findComponent(TripEditDialog)
+    expect(dialog.props('open')).toBe(true)
+
+    await dialog.props('submit')({ name: 'Osaka', startDate: '2026-12-01', endDate: '2026-12-03' })
+    dialog.vm.$emit('close')
+    await flushPromises()
+
+    expect(wrapper.find('h1').text()).toBe('Osaka')
+    expect(wrapper.find('[data-testid="trip-days"]').text()).toBe('3')
+    expect(wrapper.findAll('[data-testid="schedule-day"]')).toHaveLength(3)
+    expect(wrapper.findComponent(TripEditDialog).props('open')).toBe(false)
+  })
+
+  it('passes the conflict error to the edit dialog', async () => {
+    mockLoadedTrip()
+    vi.mocked(updateTrip).mockRejectedValue(new Error('1 activity falls outside the new dates.'))
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-testid="edit-trip"]').trigger('click')
+    const saved = await wrapper.findComponent(TripEditDialog).props('submit')({
+      name: 'Tokyo',
+      startDate: '2026-12-02',
+      endDate: '2026-12-02',
+    })
+    await flushPromises()
+
+    expect(saved).toBe(false)
+    expect(wrapper.findComponent(TripEditDialog).props('error')).toBe(
+      '1 activity falls outside the new dates.',
+    )
+    expect(wrapper.find('h1').text()).toBe('Tokyo')
   })
 })

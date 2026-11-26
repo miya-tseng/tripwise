@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, createTrip, deleteTrip, fetchTrips } from '../trips'
+import { ApiError, createTrip, deleteTrip, fetchTrips, updateTrip } from '../trips'
 import type { Trip } from '@/types/trip'
 
 const tokyo: Trip = {
@@ -102,6 +102,32 @@ describe('trips api', () => {
       await expect(
         createTrip({ name: 'Long', startDate: '2026-12-01', endDate: '2027-01-31' }),
       ).rejects.toThrow('A trip cannot be longer than 30 days.')
+    })
+  })
+
+  describe('updateTrip', () => {
+    it('puts the input as json and returns the updated trip', async () => {
+      const updated = { ...tokyo, name: 'Osaka', endDate: '2026-12-07', days: 7 }
+      fetchMock.mockResolvedValue(jsonResponse(updated))
+      const input = { name: 'Osaka', startDate: '2026-12-01', endDate: '2026-12-07' }
+
+      const trip = await updateTrip(tokyo.id, input)
+
+      expect(fetchMock).toHaveBeenCalledWith(`/api/trips/${tokyo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      expect(trip).toEqual(updated)
+    })
+
+    it('throws the conflict detail when activities fall outside the new dates', async () => {
+      const detail = '1 activity falls outside the new dates. Move or delete it first.'
+      fetchMock.mockResolvedValue(jsonResponse({ title: 'Trip dates conflict', detail }, 409))
+
+      await expect(
+        updateTrip(tokyo.id, { name: 'Tokyo', startDate: '2026-12-01', endDate: '2026-12-02' }),
+      ).rejects.toMatchObject({ status: 409, message: detail })
     })
   })
 

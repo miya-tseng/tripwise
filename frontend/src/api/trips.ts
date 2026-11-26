@@ -1,4 +1,4 @@
-import type { CreateTripInput, Trip } from '@/types/trip'
+import type { CreateTripInput, Trip, UpdateTripInput } from '@/types/trip'
 import { jsonBody, request } from './http'
 
 export { ApiError } from './http'
@@ -17,6 +17,11 @@ export async function fetchTrip(id: string): Promise<Trip> {
 
 export async function createTrip(input: CreateTripInput): Promise<Trip> {
   const response = await request(baseUrl, jsonBody('POST', input))
+  return response.json()
+}
+
+export async function updateTrip(id: string, input: UpdateTripInput): Promise<Trip> {
+  const response = await request(`${baseUrl}/${id}`, jsonBody('PUT', input))
   return response.json()
 }
 

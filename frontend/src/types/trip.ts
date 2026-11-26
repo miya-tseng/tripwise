@@ -12,4 +12,6 @@ export interface CreateTripInput {
   endDate: string
 }
 
+export type UpdateTripInput = CreateTripInput
+
 export const MAX_TRIP_DAYS = 30

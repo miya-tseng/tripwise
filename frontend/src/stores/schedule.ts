@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { addActivity, deleteActivity, fetchSchedule, updateActivity } from '@/api/activities'
-import { fetchTrip } from '@/api/trips'
+import { fetchTrip, updateTrip } from '@/api/trips'
 import type { SaveActivityInput, ScheduleDay } from '@/types/activity'
-import type { Trip } from '@/types/trip'
+import type { Trip, UpdateTripInput } from '@/types/trip'
 import { withActivity, withoutActivity } from '@/utils/schedule'
 
 function toMessage(error: unknown): string {
@@ -17,6 +17,7 @@ export const useScheduleStore = defineStore('schedule', () => {
   const loadError = ref<string | null>(null)
   const error = ref<string | null>(null)
   const deletingId = ref<string | null>(null)
+  const editTripError = ref<string | null>(null)
 
   async function load(tripId: string): Promise<void> {
     loading.value = true
@@ -88,6 +89,29 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  async function editTrip(input: UpdateTripInput): Promise<boolean> {
+    if (!trip.value) {
+      return false
+    }
+
+    editTripError.value = null
+
+    try {
+      const updated = await updateTrip(trip.value.id, input)
+      const schedule = await fetchSchedule(updated.id)
+      trip.value = updated
+      days.value = schedule.days
+      return true
+    } catch (e) {
+      editTripError.value = toMessage(e)
+      return false
+    }
+  }
+
+  function clearEditTripError(): void {
+    editTripError.value = null
+  }
+
   function clearError(): void {
     error.value = null
   }
@@ -99,10 +123,13 @@ export const useScheduleStore = defineStore('schedule', () => {
     loadError,
     error,
     deletingId,
+    editTripError,
     load,
     add,
     update,
     remove,
     clearError,
+    editTrip,
+    clearEditTripError,
   }
 })
