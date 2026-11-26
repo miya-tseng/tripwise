@@ -569,6 +569,7 @@ h1 {
 
 .side-column {
   position: sticky;
+  z-index: 5;
   top: 1.5rem;
   display: flex;
   flex-direction: column;
