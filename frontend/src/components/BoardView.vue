@@ -541,4 +541,19 @@ function toggleMenu(activityId: string) {
   background: var(--color-primary);
   border-radius: 999px;
 }
+@media (max-width: 720px) {
+  .board {
+    grid-auto-columns: 86%;
+    gap: 0.6rem;
+    margin: 0 -0.9rem;
+    padding: 0 0.9rem 0.5rem;
+    scroll-padding-inline: 0.9rem;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+  }
+
+  .board-card .card-move .btn {
+    opacity: 1;
+  }
+}
 </style>

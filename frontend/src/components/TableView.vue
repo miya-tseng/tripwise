@@ -299,4 +299,103 @@ td.numeric {
 .place {
   color: var(--color-muted);
 }
+@media (max-width: 720px) {
+  .activity-table,
+  .activity-table thead,
+  .activity-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .activity-table caption {
+    display: none;
+  }
+
+  .activity-table thead tr {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .activity-table thead th {
+    padding: 0;
+    border: 0;
+  }
+
+  .activity-table thead th:last-child {
+    display: none;
+  }
+
+  .activity-table thead th .sort-button {
+    padding: 0.3rem 0.65rem;
+    background: var(--color-surface-muted);
+    border-radius: 999px;
+  }
+
+  .activity-table tbody tr {
+    display: grid;
+  }
+
+  .group-row {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .group-row td:empty {
+    display: none;
+  }
+
+  .activity-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'when cost'
+      'name cost'
+      'meta meta';
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .activity-row td {
+    padding: 0;
+    border: 0;
+  }
+
+  .activity-row .when {
+    grid-area: when;
+    font-size: 0.78rem;
+  }
+
+  .activity-row .name {
+    grid-area: name;
+  }
+
+  .activity-row td:nth-child(3),
+  .activity-row td:nth-child(4) {
+    grid-area: meta;
+    display: inline-flex;
+    font-size: 0.78rem;
+    color: var(--color-muted);
+  }
+
+  .activity-row td:nth-child(4) {
+    justify-self: end;
+  }
+
+  .activity-row td.numeric {
+    grid-area: cost;
+    align-self: center;
+  }
+
+  .activity-row .place {
+    display: none;
+  }
+
+  .group-row th,
+  .group-row td {
+    border: 0;
+  }
+}
 </style>
