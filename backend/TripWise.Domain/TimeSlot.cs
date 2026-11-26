@@ -16,5 +16,17 @@ public sealed record TimeSlot
         End = end;
     }
 
+    public TimeSpan Duration => End - Start;
+
+    public TimeSlot StartingAt(TimeOnly start)
+    {
+        if (start.ToTimeSpan() + Duration >= TimeSpan.FromDays(1))
+        {
+            throw new DomainException("The activity would end after midnight.");
+        }
+
+        return new TimeSlot(start, start.Add(Duration));
+    }
+
     public bool OverlapsWith(TimeSlot other) => Start < other.End && other.Start < End;
 }

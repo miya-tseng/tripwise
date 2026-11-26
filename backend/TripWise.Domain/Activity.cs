@@ -32,6 +32,12 @@ public class Activity
         Place = place;
     }
 
+    internal void MoveTo(DateOnly date, TimeSlot timeSlot)
+    {
+        Date = date;
+        TimeSlot = timeSlot;
+    }
+
     internal bool ConflictsWith(DateOnly date, TimeSlot timeSlot) =>
         Date == date && TimeSlot.OverlapsWith(timeSlot);
 

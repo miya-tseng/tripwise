@@ -45,6 +45,16 @@ public class Trip
         return activity;
     }
 
+    public Activity MoveActivity(Guid activityId, DateOnly date, TimeOnly startTime)
+    {
+        var activity = FindActivity(activityId);
+        var timeSlot = activity.TimeSlot.StartingAt(startTime);
+        EnsureActivityFits(date, timeSlot, excludedActivityId: activityId);
+
+        activity.MoveTo(date, timeSlot);
+        return activity;
+    }
+
     public void RemoveActivity(Guid activityId)
     {
         _activities.Remove(FindActivity(activityId));
