@@ -11,6 +11,13 @@ import {
   formatTwd,
   totalsByCurrency,
 } from '@/utils/money'
+import {
+  dayRouteLink,
+  directionsLink,
+  placeLink,
+  placesOf,
+  previousPlaceOf,
+} from '@/utils/mapsLinks'
 import { formatTime } from '@/utils/schedule'
 
 withDefaults(
@@ -31,6 +38,16 @@ const emit = defineEmits<{
 }>()
 
 const activityToDelete = ref<Activity | null>(null)
+
+function directionsFor(activities: Activity[], index: number): string | null {
+  const place = activities[index]?.place
+  const previous = previousPlaceOf(activities, index)
+  return place && previous ? directionsLink(previous, place) : null
+}
+
+function previousPlaceName(activities: Activity[], index: number): string {
+  return previousPlaceOf(activities, index)?.name ?? ''
+}
 
 function isForeign(activity: Activity): boolean {
   return activity.cost > 0 && activity.currency !== HOME_CURRENCY
@@ -71,6 +88,16 @@ function confirmDelete() {
             {{ day.activities.length }}
             {{ day.activities.length === 1 ? 'activity' : 'activities' }}
           </span>
+          <a
+            v-if="dayRouteLink(placesOf(day.activities))"
+            class="day-route"
+            :href="dayRouteLink(placesOf(day.activities))!"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="day-route-link"
+          >
+            Day route ↗
+          </a>
         </div>
       </header>
 
@@ -78,55 +105,90 @@ function confirmDelete() {
         Nothing planned yet.
       </p>
       <ul v-else class="timeline">
-        <li
-          v-for="activity in day.activities"
-          :key="activity.id"
-          class="activity"
-          :class="{ editing: activity.id === editingId }"
-          data-testid="activity-item"
-        >
-          <span class="dot" aria-hidden="true" />
-          <span class="activity-time" data-testid="activity-time">
-            {{ formatTime(activity.startTime) }} – {{ formatTime(activity.endTime) }}
-          </span>
-          <span class="activity-main">
-            <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
-            <span v-if="activity.place" class="activity-address" data-testid="activity-address">
-              {{ activity.place.address }}
-            </span>
-          </span>
-          <span class="activity-cost" :class="{ free: activity.cost === 0 }">
-            <span data-testid="activity-cost">
-              {{ activity.cost === 0 ? 'Free' : formatCurrency(activity.cost, activity.currency) }}
-            </span>
-            <span
-              v-if="isForeign(activity) && activity.costInTwd !== null"
-              class="activity-cost-twd"
-              data-testid="activity-cost-twd"
+        <template v-for="(activity, activityIndex) in day.activities" :key="activity.id">
+          <li
+            v-if="directionsFor(day.activities, activityIndex)"
+            class="directions"
+            data-testid="directions"
+          >
+            <a
+              :href="directionsFor(day.activities, activityIndex)!"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="directions-link"
             >
-              ≈ {{ formatTwd(activity.costInTwd) }}
+              Directions from {{ previousPlaceName(day.activities, activityIndex) }} ↗
+            </a>
+          </li>
+          <li
+            class="activity"
+            :class="{ editing: activity.id === editingId }"
+            data-testid="activity-item"
+          >
+            <span class="dot" aria-hidden="true" />
+            <span class="activity-time" data-testid="activity-time">
+              {{ formatTime(activity.startTime) }} – {{ formatTime(activity.endTime) }}
             </span>
-          </span>
-          <div class="activity-actions">
-            <button
-              type="button"
-              class="btn btn-ghost btn-small"
-              data-testid="edit-activity"
-              @click="emit('edit', activity)"
+            <span class="activity-main">
+              <span class="activity-name" data-testid="activity-name">{{ activity.name }}</span>
+              <span v-if="activity.place" class="activity-address" data-testid="activity-address">
+                {{ activity.place.address }}
+              </span>
+            </span>
+            <a
+              v-if="activity.place"
+              class="map-link"
+              :href="placeLink(activity.place)"
+              target="_blank"
+              rel="noopener noreferrer"
+              :aria-label="`Open ${activity.name} in Google Maps`"
+              data-testid="activity-map-link"
             >
-              Edit
-            </button>
-            <button
-              type="button"
-              class="btn btn-ghost btn-small delete"
-              data-testid="delete-activity"
-              :disabled="deletingId === activity.id"
-              @click="activityToDelete = activity"
-            >
-              {{ deletingId === activity.id ? 'Deleting...' : 'Delete' }}
-            </button>
-          </div>
-        </li>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M10 18s-5.5-5.2-5.5-9.3a5.5 5.5 0 1 1 11 0C15.5 12.8 10 18 10 18Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+                <circle cx="10" cy="8.6" r="1.9" fill="currentColor" />
+              </svg>
+            </a>
+            <span class="activity-cost" :class="{ free: activity.cost === 0 }">
+              <span data-testid="activity-cost">
+                {{
+                  activity.cost === 0 ? 'Free' : formatCurrency(activity.cost, activity.currency)
+                }}
+              </span>
+              <span
+                v-if="isForeign(activity) && activity.costInTwd !== null"
+                class="activity-cost-twd"
+                data-testid="activity-cost-twd"
+              >
+                ≈ {{ formatTwd(activity.costInTwd) }}
+              </span>
+            </span>
+            <div class="activity-actions">
+              <button
+                type="button"
+                class="btn btn-ghost btn-small"
+                data-testid="edit-activity"
+                @click="emit('edit', activity)"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-small delete"
+                data-testid="delete-activity"
+                :disabled="deletingId === activity.id"
+                @click="activityToDelete = activity"
+              >
+                {{ deletingId === activity.id ? 'Deleting...' : 'Delete' }}
+              </button>
+            </div>
+          </li>
+        </template>
       </ul>
     </li>
   </ol>
@@ -328,6 +390,57 @@ function confirmDelete() {
   white-space: nowrap;
 }
 
+.map-link {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-accent);
+  border-radius: 8px;
+  transition: background-color 0.15s;
+}
+
+.map-link svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.map-link:hover,
+.map-link:focus-visible {
+  outline: none;
+  background: var(--color-accent-soft);
+}
+
+.directions {
+  position: relative;
+  margin: -0.1rem 0;
+  padding: 0 0 0 1rem;
+  font-size: 0.78rem;
+}
+
+.directions a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.directions a:hover {
+  text-decoration: underline;
+}
+
+.day-route {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.day-route:hover {
+  text-decoration: underline;
+}
+
 .activity-cost {
   flex-shrink: 0;
   display: flex;
@@ -399,10 +512,10 @@ function confirmDelete() {
 
   .activity {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      'time cost actions'
-      'name cost actions';
+      'time map cost actions'
+      'name map cost actions';
     gap: 0.1rem 0.5rem;
     padding-left: 0.6rem;
   }
@@ -419,6 +532,10 @@ function confirmDelete() {
 
   .activity-name {
     white-space: normal;
+  }
+
+  .map-link {
+    grid-area: map;
   }
 
   .activity-cost {

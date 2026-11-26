@@ -188,4 +188,78 @@ describe('ScheduleDays', () => {
       '4 Chome-16-2 Tsukiji, Chuo City, Tokyo',
     ])
   })
+
+  describe('Google Maps links', () => {
+    function placeOf(id: string, latitude: number, longitude: number) {
+      return {
+        placeId: id,
+        name: id,
+        address: `${id} address`,
+        latitude,
+        longitude,
+        googleMapsUri: `https://maps.google.com/?cid=${id}`,
+      }
+    }
+
+    const morning: Activity = {
+      ...tsukiji,
+      id: 'morning',
+      place: placeOf('Tsukiji', 35.66, 139.77),
+    }
+    const freeTime: Activity = { ...sensoji, id: 'free', name: 'Free time', place: null }
+    const evening: Activity = {
+      ...tower,
+      id: 'evening',
+      date: '2026-12-01',
+      place: placeOf('Tokyo Tower', 35.65, 139.74),
+    }
+
+    function mountWithPlaces(activities: Activity[]) {
+      return mount(ScheduleDays, { props: { days: [{ date: '2026-12-01', activities }] } })
+    }
+
+    it('links activities with a place to Google Maps in a new tab', () => {
+      const wrapper = mountWithPlaces([morning, freeTime])
+
+      const links = wrapper.findAll('[data-testid="activity-map-link"]')
+      expect(links).toHaveLength(1)
+      expect(links[0]!.attributes('href')).toBe('https://maps.google.com/?cid=Tsukiji')
+      expect(links[0]!.attributes('target')).toBe('_blank')
+      expect(links[0]!.attributes('rel')).toBe('noopener noreferrer')
+      expect(links[0]!.attributes('aria-label')).toBe('Open Tsukiji in Google Maps')
+    })
+
+    it('shows directions from the previous place, skipping activities without a place', () => {
+      const wrapper = mountWithPlaces([morning, freeTime, evening])
+
+      const directions = wrapper.findAll('[data-testid="directions-link"]')
+      expect(directions).toHaveLength(1)
+      expect(directions[0]!.text()).toBe('Directions from Tsukiji ↗')
+      const url = new URL(directions[0]!.attributes('href')!)
+      expect(url.searchParams.get('origin_place_id')).toBe('Tsukiji')
+      expect(url.searchParams.get('destination_place_id')).toBe('Tokyo Tower')
+    })
+
+    it('shows the directions right before the activity they lead to', () => {
+      const wrapper = mountWithPlaces([morning, evening])
+
+      const rows = wrapper.findAll('.timeline > li').map((row) => row.attributes('data-testid'))
+      expect(rows).toEqual(['activity-item', 'directions', 'activity-item'])
+    })
+
+    it('links the whole day as a route when it has two or more places', () => {
+      const wrapper = mountWithPlaces([morning, freeTime, evening])
+
+      const route = new URL(wrapper.find('[data-testid="day-route-link"]').attributes('href')!)
+      expect(route.searchParams.get('origin_place_id')).toBe('Tsukiji')
+      expect(route.searchParams.get('destination_place_id')).toBe('Tokyo Tower')
+    })
+
+    it('has no directions or day route with fewer than two places', () => {
+      const wrapper = mountWithPlaces([morning, freeTime])
+
+      expect(wrapper.find('[data-testid="directions-link"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="day-route-link"]').exists()).toBe(false)
+    })
+  })
 })
