@@ -49,6 +49,20 @@ describe('TripCard', () => {
     expect(card.text()).toContain('Dec 8 – 12, 2026')
   })
 
+  it('shows a cover with the flag of the destination and the start date', () => {
+    const card = mountCard('upcoming', '2026-12-01')
+
+    expect(card.find('[data-testid="trip-flag"]').text()).toBe('🇯🇵')
+    expect(card.find('[data-testid="trip-cover"]').text()).toContain('Dec')
+    expect(card.find('[data-testid="trip-item"]').attributes('style')).toContain('--cover-from')
+  })
+
+  it('falls back to a plane when the country is unknown', () => {
+    const card = mountCard('upcoming', '2026-12-01', { ...tokyo, destination: null })
+
+    expect(card.find('[data-testid="trip-flag"]').text()).toBe('✈️')
+  })
+
   it('hides the destination when the trip has none', () => {
     const card = mountCard('upcoming', '2026-12-01', { ...tokyo, destination: null })
 

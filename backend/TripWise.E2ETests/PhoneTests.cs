@@ -39,7 +39,7 @@ public class PhoneTests : SchedulePageTest
         await Expect(ScheduleDay(1)).ToBeVisibleAsync();
 
         await Page.GetByTestId("nav-trips").TapAsync();
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "TripWise" })).ToBeVisibleAsync();
+        await Expect(Page.GetByTestId("app-bar")).ToBeVisibleAsync();
         await Expect(Page.GetByTestId("bottom-nav")).ToHaveCountAsync(0);
     }
 

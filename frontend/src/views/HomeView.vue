@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import AppBar from '@/components/AppBar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import NewTripDialog from '@/components/NewTripDialog.vue'
 import TripList from '@/components/TripList.vue'
 import { useTripsStore } from '@/stores/trips'
 import type { CreateTripInput, Trip } from '@/types/trip'
+import { dateParts } from '@/utils/date'
+import { greeting, tripsSummary } from '@/utils/tripTheme'
 import { groupTrips, todayIso } from '@/utils/trips'
 
 const props = withDefaults(defineProps<{ today?: string }>(), { today: () => todayIso() })
@@ -19,6 +22,12 @@ const tripToDelete = ref<Trip | null>(null)
 
 const groups = computed(() => groupTrips(trips.value, props.today))
 const hasTrips = computed(() => trips.value.length > 0)
+const greetingText = greeting()
+const summary = computed(() => tripsSummary(groups.value))
+const todayLabel = computed(() => {
+  const { weekday, month, day } = dateParts(props.today)
+  return `${weekday}, ${month} ${day}`
+})
 const confirmMessage = computed(() =>
   tripToDelete.value
     ? `Are you sure you want to delete "${tripToDelete.value.name}"? This cannot be undone.`
@@ -52,30 +61,37 @@ function confirmDelete() {
 </script>
 
 <template>
+  <AppBar>
+    <button
+      v-if="hasTrips"
+      type="button"
+      class="btn btn-primary new-trip"
+      aria-label="New trip"
+      data-testid="new-trip"
+      @click="openNewTrip"
+    >
+      <span class="new-trip-plus" aria-hidden="true">+</span>
+      <span class="new-trip-label">New trip</span>
+    </button>
+  </AppBar>
   <main class="page">
-    <header class="hero">
-      <span class="logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path
-            d="M10.2 13.8 3.5 11l1.4-1.4 7.3.9 4.2-4.2c.8-.8 2.1-.9 2.8-.2.7.7.6 2-.2 2.8l-4.2 4.2.9 7.3-1.4 1.4-2.8-6.7-3 3 .3 2.4-1 1-1.6-3.1-3.1-1.6 1-1 2.4.3 3-3Z"
-            fill="currentColor"
-          />
-        </svg>
-      </span>
-      <div class="hero-text">
-        <h1 class="display">TripWise</h1>
-        <p class="tagline">Plan your trips day by day.</p>
-      </div>
-      <button
-        v-if="hasTrips"
-        type="button"
-        class="btn btn-primary new-trip"
-        data-testid="new-trip"
-        @click="openNewTrip"
-      >
-        <span aria-hidden="true">+</span> New trip
-      </button>
-    </header>
+    <section class="hero" aria-labelledby="greeting">
+      <svg class="hero-route" viewBox="0 0 600 160" aria-hidden="true">
+        <path
+          d="M10 130 C 120 40, 220 150, 330 80 S 520 20, 590 60"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-dasharray="2 9"
+          stroke-linecap="round"
+        />
+        <circle cx="10" cy="130" r="5" fill="currentColor" />
+        <circle cx="590" cy="60" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+      </svg>
+      <p class="eyebrow today" data-testid="today-label">{{ todayLabel }}</p>
+      <h1 id="greeting" class="display">{{ greetingText }}</h1>
+      <p class="tagline" data-testid="trips-summary">{{ summary }}</p>
+    </section>
 
     <div v-if="error && !newTripOpen" role="alert" class="alert">
       <span>{{ error }}</span>
@@ -201,54 +217,53 @@ function confirmDelete() {
 .page {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 3rem clamp(1.25rem, 3.5vw, 2.75rem) 4.5rem;
+  padding: 2rem clamp(1.25rem, 3.5vw, 2.75rem) 4.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
 
 .hero {
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
+  position: relative;
+  padding: 0.5rem 0 0.25rem;
 }
 
-.hero-text {
-  flex: 1;
-  min-width: 0;
+.hero-route {
+  position: absolute;
+  top: -0.5rem;
+  right: 0;
+  width: min(60%, 560px);
+  height: auto;
+  color: rgb(31 92 86 / 0.18);
+  pointer-events: none;
 }
 
-.logo {
-  display: grid;
-  place-items: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  color: #fff;
-  background: linear-gradient(140deg, #2a6b5f 0%, #1a4f4a 100%);
-  border-radius: 16px;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.15),
-    0 10px 24px -10px rgb(31 92 86 / 0.7);
-}
-
-.logo svg {
-  width: 1.7rem;
-  height: 1.7rem;
-  transform: rotate(-8deg);
+.today {
+  position: relative;
 }
 
 h1 {
-  font-size: 2.4rem;
+  position: relative;
+  margin-top: 0.2rem;
+  font-size: clamp(2rem, 5vw, 2.8rem);
   line-height: 1.1;
 }
 
 .tagline {
-  margin-top: 0.15rem;
+  position: relative;
+  margin-top: 0.35rem;
+  font-size: 1.02rem;
   color: var(--color-muted);
 }
 
 .new-trip {
   flex-shrink: 0;
+  gap: 0.35rem;
+}
+
+.new-trip-plus {
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .group {
@@ -355,12 +370,24 @@ h1 {
 }
 
 @media (max-width: 560px) {
-  .hero {
-    flex-wrap: wrap;
+  .new-trip {
+    width: 2.6rem;
+    height: 2.6rem;
+    padding: 0;
+    border-radius: 50%;
   }
 
-  .new-trip {
-    width: 100%;
+  .new-trip-label {
+    display: none;
+  }
+
+  .new-trip-plus {
+    font-size: 1.5rem;
+  }
+
+  .hero-route {
+    width: 85%;
+    opacity: 0.7;
   }
 }
 </style>

@@ -49,10 +49,13 @@ describe('HomeView', () => {
     wrapper = null
   })
 
-  it('renders the app title', async () => {
-    const view = await mountHomeView()
+  it('shows the app bar, the date and a summary of the trips', async () => {
+    const view = await mountHomeView([upcoming, ongoing])
 
-    expect(view.find('h1').text()).toBe('TripWise')
+    expect(view.find('[data-testid="app-bar"]').text()).toContain('TripWise')
+    expect(view.find('h1').text()).toMatch(/^Good (morning|afternoon|evening)$/)
+    expect(view.find('[data-testid="today-label"]').text()).toBe('Thu, Dec 10')
+    expect(view.find('[data-testid="trips-summary"]').text()).toBe('1 happening now · 1 coming up')
   })
 
   it('shows an empty state that opens the new trip dialog', async () => {

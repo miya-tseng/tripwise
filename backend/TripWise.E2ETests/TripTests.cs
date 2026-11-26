@@ -25,7 +25,7 @@ public class TripTests : PageTest
     public async Task OpenHomePage()
     {
         await Page.GotoAsync("/");
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "TripWise" })).ToBeVisibleAsync();
+        await Expect(Page.GetByTestId("app-bar")).ToBeVisibleAsync();
     }
 
     [TearDown]
@@ -256,4 +256,22 @@ public class TripTests : PageTest
     }
 
     private static string UniqueTripName() => $"E2E {Guid.NewGuid():N}"[..16];
+
+    [Test]
+    public async Task AppBar_StaysAtTheTopWhileScrolling()
+    {
+        for (var index = 0; index < 4; index++)
+        {
+            await CreateTripThroughApiAsync(FirstDayOfNextMonth.AddDays(index * 3), FirstDayOfNextMonth.AddDays(index * 3 + 1));
+        }
+        await Page.SetViewportSizeAsync(1280, 600);
+        await Page.ReloadAsync();
+
+        await Page.Mouse.WheelAsync(0, 1500);
+
+        var bar = Page.GetByTestId("app-bar");
+        await Expect(bar).ToBeInViewportAsync();
+        Assert.That((await bar.BoundingBoxAsync())!.Y, Is.EqualTo(0).Within(1));
+        await Expect(bar.GetByTestId("new-trip")).ToBeVisibleAsync();
+    }
 }

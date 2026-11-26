@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Trip } from '@/types/trip'
 import { dateParts, formatDateRange } from '@/utils/date'
+import { coverFor, coverStyle, flagFor } from '@/utils/tripTheme'
 import {
   countdownLabel,
   currentDayNumber,
@@ -31,6 +32,8 @@ const menuRoot = ref<HTMLElement | null>(null)
 const menuOpen = ref(false)
 
 const start = computed(() => dateParts(props.trip.startDate))
+const cover = computed(() => coverFor(props.trip))
+const flag = computed(() => flagFor(props.trip))
 const dates = computed(() => formatDateRange(props.trip.startDate, props.trip.endDate))
 const destinationName = computed(() => {
   const destination = props.trip.destination
@@ -73,10 +76,19 @@ function askToDelete() {
 </script>
 
 <template>
-  <li class="card trip" :class="phase" data-testid="trip-item" :data-phase="phase">
-    <div v-if="phase !== 'ongoing'" class="date-tile" aria-hidden="true">
-      <span class="tile-month">{{ start.month }}</span>
-      <span class="tile-day">{{ start.day }}</span>
+  <li
+    class="card trip"
+    :class="phase"
+    :style="coverStyle(cover)"
+    data-testid="trip-item"
+    :data-phase="phase"
+  >
+    <div class="cover" aria-hidden="true" data-testid="trip-cover">
+      <span class="cover-flag" data-testid="trip-flag">{{ flag ?? '✈️' }}</span>
+      <span class="cover-date">
+        <span class="tile-month">{{ start.month }}</span>
+        <span class="tile-day">{{ start.day }}</span>
+      </span>
     </div>
 
     <div class="trip-info">
@@ -195,7 +207,9 @@ function askToDelete() {
 
 .trip.ongoing {
   padding: 1.4rem 1rem 1.4rem 1.5rem;
-  background: linear-gradient(120deg, rgb(42 107 95 / 0.09), transparent 60%), var(--color-surface);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--cover-to) 20%, transparent), transparent 62%),
+    var(--color-surface);
   border-color: rgb(31 92 86 / 0.28);
 }
 
@@ -209,25 +223,57 @@ function askToDelete() {
   transform: none;
 }
 
-.date-tile {
+.cover {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 3.6rem;
-  height: 3.8rem;
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-  border-radius: 12px;
+  justify-content: space-between;
+  width: 4rem;
+  height: 4.4rem;
+  padding: 0.4rem 0.45rem;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 85% 15%, rgb(255 255 255 / 0.35), transparent 45%),
+    linear-gradient(150deg, var(--cover-from), var(--cover-to));
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+.cover-flag {
+  font-size: 1.15rem;
   line-height: 1;
 }
 
-.past .date-tile {
-  width: 3rem;
-  height: 3.1rem;
-  color: var(--color-muted);
-  background: var(--color-surface-muted);
+.cover-date {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  white-space: nowrap;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+.ongoing .cover {
+  width: 5.5rem;
+  height: 6rem;
+  padding: 0.55rem 0.6rem;
+}
+
+.ongoing .cover-flag {
+  font-size: 1.6rem;
+}
+
+.past .cover {
+  width: 3.2rem;
+  height: 3.4rem;
+  filter: grayscale(0.85);
+  opacity: 0.75;
+}
+
+.past .cover-flag {
+  font-size: 0.9rem;
 }
 
 .tile-month {
@@ -238,14 +284,29 @@ function askToDelete() {
 }
 
 .tile-day {
-  margin-top: 0.2rem;
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   font-weight: 700;
 }
 
+.tile-month {
+  font-size: 0.56rem;
+}
+
+.ongoing .tile-day {
+  font-size: 1.7rem;
+}
+
+.ongoing .tile-month {
+  font-size: 0.66rem;
+}
+
 .past .tile-day {
-  font-size: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.past .tile-month {
+  font-size: 0.5rem;
 }
 
 .trip-info {
@@ -450,6 +511,10 @@ function askToDelete() {
 }
 
 @media (max-width: 560px) {
+  .ongoing .cover {
+    display: none;
+  }
+
   .trip.ongoing {
     flex-wrap: wrap;
   }
