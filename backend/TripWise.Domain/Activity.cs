@@ -41,6 +41,11 @@ public class Activity
         Details = details;
     }
 
+    internal void ChangeBookingStatus(BookingStatus bookingStatus)
+    {
+        Details = Details.WithBookingStatus(bookingStatus);
+    }
+
     internal void MoveTo(DateOnly date, TimeSlot timeSlot)
     {
         Date = date;

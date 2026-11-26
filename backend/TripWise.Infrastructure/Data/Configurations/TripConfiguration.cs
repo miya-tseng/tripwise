@@ -47,5 +47,14 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
 
         builder.Navigation(trip => trip.Stays)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(trip => trip.Checklist)
+            .WithOne()
+            .HasForeignKey(ActivityConfiguration.TripIdColumn)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(trip => trip.Checklist)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

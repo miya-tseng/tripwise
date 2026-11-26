@@ -157,6 +157,40 @@ namespace TripWise.Infrastructure.Data.Migrations
                     b.ToTable("Activities", (string)null);
                 });
 
+            modelBuilder.Entity("TripWise.Domain.ChecklistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Done")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Section")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId", "Section", "Position");
+
+                    b.ToTable("ChecklistItems", (string)null);
+                });
+
             modelBuilder.Entity("TripWise.Domain.Stay", b =>
                 {
                     b.Property<Guid>("Id")
@@ -326,6 +360,15 @@ namespace TripWise.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TripWise.Domain.ChecklistItem", b =>
+                {
+                    b.HasOne("TripWise.Domain.Trip", null)
+                        .WithMany("Checklist")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TripWise.Domain.Stay", b =>
                 {
                     b.HasOne("TripWise.Domain.Trip", null)
@@ -338,6 +381,8 @@ namespace TripWise.Infrastructure.Data.Migrations
             modelBuilder.Entity("TripWise.Domain.Trip", b =>
                 {
                     b.Navigation("Activities");
+
+                    b.Navigation("Checklist");
 
                     b.Navigation("Stays");
                 });

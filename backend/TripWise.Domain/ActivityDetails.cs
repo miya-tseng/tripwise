@@ -40,6 +40,9 @@ public sealed record ActivityDetails
 
     public bool NeedsBooking => BookingStatus == BookingStatus.ToBook;
 
+    public ActivityDetails WithBookingStatus(BookingStatus bookingStatus) =>
+        new(Category, bookingStatus, Notes, ConfirmationCode, Link);
+
     private static string Limited(string? value, int maxLength, string field)
     {
         var trimmed = value?.Trim() ?? string.Empty;

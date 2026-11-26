@@ -47,6 +47,16 @@ public class Stay
         ConfirmationCode = details.ConfirmationCode,
     };
 
+    internal void ChangeBookingStatus(BookingStatus bookingStatus)
+    {
+        if (!Enum.IsDefined(bookingStatus))
+        {
+            throw new DomainException("Unknown booking status.");
+        }
+
+        BookingStatus = bookingStatus;
+    }
+
     internal void Update(StayDetails details)
     {
         Name = details.Name;
