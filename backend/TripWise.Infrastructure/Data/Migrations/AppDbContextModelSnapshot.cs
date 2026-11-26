@@ -157,6 +157,102 @@ namespace TripWise.Infrastructure.Data.Migrations
                     b.ToTable("Activities", (string)null);
                 });
 
+            modelBuilder.Entity("TripWise.Domain.Stay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BookingStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("NotNeeded");
+
+                    b.Property<DateOnly>("CheckIn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("CheckOut")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ConfirmationCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Cost", "TripWise.Domain.Stay.Cost#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasDefaultValue(0m)
+                                .HasColumnName("Cost");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character(3)")
+                                .HasDefaultValue("TWD")
+                                .HasColumnName("CostCurrency")
+                                .IsFixedLength();
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Place", "TripWise.Domain.Stay.Place#Place", b1 =>
+                        {
+                            b1.Property<string>("Address")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("PlaceAddress");
+
+                            b1.Property<string>("GoogleMapsUri")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("PlaceGoogleMapsUri");
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("PlaceLatitude");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("PlaceLongitude");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("PlaceName");
+
+                            b1.Property<string>("PlaceId")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("PlaceId");
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TripId", "CheckIn");
+
+                    b.ToTable("Stays", (string)null);
+                });
+
             modelBuilder.Entity("TripWise.Domain.Trip", b =>
                 {
                     b.Property<Guid>("Id")
@@ -195,9 +291,20 @@ namespace TripWise.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TripWise.Domain.Stay", b =>
+                {
+                    b.HasOne("TripWise.Domain.Trip", null)
+                        .WithMany("Stays")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TripWise.Domain.Trip", b =>
                 {
                     b.Navigation("Activities");
+
+                    b.Navigation("Stays");
                 });
 #pragma warning restore 612, 618
         }

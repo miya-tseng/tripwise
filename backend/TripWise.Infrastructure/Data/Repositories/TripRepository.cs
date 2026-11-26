@@ -15,6 +15,8 @@ public class TripRepository(AppDbContext dbContext) : ITripRepository
     {
         return dbContext.Trips
             .Include(trip => trip.Activities)
+            .Include(trip => trip.Stays)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(trip => trip.Id == id, cancellationToken);
     }
 

@@ -12,6 +12,14 @@ public class Trip
     private readonly List<Activity> _activities = [];
     public IReadOnlyCollection<Activity> Activities => _activities.AsReadOnly();
 
+    private readonly List<Stay> _stays = [];
+    public IReadOnlyCollection<Stay> Stays => _stays.AsReadOnly();
+
+    public DateOnly LastCheckOut => Period.End.AddDays(1);
+
+    public IReadOnlyList<DateOnly> Nights =>
+        Enumerable.Range(0, Period.Days).Select(Period.Start.AddDays).ToList();
+
     private Trip() { }
 
     public Activity AddActivity(
@@ -63,15 +71,67 @@ public class Trip
         return activity;
     }
 
+    public Stay AddStay(StayDetails details)
+    {
+        EnsureStayFits(details, excludedStayId: null);
+
+        var stay = Stay.Create(details);
+        _stays.Add(stay);
+        return stay;
+    }
+
+    public Stay UpdateStay(Guid stayId, StayDetails details)
+    {
+        var stay = FindStay(stayId);
+        EnsureStayFits(details, excludedStayId: stayId);
+
+        stay.Update(details);
+        return stay;
+    }
+
+    public void RemoveStay(Guid stayId)
+    {
+        _stays.Remove(FindStay(stayId));
+    }
+
+    public Stay? StayForNight(DateOnly night) => _stays.FirstOrDefault(stay => stay.CoversNight(night));
+
+    private Stay FindStay(Guid stayId) =>
+        _stays.FirstOrDefault(stay => stay.Id == stayId)
+        ?? throw new StayNotFoundException(stayId);
+
+    private void EnsureStayFits(StayDetails details, Guid? excludedStayId)
+    {
+        if (details.CheckIn < Period.Start || details.CheckOut > LastCheckOut)
+        {
+            throw new DomainException("Stay dates must be within the trip dates.");
+        }
+
+        var conflictingStay = _stays.FirstOrDefault(stay =>
+            stay.Id != excludedStayId && stay.OverlapsWith(details.CheckIn, details.CheckOut));
+
+        if (conflictingStay is not null)
+        {
+            throw new StayOverlapException(conflictingStay);
+        }
+    }
+
     public void RemoveActivity(Guid activityId)
     {
         _activities.Remove(FindActivity(activityId));
     }
 
     public IReadOnlyList<Money> GetDailyTotals(DateOnly date) =>
-        Money.SumByCurrency(_activities.Where(activity => activity.Date == date).Select(activity => activity.Cost));
+        Money.SumByCurrency(
+            _activities
+                .Where(activity => activity.Date == date)
+                .Select(activity => activity.Cost)
+                .Concat(PaidStays.Where(stay => stay.CoversNight(date)).Select(stay => stay.CostForNight(date))));
 
-    public IReadOnlyList<Money> GetTotals() => Money.SumByCurrency(_activities.Select(activity => activity.Cost));
+    public IReadOnlyList<Money> GetTotals() =>
+        Money.SumByCurrency(_activities.Select(activity => activity.Cost).Concat(PaidStays.Select(stay => stay.Cost)));
+
+    private IEnumerable<Stay> PaidStays => _stays.Where(stay => stay.Cost.Amount > 0);
 
     private Activity FindActivity(Guid activityId) =>
         _activities.FirstOrDefault(activity => activity.Id == activityId)
@@ -118,6 +178,11 @@ public class Trip
         if (activitiesOutside > 0)
         {
             throw new TripDatesConflictException(activitiesOutside);
+        }
+
+        if (_stays.Any(stay => stay.CheckIn < period.Start || stay.CheckOut > period.End.AddDays(1)))
+        {
+            throw new DomainException("A stay falls outside the new dates. Change or delete it first.");
         }
 
         Period = period;
