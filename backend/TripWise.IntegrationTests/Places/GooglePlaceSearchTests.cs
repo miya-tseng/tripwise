@@ -174,6 +174,34 @@ public class GooglePlaceSearchTests
         Assert.ThrowsAsync<ExternalServiceUnavailableException>(() => _search.GetDetailsAsync("id", null));
     }
 
+    [Test]
+    public async Task FindAsync_PostsATextSearchForOnePlaceNearTheLocation()
+    {
+        _handler.Respond(HttpStatusCode.OK, $$"""{ "places": [ {{DetailsBody}} ] }""");
+
+        var place = await _search.FindAsync("Tokyo Skytree 東京都墨田區", new GeoPoint(35.71, 139.79));
+
+        var request = _handler.Requests.Single();
+        var body = JsonDocument.Parse(request.Body!).RootElement;
+        Assert.Multiple(() =>
+        {
+            Assert.That(request.Uri, Is.EqualTo("https://places.googleapis.com/v1/places:searchText"));
+            Assert.That(request.Headers["X-Goog-FieldMask"], Does.Contain("places.googleMapsUri"));
+            Assert.That(body.GetProperty("textQuery").GetString(), Is.EqualTo("Tokyo Skytree 東京都墨田區"));
+            Assert.That(body.GetProperty("pageSize").GetInt32(), Is.EqualTo(1));
+            Assert.That(body.GetProperty("locationBias").GetProperty("circle").GetProperty("center").GetProperty("longitude").GetDouble(), Is.EqualTo(139.79));
+            Assert.That(place!.Name, Is.EqualTo("淺草寺"));
+        });
+    }
+
+    [Test]
+    public async Task FindAsync_WithNoResults_ReturnsNull()
+    {
+        _handler.Respond(HttpStatusCode.OK, "{}");
+
+        Assert.That(await _search.FindAsync("nowhere", null), Is.Null);
+    }
+
     private sealed record RecordedRequest(HttpMethod Method, string Uri, Dictionary<string, string> Headers, string? Body);
 
     private sealed class StubHandler : HttpMessageHandler

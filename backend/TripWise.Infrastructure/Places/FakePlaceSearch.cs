@@ -44,6 +44,11 @@ public class FakePlaceSearch : IPlaceSearch
         CancellationToken cancellationToken = default) =>
         Task.FromResult(Places.FirstOrDefault(place => place.PlaceId == placeId));
 
+    public Task<Place?> FindAsync(string text, GeoPoint? near, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Places.FirstOrDefault(place =>
+            text.StartsWith(place.Name, StringComparison.OrdinalIgnoreCase)
+            || place.Name.StartsWith(text, StringComparison.OrdinalIgnoreCase)));
+
     private static Place Create(string placeId, string name, string address, double latitude, double longitude) =>
         new(
             placeId,

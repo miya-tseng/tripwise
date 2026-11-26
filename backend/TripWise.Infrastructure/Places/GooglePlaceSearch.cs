@@ -17,6 +17,7 @@ public class GooglePlaceSearch(
     private const string UnavailableMessage = "Place search is unavailable right now. Please try again later.";
     private const string AutocompleteFields = "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat";
     private const string DetailsFields = "id,displayName,formattedAddress,location,googleMapsUri";
+    private const string TextSearchFields = "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri";
 
     public async Task<IReadOnlyList<PlaceSuggestion>> AutocompleteAsync(
         string query,
@@ -80,14 +81,50 @@ public class GooglePlaceSearch(
 
         var details = await SendAsync<PlaceDetails>(request, cancellationToken, notFoundAsNull: true);
 
-        if (details?.Id is null || details.Location is null || details.GoogleMapsUri is null)
+        return details is null ? null : ToPlace(details);
+    }
+
+    public async Task<Place?> FindAsync(string text, GeoPoint? near, CancellationToken cancellationToken = default)
+    {
+        var body = new TextSearchRequest
+        {
+            TextQuery = text,
+            LanguageCode = options.Value.LanguageCode,
+            PageSize = 1,
+            LocationBias = near is null
+                ? null
+                : new LocationBias
+                {
+                    Circle = new Circle
+                    {
+                        Center = new LatLng { Latitude = near.Latitude, Longitude = near.Longitude },
+                        Radius = options.Value.BiasRadiusMeters,
+                    },
+                },
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "./places:searchText")
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Add("X-Goog-FieldMask", TextSearchFields);
+
+        var response = await SendAsync<TextSearchResponse>(request, cancellationToken);
+        var details = response?.Places?.FirstOrDefault();
+
+        return details is null ? null : ToPlace(details);
+    }
+
+    private static Place? ToPlace(PlaceDetails details)
+    {
+        if (details.Id is null || details.Location is null || details.GoogleMapsUri is null || details.DisplayName?.Text is null)
         {
             return null;
         }
 
         return new Place(
             details.Id,
-            details.DisplayName?.Text ?? string.Empty,
+            details.DisplayName.Text,
             details.FormattedAddress ?? string.Empty,
             details.Location.Latitude,
             details.Location.Longitude,
@@ -146,6 +183,28 @@ public class GooglePlaceSearch(
         [JsonPropertyName("locationBias")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public LocationBias? LocationBias { get; set; }
+    }
+
+    private sealed class TextSearchRequest
+    {
+        [JsonPropertyName("textQuery")]
+        public string TextQuery { get; set; } = string.Empty;
+
+        [JsonPropertyName("languageCode")]
+        public string LanguageCode { get; set; } = string.Empty;
+
+        [JsonPropertyName("pageSize")]
+        public int PageSize { get; set; }
+
+        [JsonPropertyName("locationBias")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public LocationBias? LocationBias { get; set; }
+    }
+
+    private sealed class TextSearchResponse
+    {
+        [JsonPropertyName("places")]
+        public List<PlaceDetails>? Places { get; set; }
     }
 
     private sealed class LocationBias

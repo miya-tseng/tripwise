@@ -11,4 +11,6 @@ public interface IPlaceSearch
         CancellationToken cancellationToken = default);
 
     Task<Place?> GetDetailsAsync(string placeId, string? sessionToken, CancellationToken cancellationToken = default);
+
+    Task<Place?> FindAsync(string text, GeoPoint? near, CancellationToken cancellationToken = default);
 }

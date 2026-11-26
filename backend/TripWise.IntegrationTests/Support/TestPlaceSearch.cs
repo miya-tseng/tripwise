@@ -35,6 +35,12 @@ public class TestPlaceSearch : IPlaceSearch
         return _fake.GetDetailsAsync(placeId, sessionToken, cancellationToken);
     }
 
+    public Task<Place?> FindAsync(string text, GeoPoint? near, CancellationToken cancellationToken = default)
+    {
+        EnsureAvailable();
+        return _fake.FindAsync(text, near, cancellationToken);
+    }
+
     private void EnsureAvailable()
     {
         if (!Available)
