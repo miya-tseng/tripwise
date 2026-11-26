@@ -458,6 +458,7 @@ function confirmDelete() {
 }
 
 .day {
+  scroll-margin-top: 6.5rem;
   padding: 1.25rem 1.4rem 1.35rem;
 }
 

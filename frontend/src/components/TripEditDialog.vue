@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
+import PlaceSearch from '@/components/PlaceSearch.vue'
+import type { PlaceSuggestion } from '@/types/place'
 import { MAX_TRIP_DAYS, type Trip, type UpdateTripInput } from '@/types/trip'
 import { countDays } from '@/utils/date'
 
@@ -21,6 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const titleId = useId()
+const destinationId = useId()
 const nameInput = ref<HTMLInputElement | null>(null)
 
 const datePickerRange = { partialRange: false, maxRange: MAX_TRIP_DAYS - 1 }
@@ -28,7 +31,13 @@ const datePickerFormats = { input: 'MMM d, yyyy' }
 const datePickerTimeConfig = { enableTimePicker: false }
 const datePickerInputAttrs = { name: 'edit-dates', clearable: false }
 
+function newSessionToken(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 const name = ref('')
+const destination = ref<PlaceSuggestion | null>(null)
+const sessionToken = ref(newSessionToken())
 const dates = ref<string[] | null>(null)
 const submitting = ref(false)
 
@@ -52,6 +61,14 @@ watch(
     if (open) {
       name.value = props.trip.name
       dates.value = [props.trip.startDate, props.trip.endDate]
+      destination.value = props.trip.destination
+        ? {
+            placeId: props.trip.destination.placeId,
+            name: props.trip.destination.name,
+            description: props.trip.destination.address,
+          }
+        : null
+      sessionToken.value = newSessionToken()
       await nextTick()
       nameInput.value?.focus()
     }
@@ -70,6 +87,8 @@ async function onSubmit() {
     name: name.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    destinationPlaceId: destination.value?.placeId ?? null,
+    ...(destination.value ? { placeSessionToken: sessionToken.value } : {}),
   })
 
   submitting.value = false
@@ -108,6 +127,20 @@ async function onSubmit() {
             maxlength="100"
           />
         </label>
+
+        <div class="field">
+          <label class="field-label" :for="destinationId">
+            Destination
+            <span class="field-hint">Optional</span>
+          </label>
+          <PlaceSearch
+            v-model="destination"
+            :session-token="sessionToken"
+            :input-id="destinationId"
+            kind="destination"
+            placeholder="Search a city, e.g. Tokyo"
+          />
+        </div>
 
         <div class="field">
           <span class="field-label">

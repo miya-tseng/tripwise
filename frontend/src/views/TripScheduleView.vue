@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import ActivityDialog from '@/components/ActivityDialog.vue'
@@ -33,6 +33,7 @@ import { bookingStatusMeta } from '@/utils/activityDetails'
 
 const props = defineProps<{
   id: string
+  day?: string
 }>()
 
 const store = useScheduleStore()
@@ -93,7 +94,7 @@ const searchNear = computed<GeoPoint | null>(() => {
   const places = days.value.flatMap((day) =>
     day.activities.flatMap((activity) => activity.place ?? []),
   )
-  const last = places.at(-1)
+  const last = places.at(-1) ?? trip.value?.destination
   return last ? { latitude: last.latitude, longitude: last.longitude } : null
 })
 const budgetInTwd = computed(() => tripTotalInTwd(days.value, stays.value))
@@ -122,6 +123,23 @@ watch(
     closeDialog()
     defaultCurrency.value = lastUsedCurrency(id)
     store.load(id)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => loading.value || !trip.value,
+  async (notReady) => {
+    const dayNumber = Number(props.day)
+
+    if (notReady || !Number.isInteger(dayNumber) || dayNumber < 1) {
+      return
+    }
+
+    await nextTick()
+    document
+      .querySelectorAll('[data-testid="schedule-day"]')
+      [dayNumber - 1]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
   },
   { immediate: true },
 )

@@ -87,10 +87,12 @@ describe('PlaceSearch', () => {
     await settle()
 
     expect(searchPlaces).toHaveBeenCalledTimes(1)
-    expect(searchPlaces).toHaveBeenCalledWith('senso', 'session-1', {
-      latitude: 35.7,
-      longitude: 139.8,
-    })
+    expect(searchPlaces).toHaveBeenCalledWith(
+      'senso',
+      'session-1',
+      { latitude: 35.7, longitude: 139.8 },
+      'any',
+    )
   })
 
   it('shows the suggestions with the first one active', async () => {

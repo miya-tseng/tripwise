@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
+import PlaceSearch from '../PlaceSearch.vue'
 import TripEditDialog from '../TripEditDialog.vue'
 import type { Trip, UpdateTripInput } from '@/types/trip'
 
@@ -33,6 +34,15 @@ function nameInput(dialog: VueWrapper) {
 
 function saveButton(dialog: VueWrapper) {
   return dialog.find('button[type="submit"]')
+}
+
+const tokyoCity = {
+  placeId: 'city-tokyo',
+  name: 'Tokyo',
+  address: 'Japan',
+  latitude: 35.68,
+  longitude: 139.65,
+  googleMapsUri: 'https://maps.google.com/?cid=1',
 }
 
 describe('TripEditDialog', () => {
@@ -78,6 +88,7 @@ describe('TripEditDialog', () => {
       name: 'Osaka',
       startDate: '2026-12-02',
       endDate: '2026-12-04',
+      destinationPlaceId: null,
     })
     expect(dialog.emitted('close')).toHaveLength(1)
   })
@@ -142,5 +153,39 @@ describe('TripEditDialog', () => {
     await flushPromises()
 
     expect((nameInput(dialog).element as HTMLInputElement).value).toBe('Tokyo')
+  })
+
+  it('shows the current destination and keeps it when saving', async () => {
+    const submit = vi.fn<Submit>().mockResolvedValue(true)
+    wrapper = mount(TripEditDialog, {
+      props: { open: true, trip: { ...tokyo, destination: tokyoCity }, submit },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="selected-place-name"]').text()).toBe('Tokyo')
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({ destinationPlaceId: 'city-tokyo' }),
+    )
+  })
+
+  it('clears the destination when it is removed', async () => {
+    const submit = vi.fn<Submit>().mockResolvedValue(true)
+    wrapper = mount(TripEditDialog, {
+      props: { open: true, trip: { ...tokyo, destination: tokyoCity }, submit },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    wrapper.findComponent(PlaceSearch).vm.$emit('update:modelValue', null)
+    await flushPromises()
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({ destinationPlaceId: null }))
   })
 })

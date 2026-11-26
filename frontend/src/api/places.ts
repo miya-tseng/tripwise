@@ -1,16 +1,21 @@
-import type { GeoPoint, PlaceSuggestion } from '@/types/place'
+import type { GeoPoint, PlaceSearchKind, PlaceSuggestion } from '@/types/place'
 import { request } from './http'
 
 export async function searchPlaces(
   query: string,
   sessionToken: string,
   near: GeoPoint | null,
+  kind: PlaceSearchKind = 'any',
 ): Promise<PlaceSuggestion[]> {
   const params = new URLSearchParams({ query, sessionToken })
 
   if (near) {
     params.set('lat', String(near.latitude))
     params.set('lng', String(near.longitude))
+  }
+
+  if (kind !== 'any') {
+    params.set('kind', kind)
   }
 
   const response = await request(`/api/places/autocomplete?${params}`)

@@ -24,6 +24,14 @@ describe('places api', () => {
     )
   })
 
+  it('asks for destinations only when the kind is destination', async () => {
+    await searchPlaces('tok', 'session-1', null, 'destination')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/places/autocomplete?query=tok&sessionToken=session-1&kind=destination',
+    )
+  })
+
   it('searches without a location', async () => {
     await searchPlaces('senso', 'session-1', null)
 

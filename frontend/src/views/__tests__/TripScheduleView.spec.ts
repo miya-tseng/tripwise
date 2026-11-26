@@ -467,6 +467,52 @@ describe('TripScheduleView', () => {
     })
   })
 
+  it('biases place search near the destination until the trip has places', async () => {
+    mockLoadedTrip()
+    vi.mocked(fetchTrip).mockResolvedValue({
+      id: 'tokyo-id',
+      name: 'Tokyo',
+      startDate: '2026-12-01',
+      endDate: '2026-12-02',
+      days: 2,
+      destination: {
+        placeId: 'city-tokyo',
+        name: 'Tokyo',
+        address: 'Japan',
+        latitude: 35.68,
+        longitude: 139.65,
+        googleMapsUri: 'https://maps.google.com/?cid=1',
+      },
+    })
+
+    const wrapper = await mountView()
+    await wrapper.find('[data-testid="add-activity"]').trigger('click')
+
+    expect(wrapper.findComponent(ActivityForm).props('near')).toEqual({
+      latitude: 35.68,
+      longitude: 139.65,
+    })
+  })
+
+  it('scrolls to the day given in the link', async () => {
+    mockLoadedTrip()
+    const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const wrapper = mount(TripScheduleView, {
+      props: { id: 'tokyo-id', day: '2' },
+      global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    const scrolled = scrollIntoView.mock.contexts[0] as Element
+    expect(scrolled).toBe(wrapper.findAll('[data-testid="schedule-day"]')[1]!.element)
+    wrapper.unmount()
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+  })
+
   describe('suggestions', () => {
     const shibuyaWithPlace: Activity = {
       ...shibuya,

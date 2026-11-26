@@ -18,4 +18,6 @@ export interface GeoPoint {
   longitude: number
 }
 
+export type PlaceSearchKind = 'any' | 'destination'
+
 export const MIN_PLACE_QUERY_LENGTH = 2

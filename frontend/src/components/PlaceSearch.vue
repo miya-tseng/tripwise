@@ -2,7 +2,12 @@
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { searchPlaces } from '@/api/places'
 import { useFloatingPanel } from '@/composables/useFloatingPanel'
-import { MIN_PLACE_QUERY_LENGTH, type GeoPoint, type PlaceSuggestion } from '@/types/place'
+import {
+  MIN_PLACE_QUERY_LENGTH,
+  type GeoPoint,
+  type PlaceSearchKind,
+  type PlaceSuggestion,
+} from '@/types/place'
 
 const props = withDefaults(
   defineProps<{
@@ -11,9 +16,13 @@ const props = withDefaults(
     near?: GeoPoint | null
     inputId?: string
     debounceMs?: number
+    kind?: PlaceSearchKind
+    placeholder?: string
   }>(),
   {
     near: null,
+    kind: 'any',
+    placeholder: 'Search a place, e.g. Senso-ji',
     inputId: undefined,
     debounceMs: 250,
   },
@@ -70,7 +79,7 @@ async function runSearch(text: string) {
   error.value = null
 
   try {
-    const results = await searchPlaces(text, props.sessionToken, props.near)
+    const results = await searchPlaces(text, props.sessionToken, props.near, props.kind)
 
     if (requestId === latestRequest) {
       suggestions.value = results
@@ -214,7 +223,7 @@ function onKeydown(event: KeyboardEvent) {
           :aria-expanded="showPanel"
           :aria-controls="listboxId"
           :aria-activedescendant="activeOptionId"
-          placeholder="Search a place, e.g. Senso-ji"
+          :placeholder="placeholder"
           autocomplete="off"
           maxlength="100"
           data-testid="place-search-input"
