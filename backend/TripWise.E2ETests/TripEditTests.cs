@@ -71,6 +71,22 @@ public class TripEditTests : SchedulePageTest
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = TripName, Level = 1 })).ToBeVisibleAsync();
     }
 
+    [Test]
+    public async Task EditTrip_SetsTheDestination()
+    {
+        await RequireFakePlacesAsync();
+
+        await OpenEditDialogAsync();
+        await TripDialog().GetByRole(AriaRole.Combobox, new() { Name = "Destination" }).FillAsync("Tokyo");
+        await Page.GetByRole(AriaRole.Option).Filter(new() { HasText = "Japan" }).First.ClickAsync();
+        await TripDialog().GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
+        await Expect(TripDialog()).ToBeHiddenAsync();
+
+        await Page.ReloadAsync();
+        await OpenEditDialogAsync();
+        await Expect(TripDialog().GetByTestId("selected-place-name")).ToHaveTextAsync("Tokyo");
+    }
+
     private async Task OpenEditDialogAsync()
     {
         await Page.GetByTestId("edit-trip").ClickAsync();
