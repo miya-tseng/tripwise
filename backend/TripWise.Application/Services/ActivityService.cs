@@ -51,6 +51,26 @@ public class ActivityService(
         return ToDto(activity, rates);
     }
 
+    public async Task<ActivityDto?> MoveAsync(
+        Guid tripId,
+        Guid activityId,
+        MoveActivityDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var trip = await repository.GetByIdAsync(tripId, cancellationToken);
+
+        if (trip is null)
+        {
+            return null;
+        }
+
+        var activity = trip.MoveActivity(activityId, dto.Date!.Value, dto.StartTime!.Value);
+        await repository.UpdateAsync(trip, cancellationToken);
+        var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
+
+        return ToDto(activity, rates);
+    }
+
     public async Task<bool> DeleteAsync(Guid tripId, Guid activityId, CancellationToken cancellationToken = default)
     {
         var trip = await repository.GetByIdAsync(tripId, cancellationToken);

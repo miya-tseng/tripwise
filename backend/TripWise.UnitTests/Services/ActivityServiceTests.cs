@@ -426,4 +426,49 @@ public class ActivityServiceTests
 
         Assert.That(activity.Place, Is.Null);
     }
+
+    [Test]
+    public async Task MoveAsync_MovesTheActivityAndSaves()
+    {
+        var activity = _trip.AddActivity("Senso-ji", FirstDay, Slot("10:00", "11:30"), new Money(3000m, "JPY"));
+
+        var result = await _sut.MoveAsync(
+            _trip.Id,
+            activity.Id,
+            new MoveActivityDto { Date = FirstDay.AddDays(1), StartTime = new TimeOnly(14, 0) });
+
+        await _repository.Received(1).UpdateAsync(_trip, Arg.Any<CancellationToken>());
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Date, Is.EqualTo(FirstDay.AddDays(1)));
+            Assert.That(result.StartTime, Is.EqualTo(new TimeOnly(14, 0)));
+            Assert.That(result.EndTime, Is.EqualTo(new TimeOnly(15, 30)));
+            Assert.That(result.CostInTwd, Is.EqualTo(625m));
+        });
+    }
+
+    [Test]
+    public async Task MoveAsync_WithUnknownTrip_ReturnsNull()
+    {
+        var result = await _sut.MoveAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new MoveActivityDto { Date = FirstDay, StartTime = new TimeOnly(10, 0) });
+
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public async Task MoveAsync_Overlapping_ThrowsWithoutSaving()
+    {
+        _trip.AddActivity("Ueno Park", FirstDay, Slot("14:00", "15:00"));
+        var activity = _trip.AddActivity("Senso-ji", FirstDay, Slot("10:00", "11:30"));
+
+        Assert.ThrowsAsync<ActivityOverlapException>(() => _sut.MoveAsync(
+            _trip.Id,
+            activity.Id,
+            new MoveActivityDto { Date = FirstDay, StartTime = new TimeOnly(13, 30) }));
+
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+    }
 }

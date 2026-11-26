@@ -108,3 +108,39 @@ Feature: Activities
     When I delete the trip
     Then the response status is 204
     And no activities of the trip remain in the database
+
+  Scenario: Move an activity to another day
+    Given the trip has an activity "Senso-ji" on 2021-05-01 from 10:00 to 11:30
+    When I move the activity "Senso-ji" to 2021-05-02 at 14:00
+    Then the response status is 200
+    And the response is an activity "Senso-ji" on 2021-05-02 from 14:00 to 15:30
+    And the schedule on 2021-05-01 is ""
+    And the schedule on 2021-05-02 is "Senso-ji"
+
+  Scenario: Move an activity into an overlap
+    Given the trip has an activity "Senso-ji" on 2021-05-01 from 10:00 to 11:30
+    And the trip has an activity "Ueno Park" on 2021-05-02 from 14:00 to 15:00
+    When I move the activity "Senso-ji" to 2021-05-02 at 13:30
+    Then the response status is 409
+    And the activity "Senso-ji" is still on 2021-05-01 from 10:00 to 11:30
+
+  Scenario: Move an activity outside the trip dates
+    Given the trip has an activity "Senso-ji" on 2021-05-01 from 10:00 to 11:30
+    When I move the activity "Senso-ji" to 2021-05-09 at 10:00
+    Then the response status is 400
+    And the error detail is "Activity date must be within the trip dates."
+
+  Scenario: Move an activity past midnight
+    Given the trip has an activity "Senso-ji" on 2021-05-01 from 10:00 to 11:30
+    When I move the activity "Senso-ji" to 2021-05-01 at 23:00
+    Then the response status is 400
+    And the error detail is "The activity would end after midnight."
+
+  Scenario: Move an unknown activity
+    When I move an unknown activity to 2021-05-01 at 10:00
+    Then the response status is 404
+
+  Scenario: Move without a start time
+    Given the trip has an activity "Senso-ji" on 2021-05-01 from 10:00 to 11:30
+    When I move the activity "Senso-ji" without a start time
+    Then the response status is 400

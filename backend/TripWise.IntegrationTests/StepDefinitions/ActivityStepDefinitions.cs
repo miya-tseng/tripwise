@@ -262,6 +262,30 @@ public class ActivityStepDefinitions(
             NewActivity(name, date, start, end));
     }
 
+    [When("I move the activity {string} to {DateOnly} at {TimeOnly}")]
+    public async Task WhenIMoveTheActivity(string name, DateOnly date, TimeOnly start)
+    {
+        response.Message = await client.PatchAsJsonAsync(
+            $"{ActivitiesUrl}/{_activitiesByName[name].Id}/move",
+            new MoveActivityDto { Date = date, StartTime = start });
+    }
+
+    [When("I move an unknown activity to {DateOnly} at {TimeOnly}")]
+    public async Task WhenIMoveAnUnknownActivity(DateOnly date, TimeOnly start)
+    {
+        response.Message = await client.PatchAsJsonAsync(
+            $"{ActivitiesUrl}/{Guid.NewGuid()}/move",
+            new MoveActivityDto { Date = date, StartTime = start });
+    }
+
+    [When("I move the activity {string} without a start time")]
+    public async Task WhenIMoveTheActivityWithoutAStartTime(string name)
+    {
+        response.Message = await client.PatchAsJsonAsync(
+            $"{ActivitiesUrl}/{_activitiesByName[name].Id}/move",
+            new { Date = _activitiesByName[name].Date });
+    }
+
     [When("I delete the activity {string}")]
     public async Task WhenIDeleteTheActivity(string name)
     {

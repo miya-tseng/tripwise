@@ -26,6 +26,18 @@ public class ActivitiesController(ActivityService activityService, SuggestionSer
         return activity is null ? NotFound() : activity;
     }
 
+    [HttpPatch("activities/{id:guid}/move")]
+    public async Task<ActionResult<ActivityDto>> Move(
+        Guid tripId,
+        Guid id,
+        MoveActivityDto dto,
+        CancellationToken cancellationToken)
+    {
+        var activity = await activityService.MoveAsync(tripId, id, dto, cancellationToken);
+
+        return activity is null ? NotFound() : activity;
+    }
+
     [HttpDelete("activities/{id:guid}")]
     public async Task<IActionResult> Delete(Guid tripId, Guid id, CancellationToken cancellationToken)
     {
