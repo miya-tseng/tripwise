@@ -1,10 +1,14 @@
 using TripWise.Application.Currencies;
 using TripWise.Application.Dtos;
+using TripWise.Application.Places;
 using TripWise.Domain;
 
 namespace TripWise.Application.Services;
 
-public class ActivityService(ITripRepository repository, IExchangeRateProvider exchangeRateProvider)
+public class ActivityService(
+    ITripRepository repository,
+    IExchangeRateProvider exchangeRateProvider,
+    IPlaceSearch placeSearch)
 {
     public async Task<ActivityDto?> AddAsync(Guid tripId, SaveActivityDto dto, CancellationToken cancellationToken = default)
     {
@@ -16,7 +20,8 @@ public class ActivityService(ITripRepository repository, IExchangeRateProvider e
         }
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
-        var activity = trip.AddActivity(dto.Name, dto.Date!.Value, ToTimeSlot(dto), ToCost(dto, rates));
+        var place = await ResolvePlaceAsync(dto, currentPlace: null, cancellationToken);
+        var activity = trip.AddActivity(dto.Name, dto.Date!.Value, ToTimeSlot(dto), ToCost(dto, rates), place);
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(activity, rates);
@@ -32,7 +37,15 @@ public class ActivityService(ITripRepository repository, IExchangeRateProvider e
         }
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
-        var activity = trip.UpdateActivity(activityId, dto.Name, dto.Date!.Value, ToTimeSlot(dto), ToCost(dto, rates));
+        var currentPlace = trip.Activities.FirstOrDefault(activity => activity.Id == activityId)?.Place;
+        var place = await ResolvePlaceAsync(dto, currentPlace, cancellationToken);
+        var activity = trip.UpdateActivity(
+            activityId,
+            dto.Name,
+            dto.Date!.Value,
+            ToTimeSlot(dto),
+            ToCost(dto, rates),
+            place);
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(activity, rates);
@@ -104,6 +117,27 @@ public class ActivityService(ITripRepository repository, IExchangeRateProvider e
         return converted.Any(amount => amount is null) ? null : converted.Sum(amount => amount!.Value);
     }
 
+    private async Task<Place?> ResolvePlaceAsync(
+        SaveActivityDto dto,
+        Place? currentPlace,
+        CancellationToken cancellationToken)
+    {
+        var placeId = dto.PlaceId?.Trim();
+
+        if (string.IsNullOrEmpty(placeId))
+        {
+            return null;
+        }
+
+        if (currentPlace?.PlaceId == placeId)
+        {
+            return currentPlace;
+        }
+
+        return await placeSearch.GetDetailsAsync(placeId, dto.PlaceSessionToken, cancellationToken)
+            ?? throw new DomainException("Place not found.");
+    }
+
     private static TimeSlot ToTimeSlot(SaveActivityDto dto) =>
         new(dto.StartTime!.Value, dto.EndTime!.Value);
 
@@ -142,6 +176,7 @@ public class ActivityService(ITripRepository repository, IExchangeRateProvider e
             Cost = activity.Cost.Amount,
             Currency = activity.Cost.Currency,
             CostInTwd = rates?.ToHomeCurrency(activity.Cost),
+            Place = activity.Place is null ? null : PlaceService.ToDto(activity.Place),
         };
     }
 }

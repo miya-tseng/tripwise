@@ -10,6 +10,7 @@ public static class DependencyInjection
         services.AddScoped<TripService>();
         services.AddScoped<ActivityService>();
         services.AddScoped<ExchangeRateService>();
+        services.AddScoped<PlaceService>();
 
         return services;
     }

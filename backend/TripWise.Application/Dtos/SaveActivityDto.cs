@@ -5,7 +5,6 @@ namespace TripWise.Application.Dtos;
 
 public class SaveActivityDto
 {
-    [Required]
     [StringLength(Activity.MaxNameLength)]
     public string Name { get; set; } = string.Empty;
 
@@ -21,4 +20,10 @@ public class SaveActivityDto
     public decimal? Cost { get; set; }
 
     public string? Currency { get; set; }
+
+    [StringLength(Place.MaxPlaceIdLength)]
+    public string? PlaceId { get; set; }
+
+    [StringLength(100)]
+    public string? PlaceSessionToken { get; set; }
 }

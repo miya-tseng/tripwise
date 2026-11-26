@@ -2,10 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TripWise.Application.Currencies;
+using TripWise.Application.Places;
 using TripWise.Domain;
 using TripWise.Infrastructure.Currencies;
 using TripWise.Infrastructure.Data;
 using TripWise.Infrastructure.Data.Repositories;
+using TripWise.Infrastructure.Places;
 
 namespace TripWise.Infrastructure;
 
@@ -21,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ITripRepository, TripRepository>();
 
         AddExchangeRates(services, configuration);
+        AddPlaceSearch(services, configuration);
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>();
@@ -45,6 +48,25 @@ public static class DependencyInjection
         {
             client.BaseAddress = exchangeRateOptions.BaseUrl;
             client.Timeout = exchangeRateOptions.Timeout;
+        });
+    }
+
+    private static void AddPlaceSearch(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(GooglePlacesOptions.SectionName);
+        services.Configure<GooglePlacesOptions>(section);
+        var placesOptions = section.Get<GooglePlacesOptions>() ?? new GooglePlacesOptions();
+
+        if (!placesOptions.UsesGoogle)
+        {
+            services.AddSingleton<IPlaceSearch, FakePlaceSearch>();
+            return;
+        }
+
+        services.AddHttpClient<IPlaceSearch, GooglePlaceSearch>(client =>
+        {
+            client.BaseAddress = placesOptions.BaseUrl;
+            client.Timeout = placesOptions.Timeout;
         });
     }
 }

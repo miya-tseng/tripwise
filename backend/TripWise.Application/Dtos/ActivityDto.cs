@@ -10,4 +10,5 @@ public class ActivityDto
     public decimal Cost { get; set; }
     public string Currency { get; set; } = string.Empty;
     public decimal? CostInTwd { get; set; }
+    public PlaceDto? Place { get; set; }
 }

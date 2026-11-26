@@ -1,5 +1,7 @@
 using NSubstitute;
+using TripWise.Application;
 using TripWise.Application.Currencies;
+using TripWise.Application.Places;
 using TripWise.Domain;
 using TripWise.Application.Dtos;
 using TripWise.Application.Services;
@@ -14,8 +16,17 @@ public class ActivityServiceTests
         new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         new Dictionary<string, decimal> { ["JPY"] = 4.8m, ["USD"] = 0.032m });
 
+    private static readonly Place SensoJi = new(
+        "senso-ji-id",
+        "Senso-ji",
+        "2 Chome-3-1 Asakusa, Taito City, Tokyo",
+        35.7148,
+        139.7967,
+        "https://maps.google.com/?cid=1");
+
     private ITripRepository _repository = null!;
     private IExchangeRateProvider _exchangeRates = null!;
+    private IPlaceSearch _placeSearch = null!;
     private ActivityService _sut = null!;
     private Trip _trip = null!;
 
@@ -25,7 +36,9 @@ public class ActivityServiceTests
         _repository = Substitute.For<ITripRepository>();
         _exchangeRates = Substitute.For<IExchangeRateProvider>();
         _exchangeRates.GetLatestAsync(Arg.Any<CancellationToken>()).Returns(Rates);
-        _sut = new ActivityService(_repository, _exchangeRates);
+        _placeSearch = Substitute.For<IPlaceSearch>();
+        _placeSearch.GetDetailsAsync(SensoJi.PlaceId, Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(SensoJi);
+        _sut = new ActivityService(_repository, _exchangeRates, _placeSearch);
         _trip = Trip.Create("Tokyo", FirstDay, FirstDay.AddDays(2));
         _repository.GetByIdAsync(_trip.Id, Arg.Any<CancellationToken>()).Returns(_trip);
     }
@@ -333,5 +346,84 @@ public class ActivityServiceTests
             Assert.That(schedule.Days[0].Activities[0].CostInTwd, Is.Null);
             Assert.That(schedule.Totals.Single().Amount, Is.EqualTo(3000m));
         });
+    }
+
+    [Test]
+    public async Task AddAsync_WithPlaceId_LoadsPlaceDetailsAndDefaultsName()
+    {
+        var dto = Dto("", FirstDay, "10:00", "11:00");
+        dto.PlaceId = SensoJi.PlaceId;
+        dto.PlaceSessionToken = "session-1";
+
+        var result = await _sut.AddAsync(_trip.Id, dto);
+
+        await _placeSearch.Received(1).GetDetailsAsync(SensoJi.PlaceId, "session-1", Arg.Any<CancellationToken>());
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Name, Is.EqualTo("Senso-ji"));
+            Assert.That(result.Place!.PlaceId, Is.EqualTo(SensoJi.PlaceId));
+            Assert.That(result.Place.Address, Is.EqualTo(SensoJi.Address));
+            Assert.That(result.Place.Latitude, Is.EqualTo(SensoJi.Latitude));
+            Assert.That(result.Place.GoogleMapsUri, Is.EqualTo(SensoJi.GoogleMapsUri));
+            Assert.That(_trip.Activities.Single().Place, Is.EqualTo(SensoJi));
+        });
+    }
+
+    [Test]
+    public async Task AddAsync_WithoutPlaceId_DoesNotSearch()
+    {
+        var result = await _sut.AddAsync(_trip.Id, Dto("Free time", FirstDay, "10:00", "11:00"));
+
+        Assert.That(result!.Place, Is.Null);
+        await _placeSearch.DidNotReceiveWithAnyArgs().GetDetailsAsync(default!, default, default);
+    }
+
+    [Test]
+    public async Task AddAsync_WithUnknownPlace_ThrowsWithoutSaving()
+    {
+        var dto = Dto("Somewhere", FirstDay, "10:00", "11:00");
+        dto.PlaceId = "unknown";
+
+        var ex = Assert.ThrowsAsync<DomainException>(() => _sut.AddAsync(_trip.Id, dto));
+
+        Assert.That(ex!.Message, Is.EqualTo("Place not found."));
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AddAsync_WhenPlaceSearchIsUnavailable_ThrowsWithoutSaving()
+    {
+        _placeSearch.GetDetailsAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Place?>(_ => throw new ExternalServiceUnavailableException("down"));
+        var dto = Dto("", FirstDay, "10:00", "11:00");
+        dto.PlaceId = SensoJi.PlaceId;
+
+        Assert.ThrowsAsync<ExternalServiceUnavailableException>(() => _sut.AddAsync(_trip.Id, dto));
+
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
+        Assert.That(_trip.Activities, Is.Empty);
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithSamePlace_ReusesStoredPlaceWithoutSearching()
+    {
+        var activity = _trip.AddActivity("Senso-ji", FirstDay, Slot("10:00", "11:00"), place: SensoJi);
+        var dto = Dto("Senso-ji", FirstDay, "13:00", "14:00");
+        dto.PlaceId = SensoJi.PlaceId;
+
+        await _sut.UpdateAsync(_trip.Id, activity.Id, dto);
+
+        await _placeSearch.DidNotReceiveWithAnyArgs().GetDetailsAsync(default!, default, default);
+        Assert.That(activity.Place, Is.EqualTo(SensoJi));
+    }
+
+    [Test]
+    public async Task UpdateAsync_WithoutPlaceId_RemovesPlace()
+    {
+        var activity = _trip.AddActivity("Senso-ji", FirstDay, Slot("10:00", "11:00"), place: SensoJi);
+
+        await _sut.UpdateAsync(_trip.Id, activity.Id, Dto("Free time", FirstDay, "10:00", "11:00"));
+
+        Assert.That(activity.Place, Is.Null);
     }
 }

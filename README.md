@@ -85,6 +85,16 @@ Costs are converted to TWD with the latest rates from [open.er-api.com](https://
 ExchangeRates__Provider=Fake dotnet run --project backend/TripWise.Api
 ```
 
+### Google Places
+
+Place search uses Google Places API (New) when an API key is configured, and fake Tokyo / Kyoto / Taipei places otherwise. The key is only used by the API and is never sent to the browser.
+
+```bash
+dotnet user-secrets set "GooglePlaces:ApiKey" "<server key>" --project backend/TripWise.Api
+```
+
+Optional settings: `GooglePlaces:LanguageCode` (default `zh-TW`) and `GooglePlaces:Provider=Fake` to force fake places.
+
 ### Add a migration
 
 ```bash
