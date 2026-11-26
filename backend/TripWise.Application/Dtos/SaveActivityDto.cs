@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using TripWise.Domain;
 
 namespace TripWise.Application.Dtos;
@@ -26,4 +27,19 @@ public class SaveActivityDto
 
     [StringLength(100)]
     public string? PlaceSessionToken { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter<ActivityCategory>))]
+    public ActivityCategory? Category { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter<BookingStatus>))]
+    public BookingStatus? BookingStatus { get; set; }
+
+    [StringLength(ActivityDetails.MaxNotesLength)]
+    public string? Notes { get; set; }
+
+    [StringLength(ActivityDetails.MaxConfirmationCodeLength)]
+    public string? ConfirmationCode { get; set; }
+
+    [StringLength(ActivityDetails.MaxLinkLength)]
+    public string? Link { get; set; }
 }

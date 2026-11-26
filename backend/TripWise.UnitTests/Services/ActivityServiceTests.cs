@@ -471,4 +471,39 @@ public class ActivityServiceTests
 
         await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task AddAsync_WithDetails_ReturnsThem()
+    {
+        var dto = Dto("Shibuya Sky", FirstDay, "17:00", "18:00");
+        dto.Category = ActivityCategory.Sightseeing;
+        dto.BookingStatus = BookingStatus.ToBook;
+        dto.Notes = " Sunset ";
+        dto.ConfirmationCode = "SKY-1";
+        dto.Link = "https://example.com/sky";
+
+        var result = await _sut.AddAsync(_trip.Id, dto);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Category, Is.EqualTo(ActivityCategory.Sightseeing));
+            Assert.That(result.BookingStatus, Is.EqualTo(BookingStatus.ToBook));
+            Assert.That(result.Notes, Is.EqualTo("Sunset"));
+            Assert.That(result.ConfirmationCode, Is.EqualTo("SKY-1"));
+            Assert.That(result.Link, Is.EqualTo("https://example.com/sky"));
+        });
+    }
+
+    [Test]
+    public async Task AddAsync_WithoutDetails_UsesDefaults()
+    {
+        var result = await _sut.AddAsync(_trip.Id, Dto("Free time", FirstDay, "15:00", "16:00"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result!.Category, Is.EqualTo(ActivityCategory.Other));
+            Assert.That(result.BookingStatus, Is.EqualTo(BookingStatus.NotNeeded));
+            Assert.That(result.Link, Is.Null);
+        });
+    }
 }

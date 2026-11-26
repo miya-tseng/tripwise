@@ -21,7 +21,13 @@ public class ActivityService(
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
         var place = await ResolvePlaceAsync(dto, currentPlace: null, cancellationToken);
-        var activity = trip.AddActivity(dto.Name, dto.Date!.Value, ToTimeSlot(dto), ToCost(dto, rates), place);
+        var activity = trip.AddActivity(
+            dto.Name,
+            dto.Date!.Value,
+            ToTimeSlot(dto),
+            ToCost(dto, rates),
+            place,
+            ToDetails(dto));
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(activity, rates);
@@ -45,7 +51,8 @@ public class ActivityService(
             dto.Date!.Value,
             ToTimeSlot(dto),
             ToCost(dto, rates),
-            place);
+            place,
+            ToDetails(dto));
         await repository.UpdateAsync(trip, cancellationToken);
 
         return ToDto(activity, rates);
@@ -158,6 +165,13 @@ public class ActivityService(
             ?? throw new DomainException("Place not found.");
     }
 
+    private static ActivityDetails ToDetails(SaveActivityDto dto) => new(
+        dto.Category ?? ActivityCategory.Other,
+        dto.BookingStatus ?? BookingStatus.NotNeeded,
+        dto.Notes,
+        dto.ConfirmationCode,
+        dto.Link);
+
     private static TimeSlot ToTimeSlot(SaveActivityDto dto) =>
         new(dto.StartTime!.Value, dto.EndTime!.Value);
 
@@ -197,6 +211,11 @@ public class ActivityService(
             Currency = activity.Cost.Currency,
             CostInTwd = rates?.ToHomeCurrency(activity.Cost),
             Place = activity.Place is null ? null : PlaceService.ToDto(activity.Place),
+            Category = activity.Details.Category,
+            BookingStatus = activity.Details.BookingStatus,
+            Notes = activity.Details.Notes,
+            ConfirmationCode = activity.Details.ConfirmationCode,
+            Link = activity.Details.Link,
         };
     }
 }
