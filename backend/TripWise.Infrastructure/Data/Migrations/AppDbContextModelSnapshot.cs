@@ -60,6 +60,41 @@ namespace TripWise.Infrastructure.Data.Migrations
                                 .IsFixedLength();
                         });
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Place", "TripWise.Domain.Activity.Place#Place", b1 =>
+                        {
+                            b1.Property<string>("Address")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("PlaceAddress");
+
+                            b1.Property<string>("GoogleMapsUri")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("PlaceGoogleMapsUri");
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("PlaceLatitude");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("PlaceLongitude");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("PlaceName");
+
+                            b1.Property<string>("PlaceId")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("PlaceId");
+                        });
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "TimeSlot", "TripWise.Domain.Activity.TimeSlot#TimeSlot", b1 =>
                         {
                             b1.IsRequired();

@@ -14,12 +14,17 @@ public class Trip
 
     private Trip() { }
 
-    public Activity AddActivity(string name, DateOnly date, TimeSlot timeSlot, Money? cost = null)
+    public Activity AddActivity(
+        string name,
+        DateOnly date,
+        TimeSlot timeSlot,
+        Money? cost = null,
+        Place? place = null)
     {
-        var normalizedName = Activity.NormalizeName(name);
+        var normalizedName = Activity.NormalizeName(name, place);
         EnsureActivityFits(date, timeSlot, excludedActivityId: null);
 
-        var activity = Activity.Create(normalizedName, date, timeSlot, cost ?? Money.Zero);
+        var activity = Activity.Create(normalizedName, date, timeSlot, cost ?? Money.Zero, place);
         _activities.Add(activity);
         return activity;
     }
@@ -29,13 +34,14 @@ public class Trip
         string name,
         DateOnly date,
         TimeSlot timeSlot,
-        Money? cost = null)
+        Money? cost = null,
+        Place? place = null)
     {
         var activity = FindActivity(activityId);
-        var normalizedName = Activity.NormalizeName(name);
+        var normalizedName = Activity.NormalizeName(name, place);
         EnsureActivityFits(date, timeSlot, excludedActivityId: activityId);
 
-        activity.Update(normalizedName, date, timeSlot, cost ?? Money.Zero);
+        activity.Update(normalizedName, date, timeSlot, cost ?? Money.Zero, place);
         return activity;
     }
 

@@ -9,32 +9,40 @@ public class Activity
     public DateOnly Date { get; private set; }
     public TimeSlot TimeSlot { get; private set; } = null!;
     public Money Cost { get; private set; } = Money.Zero;
+    public Place? Place { get; private set; }
 
     private Activity() { }
 
-    internal static Activity Create(string name, DateOnly date, TimeSlot timeSlot, Money cost) => new()
+    internal static Activity Create(string name, DateOnly date, TimeSlot timeSlot, Money cost, Place? place) => new()
     {
         Id = Guid.CreateVersion7(),
         Name = name,
         Date = date,
         TimeSlot = timeSlot,
         Cost = cost,
+        Place = place,
     };
 
-    internal void Update(string name, DateOnly date, TimeSlot timeSlot, Money cost)
+    internal void Update(string name, DateOnly date, TimeSlot timeSlot, Money cost, Place? place)
     {
         Name = name;
         Date = date;
         TimeSlot = timeSlot;
         Cost = cost;
+        Place = place;
     }
 
     internal bool ConflictsWith(DateOnly date, TimeSlot timeSlot) =>
         Date == date && TimeSlot.OverlapsWith(timeSlot);
 
-    internal static string NormalizeName(string name)
+    internal static string NormalizeName(string name, Place? place = null)
     {
         var trimmedName = name?.Trim();
+
+        if (string.IsNullOrEmpty(trimmedName) && place is not null)
+        {
+            trimmedName = place.Name.Length > MaxNameLength ? place.Name[..MaxNameLength].TrimEnd() : place.Name;
+        }
 
         if (string.IsNullOrEmpty(trimmedName))
         {

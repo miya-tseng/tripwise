@@ -42,6 +42,16 @@ public class ActivityConfiguration : IEntityTypeConfiguration<Activity>
                 .HasDefaultValue(Money.HomeCurrency);
         });
 
+        builder.ComplexProperty(activity => activity.Place, place =>
+        {
+            place.Property(value => value.PlaceId).HasColumnName("PlaceId").HasMaxLength(Place.MaxPlaceIdLength);
+            place.Property(value => value.Name).HasColumnName("PlaceName").HasMaxLength(Place.MaxNameLength);
+            place.Property(value => value.Address).HasColumnName("PlaceAddress").HasMaxLength(Place.MaxAddressLength);
+            place.Property(value => value.Latitude).HasColumnName("PlaceLatitude");
+            place.Property(value => value.Longitude).HasColumnName("PlaceLongitude");
+            place.Property(value => value.GoogleMapsUri).HasColumnName("PlaceGoogleMapsUri").HasMaxLength(Place.MaxUriLength);
+        });
+
         builder.HasIndex(TripIdColumn, nameof(Activity.Date));
     }
 }
