@@ -9,7 +9,7 @@ public abstract class SchedulePageTest : PageTest
     private static readonly string BaseUrl =
         Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "http://localhost:5173";
 
-    private static readonly DateOnly FirstDay = new(2030, 5, 1);
+    protected static readonly DateOnly FirstDay = new(2030, 5, 1);
 
     protected string TripName { get; private set; } = null!;
     protected string TripId { get; private set; } = null!;
