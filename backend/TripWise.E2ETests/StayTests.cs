@@ -117,4 +117,36 @@ public class StayTests : SchedulePageTest
 
         await Expect(ScheduleDay(1).GetByTestId("day-stay-name")).ToHaveTextAsync("Tokyo Tower");
     }
+
+    [Test]
+    public async Task SameAsLastNight_ExtendsTheStayAtTheSamePrice()
+    {
+        await ScheduleDay(1).GetByTestId("day-add-stay").ClickAsync();
+        await TypeStayNameAsync("Asakusa Inn");
+        await Page.GetByLabel("Total cost").FillAsync("3000");
+        await SaveStayAsync();
+
+        var extend = ScheduleDay(2).GetByTestId("day-extend-stay");
+        await Expect(extend).ToHaveTextAsync("Same as last night · Asakusa Inn");
+        await extend.ClickAsync();
+
+        await Expect(ScheduleDay(2).GetByTestId("day-stay")).ToContainTextAsync("Night 2 of 2");
+        await Expect(ScheduleDay(2).GetByTestId("day-total")).ToHaveTextAsync("NT$3,000.00");
+        await Expect(Page.GetByTestId("stay-card-cost")).ToHaveTextAsync("NT$6,000.00");
+        await Expect(ScheduleDay(3).GetByTestId("day-extend-stay")).ToBeVisibleAsync();
+    }
+
+    [Test]
+    public async Task QuickChoice_CoversEveryNightInOneStep()
+    {
+        await Page.GetByTestId("add-stay").ClickAsync();
+        await TypeStayNameAsync("Hotel Gracery");
+
+        await StayDialog().GetByTestId("quick-check-out").Filter(new() { HasText = "All 3 nights" }).ClickAsync();
+        await Expect(Page.GetByTestId("stay-nights")).ToHaveTextAsync("3 nights");
+        await SaveStayAsync();
+
+        await Expect(Page.GetByTestId("nights-without-stay")).ToHaveCountAsync(0);
+        await Expect(ScheduleDay(3).GetByTestId("day-stay")).ToContainTextAsync("Night 3 of 3");
+    }
 }
