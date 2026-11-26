@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryStorage } from '@/test/memoryStorage'
-import { lastUsedCurrency, rememberCurrency } from '../preferences'
+import { lastUsedCurrency, lastUsedView, rememberCurrency, rememberView } from '../preferences'
 
 describe('currency preferences', () => {
   beforeEach(() => {
@@ -41,5 +41,39 @@ describe('currency preferences without storage', () => {
 
     expect(() => rememberCurrency('trip-a', 'JPY')).not.toThrow()
     expect(lastUsedCurrency('trip-a')).toBe('TWD')
+  })
+})
+
+describe('view preferences', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', createMemoryStorage())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('has no view until one is remembered, then keeps it per trip', () => {
+    expect(lastUsedView('trip-a')).toBeNull()
+
+    rememberView('trip-a', 'table')
+    rememberView('trip-b', 'board')
+
+    expect(lastUsedView('trip-a')).toBe('table')
+    expect(lastUsedView('trip-b')).toBe('board')
+  })
+
+  it('ignores storage errors', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+      setItem: () => {
+        throw new Error('blocked')
+      },
+    })
+
+    expect(() => rememberView('trip-a', 'table')).not.toThrow()
+    expect(lastUsedView('trip-a')).toBeNull()
   })
 })

@@ -17,3 +17,21 @@ export function rememberCurrency(tripId: string, currency: string): void {
     return
   }
 }
+
+const viewKey = (tripId: string) => `tripwise.view.${tripId}`
+
+export function lastUsedView(tripId: string): string | null {
+  try {
+    return localStorage.getItem(viewKey(tripId))
+  } catch {
+    return null
+  }
+}
+
+export function rememberView(tripId: string, view: string): void {
+  try {
+    localStorage.setItem(viewKey(tripId), view)
+  } catch {
+    return
+  }
+}
