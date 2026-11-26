@@ -146,4 +146,23 @@ public class OverviewServiceTests
             Assert.That(overview.TopExpenses.Single().CostInTwd, Is.Null);
         });
     }
+
+    [Test]
+    public async Task GetAsync_CountsTheChecklistAndFlagsOpenItems()
+    {
+        var passport = _trip.AddChecklistItem("Passport", ChecklistSection.ToPack);
+        _trip.AddChecklistItem("Charger", ChecklistSection.ToPack);
+        _trip.AddChecklistItem("Adapter", ChecklistSection.ToPack);
+        _trip.SetChecklistItemDone(passport.Id, true);
+
+        var overview = (await _sut.GetAsync(_trip.Id))!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(overview.ChecklistDone, Is.EqualTo(1));
+            Assert.That(overview.ChecklistTotal, Is.EqualTo(3));
+            Assert.That(overview.Attention[0].Kind, Is.EqualTo(AttentionKind.ChecklistOpen));
+            Assert.That(overview.Attention[0].Name, Is.EqualTo("2 checklist items left"));
+        });
+    }
 }

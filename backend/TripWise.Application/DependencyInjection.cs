@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddScoped<ActivityService>();
         services.AddScoped<StayService>();
         services.AddScoped<OverviewService>();
+        services.AddScoped<ChecklistService>();
         services.AddScoped<PlaceResolver>();
         services.AddScoped<ExchangeRateService>();
         services.AddScoped<PlaceService>();

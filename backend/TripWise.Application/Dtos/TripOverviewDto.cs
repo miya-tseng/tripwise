@@ -7,6 +7,7 @@ public enum AttentionKind
 {
     ActivityToBook,
     StayToBook,
+    ChecklistOpen,
     NightWithoutStay,
     EmptyDay,
 }
@@ -22,6 +23,8 @@ public class TripOverviewDto
     public int NightsWithStay { get; set; }
     public int ActivityCount { get; set; }
     public int PlaceCount { get; set; }
+    public int ChecklistDone { get; set; }
+    public int ChecklistTotal { get; set; }
     public bool RatesAvailable { get; set; }
     public decimal? TotalInTwd { get; set; }
     public decimal? ActivitiesInTwd { get; set; }

@@ -19,6 +19,7 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
             ActivityNotFoundException => (StatusCodes.Status404NotFound, "Activity not found"),
             StayOverlapException => (StatusCodes.Status409Conflict, "Stay overlap"),
             StayNotFoundException => (StatusCodes.Status404NotFound, "Stay not found"),
+            ChecklistItemNotFoundException => (StatusCodes.Status404NotFound, "Checklist item not found"),
             _ => (StatusCodes.Status400BadRequest, "Business rule violation"),
         };
 

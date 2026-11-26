@@ -34,6 +34,8 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
             NightsWithStay = overview.NightsWithStay,
             ActivityCount = overview.ActivityCount,
             PlaceCount = overview.PlaceCount,
+            ChecklistDone = trip.Checklist.Count(item => item.Done),
+            ChecklistTotal = trip.Checklist.Count,
             RatesAvailable = rates is not null,
             TotalInTwd = total,
             ActivitiesInTwd = Total(activityCosts, rates),
@@ -83,7 +85,7 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
                 .ThenBy(expense => expense.Date)
                 .Take(TopExpenseCount)
                 .ToList(),
-            Attention = AttentionItems(overview),
+            Attention = AttentionItems(trip, overview),
         };
     }
 
@@ -108,7 +110,7 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
         };
     }
 
-    private static List<AttentionItemDto> AttentionItems(TripOverview overview) =>
+    private static List<AttentionItemDto> AttentionItems(Trip trip, TripOverview overview) =>
         overview.ActivitiesToBook
             .Select(activity => new AttentionItemDto
             {
@@ -124,6 +126,7 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
                 ItemId = stay.Id,
                 Name = stay.Name,
             }))
+            .Concat(ChecklistAttention(trip))
             .Concat(overview.NightsWithoutStay.Select(date => new AttentionItemDto
             {
                 Kind = AttentionKind.NightWithoutStay,
@@ -135,4 +138,21 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
                 Date = date,
             }))
             .ToList();
+
+    private static IEnumerable<AttentionItemDto> ChecklistAttention(Trip trip)
+    {
+        var open = trip.Checklist.Count(item => !item.Done);
+
+        if (open == 0)
+        {
+            yield break;
+        }
+
+        yield return new AttentionItemDto
+        {
+            Kind = AttentionKind.ChecklistOpen,
+            Date = trip.Period.Start,
+            Name = open == 1 ? "1 checklist item left" : $"{open} checklist items left",
+        };
+    }
 }
