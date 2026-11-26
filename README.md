@@ -95,6 +95,12 @@ dotnet user-secrets set "GooglePlaces:ApiKey" "<server key>" --project backend/T
 
 Optional settings: `GooglePlaces:LanguageCode` (default `zh-TW`) and `GooglePlaces:Provider=Fake` to force fake places.
 
+E2E tests expect fake places and fixed rates. If you configured real keys, run the API for E2E with:
+
+```bash
+GooglePlaces__Provider=Fake ExchangeRates__Provider=Fake dotnet run --project backend/TripWise.Api
+```
+
 ### Add a migration
 
 ```bash
