@@ -1,48 +1,36 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, routerKey } from 'vue-router'
+import { computed, ref, toRef, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import ActivityDialog from '@/components/ActivityDialog.vue'
 import type { ActivityPrefill } from '@/components/ActivityForm.vue'
+import AddFab from '@/components/AddFab.vue'
 import BoardView, { type MoveRequest } from '@/components/BoardView.vue'
-import DayStrip from '@/components/DayStrip.vue'
-import FilterMenu from '@/components/FilterMenu.vue'
-import { useMediaQuery } from '@/composables/useMediaQuery'
+import DayPager from '@/components/DayPager.vue'
 import ScheduleDays from '@/components/ScheduleDays.vue'
 import StayDialog from '@/components/StayDialog.vue'
+import StaysSummary from '@/components/StaysSummary.vue'
 import SuggestionsPanel from '@/components/SuggestionsPanel.vue'
-import type { SelectOption } from '@/components/SelectMenu.vue'
 import TableView from '@/components/TableView.vue'
 import TripEditDialog from '@/components/TripEditDialog.vue'
+import TripScheduleHeader from '@/components/TripScheduleHeader.vue'
+import { useActiveDay } from '@/composables/useActiveDay'
+import { useActivityFilters } from '@/composables/useActivityFilters'
+import { useElementHeight } from '@/composables/useElementHeight'
+import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useScheduleView } from '@/composables/useScheduleView'
 import { useScheduleStore } from '@/stores/schedule'
-import type { Activity, ActivityCategory, BookingStatus, SaveActivityInput } from '@/types/activity'
+import type { Activity, SaveActivityInput } from '@/types/activity'
 import type { GeoPoint } from '@/types/place'
 import type { SaveStayInput, Stay } from '@/types/stay'
 import type { Suggestion } from '@/types/suggestion'
 import type { UpdateTripInput } from '@/types/trip'
-import { CATEGORIES } from '@/utils/activityDetails'
-import { formatDateRange } from '@/utils/date'
-import {
-  formatCurrency,
-  formatTotals,
-  formatTwd,
-  totalsByCurrency,
-  tripCosts,
-  tripTotalInTwd,
-} from '@/utils/money'
-import { lastUsedCurrency, lastUsedView, rememberCurrency, rememberView } from '@/utils/preferences'
-import { filterDays, parseView, type ScheduleView } from '@/utils/activityTable'
-import { slotAfter } from '@/utils/schedule'
-import {
-  extendedByOneNight,
-  firstFreeNight,
-  nextCheckInAfter,
-  nightsLabel,
-  stayRangeLabel,
-} from '@/utils/stays'
 import { addDays } from '@/utils/date'
+import { formatTotals, formatTwd, totalsByCurrency, tripCosts, tripTotalInTwd } from '@/utils/money'
+import { lastUsedCurrency, rememberCurrency } from '@/utils/preferences'
+import { slotAfter } from '@/utils/schedule'
+import { extendedByOneNight, firstFreeNight, nextCheckInAfter } from '@/utils/stays'
 import { todayIso } from '@/utils/trips'
-import { BOOKING_STATUSES, bookingStatusMeta } from '@/utils/activityDetails'
 
 const props = withDefaults(
   defineProps<{
@@ -53,6 +41,13 @@ const props = withDefaults(
   }>(),
   { day: undefined, view: undefined, today: () => todayIso() },
 )
+
+const PHONE_WIDTH = '(max-width: 720px)'
+const RATES_DATE = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
 
 const store = useScheduleStore()
 const {
@@ -74,73 +69,41 @@ const {
   suggestionsError,
 } = storeToRefs(store)
 
+const tripId = toRef(props, 'id')
+const header = ref<InstanceType<typeof TripScheduleHeader> | null>(null)
+const headerOffset = useElementHeight(computed(() => header.value?.$el as HTMLElement | undefined))
+const paged = useMediaQuery(PHONE_WIDTH)
+const dates = computed(() => days.value.map((day) => day.date))
+
+const { scheduleView, setView } = useScheduleView(tripId, toRef(props, 'view'))
+const filters = useActivityFilters(days)
+const { activeDayIndex, currentDayDate, jumpToDay, showDay, onTouchStart, onTouchEnd } =
+  useActiveDay({
+    dates,
+    paged,
+    headerOffset,
+    ready: computed(() => !loading.value && trip.value !== null),
+    linkedDay: toRef(props, 'day'),
+    today: toRef(props, 'today'),
+  })
+
 const dialogOpen = ref(false)
 const editing = ref<Activity | null>(null)
 const addingDate = ref<string | null>(null)
 const prefill = ref<ActivityPrefill | null>(null)
 const formVersion = ref(0)
 const tripEditorOpen = ref(false)
-const router = inject(routerKey, null)
-const scheduleView = ref<ScheduleView>(initialView(props.id))
-const categoryFilter = ref<ActivityCategory | null>(null)
-const bookingFilter = ref<BookingStatus | null>(null)
 const movingId = ref<string | null>(null)
 const defaultCurrency = ref(lastUsedCurrency(props.id))
 const stayDialogOpen = ref(false)
-const tripBar = ref<HTMLElement | null>(null)
-const headerOffset = ref(0)
-const activeDayIndex = ref(0)
-const paged = useMediaQuery('(max-width: 720px)')
-let touchStart: { x: number; y: number } | null = null
-const fabOpen = ref(false)
-const staysOpen = ref(false)
-let headerObserver: ResizeObserver | undefined
-let scrollFrame = 0
-let jumpLockUntil = 0
 const editingStay = ref<Stay | null>(null)
 const stayCheckIn = ref<string | null>(null)
 const stayCheckOut = ref<string | null>(null)
 
-const dates = computed(() => days.value.map((day) => day.date))
 const formKey = computed(() => editing.value?.id ?? `new-${formVersion.value}`)
 const activityCount = computed(() =>
   days.value.reduce((total, day) => total + day.activities.length, 0),
 )
-const categoriesInTrip = computed(() => {
-  const used = new Set(
-    days.value.flatMap((day) => day.activities.map((activity) => activity.category)),
-  )
-  return CATEGORIES.filter((category) => used.has(category.value))
-})
-const visibleDays = computed(() =>
-  filterDays(days.value, { category: categoryFilter.value, bookingStatus: bookingFilter.value }),
-)
-const bookingStatusesInTrip = computed(
-  () => new Set(days.value.flatMap((day) => day.activities.map((a) => a.bookingStatus))),
-)
-const bookingFilterOptions = computed<SelectOption[]>(() => [
-  { value: '', label: 'All bookings' },
-  ...BOOKING_STATUSES.filter((status) => bookingStatusesInTrip.value.has(status.value)).map(
-    (status) => ({ value: status.value, label: status.label }),
-  ),
-])
-const bookingFilterValue = computed({
-  get: () => bookingFilter.value ?? '',
-  set: (value: string) => {
-    bookingFilter.value = value === '' ? null : (value as BookingStatus)
-  },
-})
-const categoryFilterValue = computed({
-  get: () => categoryFilter.value as string | null,
-  set: (value: string | null) => {
-    categoryFilter.value = value as ActivityCategory | null
-  },
-})
-const viewOptions: { value: ScheduleView; label: string }[] = [
-  { value: 'timeline', label: 'Timeline' },
-  { value: 'board', label: 'Board' },
-  { value: 'table', label: 'Table' },
-]
 const searchNear = computed<GeoPoint | null>(() => {
   const places = days.value.flatMap((day) =>
     day.activities.flatMap((activity) => activity.place ?? []),
@@ -148,63 +111,26 @@ const searchNear = computed<GeoPoint | null>(() => {
   const last = places.at(-1) ?? trip.value?.destination
   return last ? { latitude: last.latitude, longitude: last.longitude } : null
 })
-const budgetInTwd = computed(() => tripTotalInTwd(days.value, stays.value))
-const budget = computed(() =>
-  budgetInTwd.value === null
+const budget = computed(() => {
+  const totalInTwd = tripTotalInTwd(days.value, stays.value)
+  return totalInTwd === null
     ? formatTotals(totalsByCurrency(tripCosts(days.value, stays.value)))
-    : formatTwd(budgetInTwd.value),
-)
+    : formatTwd(totalInTwd)
+})
 const nightsWithoutStay = computed(() => days.value.filter((day) => !day.stay).length)
 const ratesNote = computed(() => {
   if (!ratesAvailable.value) {
     return 'Exchange rates are unavailable right now, so totals are shown per currency.'
   }
 
-  const updated = ratesUpdatedAt.value
-    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(
-        new Date(ratesUpdatedAt.value),
-      )
-    : null
-  return updated ? `Totals in TWD · Rates by Exchange Rate API, updated ${updated}` : ''
+  return ratesUpdatedAt.value
+    ? `Totals in TWD · Rates by Exchange Rate API, updated ${RATES_DATE.format(new Date(ratesUpdatedAt.value))}`
+    : ''
 })
 
-function initialView(tripId: string): ScheduleView {
-  return parseView(props.view) ?? parseView(lastUsedView(tripId)) ?? 'timeline'
-}
-
-function setView(view: ScheduleView) {
-  scheduleView.value = view
-  rememberView(props.id, view)
-
-  const query = { ...router?.currentRoute.value.query }
-  delete query.day
-
-  if (view === 'timeline') {
-    delete query.view
-  } else {
-    query.view = view
-  }
-
-  router?.replace({ query })
-}
-
 watch(
-  () => props.view,
-  (view) => {
-    const parsed = parseView(view)
-
-    if (parsed) {
-      scheduleView.value = parsed
-    }
-  },
-)
-
-watch(
-  () => props.id,
-  (id, previousId) => {
-    if (previousId !== undefined) {
-      scheduleView.value = initialView(id)
-    }
+  tripId,
+  (id) => {
     closeDialog()
     defaultCurrency.value = lastUsedCurrency(id)
     store.load(id)
@@ -212,153 +138,11 @@ watch(
   { immediate: true },
 )
 
-watch(
-  () => loading.value || !trip.value,
-  async (notReady) => {
-    const dayNumber = props.day ? Number(props.day) : dates.value.indexOf(props.today) + 1
-
-    const minimumDay = props.day ? 1 : 2
-
-    if (notReady || !Number.isInteger(dayNumber) || dayNumber < 1) {
-      return
-    }
-
-    if (paged.value) {
-      activeDayIndex.value = Math.min(dayNumber, dates.value.length) - 1
-      return
-    }
-
-    if (dayNumber < minimumDay) {
-      return
-    }
-
-    await nextTick()
-    document
-      .querySelectorAll('[data-testid="schedule-day"]')
-      [dayNumber - 1]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
-  },
-  { immediate: true },
-)
-
-function dayElements(): HTMLElement[] {
-  return Array.from(document.querySelectorAll<HTMLElement>('[data-testid="schedule-day"]'))
-}
-
-function isVisible(element: HTMLElement | undefined): boolean {
-  if (!element) {
-    return false
+function rememberCurrencyOf(cost: number, currency: string) {
+  if (cost > 0) {
+    rememberCurrency(props.id, currency)
+    defaultCurrency.value = currency
   }
-
-  const box = element.getBoundingClientRect()
-  return box.bottom > headerOffset.value && box.top < window.innerHeight
-}
-
-function updateActiveDay() {
-  scrollFrame = 0
-  const days = dayElements()
-
-  if (paged.value || days.length === 0 || Date.now() < jumpLockUntil) {
-    return
-  }
-
-  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
-
-  if (atBottom && isVisible(days[activeDayIndex.value])) {
-    return
-  }
-
-  const line = headerOffset.value + 24
-  const passed = days.filter((element) => element.getBoundingClientRect().top <= line).length
-  activeDayIndex.value = Math.max(0, passed - 1)
-}
-
-function onScroll() {
-  if (!scrollFrame) {
-    scrollFrame = requestAnimationFrame(updateActiveDay)
-  }
-}
-
-function jumpToDay(index: number) {
-  activeDayIndex.value = index
-
-  if (paged.value) {
-    window.scrollTo?.({ top: 0, behavior: 'smooth' })
-    return
-  }
-
-  jumpLockUntil = Date.now() + 900
-  dayElements()[index]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
-}
-
-function showDay(step: number) {
-  const next = activeDayIndex.value + step
-
-  if (next >= 0 && next < dates.value.length) {
-    jumpToDay(next)
-  }
-}
-
-function onTouchStart(event: TouchEvent) {
-  const touch = event.touches[0]
-  touchStart = touch ? { x: touch.clientX, y: touch.clientY } : null
-}
-
-function onTouchEnd(event: TouchEvent) {
-  const touch = event.changedTouches[0]
-
-  if (!paged.value || !touchStart || !touch) {
-    return
-  }
-
-  const dx = touch.clientX - touchStart.x
-  const dy = touch.clientY - touchStart.y
-  touchStart = null
-
-  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-    showDay(dx < 0 ? 1 : -1)
-  }
-}
-
-function observeHeader(element: HTMLElement | null) {
-  headerObserver?.disconnect()
-
-  if (!element || typeof ResizeObserver === 'undefined') {
-    return
-  }
-
-  headerObserver = new ResizeObserver(() => {
-    headerOffset.value = element.offsetHeight
-  })
-  headerObserver.observe(element)
-}
-
-watch(tripBar, observeHeader)
-
-onMounted(() => {
-  window.addEventListener('scroll', onScroll, { passive: true })
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', onScroll)
-  headerObserver?.disconnect()
-  cancelAnimationFrame(scrollFrame)
-})
-
-const currentDayDate = computed(() => dates.value[activeDayIndex.value] ?? dates.value[0])
-
-function fabAddActivity() {
-  fabOpen.value = false
-  addToDay(currentDayDate.value)
-}
-
-function fabAddStay() {
-  fabOpen.value = false
-  openStayDialog({ checkIn: currentDayDate.value })
-}
-
-async function removeActivityFromDialog(id: string): Promise<boolean> {
-  await removeActivity(id)
-  return !error.value
 }
 
 function openDialog(options: { activity?: Activity; date?: string; prefill?: ActivityPrefill }) {
@@ -397,11 +181,7 @@ async function save(input: SaveActivityInput): Promise<boolean> {
     store.dropSuggestion(input.placeId)
   }
 
-  if (input.cost > 0) {
-    rememberCurrency(props.id, input.currency)
-    defaultCurrency.value = input.currency
-  }
-
+  rememberCurrencyOf(input.cost, input.currency)
   return true
 }
 
@@ -417,6 +197,11 @@ async function removeActivity(id: string) {
   }
 
   await store.remove(id)
+}
+
+async function removeActivityFromDialog(id: string): Promise<boolean> {
+  await removeActivity(id)
+  return !error.value
 }
 
 function showSuggestions(activity: Activity) {
@@ -452,26 +237,26 @@ function closeTripEditor() {
   tripEditorOpen.value = false
 }
 
+function showStayDialog(stay: Stay | null, checkIn: string | null, checkOut: string | null) {
+  editingStay.value = stay
+  stayCheckIn.value = checkIn
+  stayCheckOut.value = checkOut
+  stayDialogOpen.value = true
+}
+
 function openStayDialog(options: { stay?: Stay; checkIn?: string }) {
   store.clearStayError()
-  editingStay.value = options.stay ?? null
   const checkIn =
     options.checkIn ?? firstFreeNight(dates.value, stays.value) ?? dates.value[0] ?? null
-  stayCheckIn.value = checkIn
-  stayCheckOut.value = checkIn
-    ? (nextCheckInAfter(checkIn, stays.value) ?? addDays(checkIn, 1))
-    : null
-  stayDialogOpen.value = true
+  const checkOut = checkIn ? (nextCheckInAfter(checkIn, stays.value) ?? addDays(checkIn, 1)) : null
+  showStayDialog(options.stay ?? null, checkIn, checkOut)
 }
 
 async function extendStay(stay: Stay) {
   const extended = await store.saveStay(stay.id, extendedByOneNight(stay))
 
   if (!extended) {
-    editingStay.value = stay
-    stayCheckIn.value = stay.checkIn
-    stayCheckOut.value = stay.checkOut
-    stayDialogOpen.value = true
+    showStayDialog(stay, stay.checkIn, stay.checkOut)
   }
 }
 
@@ -484,9 +269,8 @@ function closeStayDialog() {
 async function saveStay(input: SaveStayInput): Promise<boolean> {
   const saved = await store.saveStay(editingStay.value?.id ?? null, input)
 
-  if (saved && input.cost > 0) {
-    rememberCurrency(props.id, input.currency)
-    defaultCurrency.value = input.currency
+  if (saved) {
+    rememberCurrencyOf(input.cost, input.currency)
   }
 
   return saved
@@ -504,102 +288,30 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
     </div>
 
     <div v-else-if="loadError" class="status">
-      <RouterLink to="/" class="back-link" data-testid="back-link">← All trips</RouterLink>
+      <RouterLink to="/" class="home-link" data-testid="back-link">← All trips</RouterLink>
       <div role="alert" class="alert" data-testid="load-error">{{ loadError }}</div>
     </div>
 
     <template v-else-if="trip">
-      <header ref="tripBar" class="trip-bar" data-testid="trip-bar">
-        <div class="bar-inner">
-          <div class="bar-top">
-            <RouterLink to="/" class="back-link" aria-label="All trips" data-testid="back-link">
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M16 10H5m4-4-4 4 4 4"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </RouterLink>
-            <div class="trip-title">
-              <h1 class="display">{{ trip.name }}</h1>
-              <p class="trip-meta">
-                <span data-testid="trip-dates">{{
-                  formatDateRange(trip.startDate, trip.endDate)
-                }}</span>
-                <span aria-hidden="true">·</span>
-                <span
-                  ><span data-testid="trip-days">{{ trip.days }}</span>
-                  {{ trip.days === 1 ? 'day' : 'days' }}</span
-                >
-                <span aria-hidden="true">·</span>
-                <span
-                  ><span data-testid="activity-count">{{ activityCount }}</span>
-                  {{ activityCount === 1 ? 'activity' : 'activities' }}</span
-                >
-              </p>
-            </div>
-            <div class="budget" :title="ratesNote">
-              <span class="budget-label">Budget</span>
-              <span class="budget-value" data-testid="trip-total">{{ budget }}</span>
-            </div>
-            <div class="bar-actions">
-              <button
-                type="button"
-                class="btn btn-secondary btn-small edit-trip"
-                aria-label="Edit trip"
-                title="Edit trip"
-                data-testid="edit-trip"
-                @click="openTripEditor"
-              >
-                <span class="edit-trip-icon" aria-hidden="true">✎</span>
-                <span class="edit-trip-label">Edit trip</span>
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary btn-small add-activity"
-                data-testid="add-activity"
-                @click="addToDay()"
-              >
-                + Add activity
-              </button>
-            </div>
-          </div>
-
-          <div class="bar-bottom">
-            <div class="view-toggle" role="group" aria-label="Schedule view">
-              <button
-                v-for="option in viewOptions"
-                :key="option.value"
-                type="button"
-                :aria-pressed="scheduleView === option.value"
-                :data-testid="`view-${option.value}`"
-                @click="setView(option.value)"
-              >
-                {{ option.label }}
-              </button>
-            </div>
-            <DayStrip
-              v-if="scheduleView === 'timeline' && dates.length > 1"
-              class="day-strip-row"
-              :dates="dates"
-              :active-index="activeDayIndex"
-              :today="today"
-              @jump="jumpToDay"
-            />
-            <FilterMenu
-              v-model:booking="bookingFilterValue"
-              v-model:category="categoryFilterValue"
-              class="filters"
-              :booking-options="bookingFilterOptions"
-              :categories="categoriesInTrip"
-            />
-          </div>
-        </div>
-      </header>
+      <TripScheduleHeader
+        ref="header"
+        v-model:booking="filters.bookingValue.value"
+        v-model:category="filters.categoryValue.value"
+        :trip="trip"
+        :activity-count="activityCount"
+        :budget="budget"
+        :rates-note="ratesNote"
+        :schedule-view="scheduleView"
+        :dates="dates"
+        :active-day-index="activeDayIndex"
+        :today="today"
+        :booking-options="filters.bookingOptions.value"
+        :categories="filters.categoriesInTrip.value"
+        @edit-trip="openTripEditor"
+        @add-activity="addToDay()"
+        @change-view="setView"
+        @jump="jumpToDay"
+      />
 
       <section
         class="itinerary"
@@ -633,64 +345,16 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
           </button>
         </div>
 
-        <section class="stays" aria-label="Stays" data-testid="stays-section">
-          <div class="stays-head">
-            <h2 class="stays-title">Stays</h2>
-            <button
-              v-if="stays.length > 0"
-              type="button"
-              class="stays-toggle"
-              :aria-expanded="staysOpen"
-              data-testid="stays-toggle"
-              @click="staysOpen = !staysOpen"
-            >
-              🛏 {{ stays.length }} {{ stays.length === 1 ? 'stay' : 'stays' }}
-              <span class="stays-toggle-hint">{{ staysOpen ? 'Hide' : 'Show' }}</span>
-            </button>
-            <span v-if="nightsWithoutStay > 0" class="stays-hint" data-testid="nights-without-stay">
-              {{ nightsLabel(nightsWithoutStay) }} without a stay
-            </span>
-            <button
-              type="button"
-              class="btn btn-secondary btn-small add-stay"
-              data-testid="add-stay"
-              @click="openStayDialog({})"
-            >
-              + Add stay
-            </button>
-          </div>
-          <ul v-if="stays.length > 0" class="stay-cards" :class="{ collapsed: !staysOpen }">
-            <li v-for="stay in stays" :key="stay.id">
-              <button
-                type="button"
-                class="stay-card"
-                data-testid="stay-card"
-                @click="openStayDialog({ stay })"
-              >
-                <span class="stay-card-name" data-testid="stay-card-name">🛏 {{ stay.name }}</span>
-                <span class="stay-card-dates">
-                  {{ stayRangeLabel(stay) }} · {{ nightsLabel(stay.nights) }}
-                </span>
-                <span class="stay-card-foot">
-                  <span v-if="stay.cost > 0" data-testid="stay-card-cost">{{
-                    formatCurrency(stay.cost, stay.currency)
-                  }}</span>
-                  <span
-                    v-if="stay.bookingStatus !== 'NotNeeded'"
-                    class="booking-badge"
-                    :class="`tone-${bookingStatusMeta(stay.bookingStatus).tone}`"
-                  >
-                    {{ bookingStatusMeta(stay.bookingStatus).label }}
-                  </span>
-                </span>
-              </button>
-            </li>
-          </ul>
-        </section>
+        <StaysSummary
+          :stays="stays"
+          :nights-without-stay="nightsWithoutStay"
+          @add="openStayDialog({})"
+          @edit="(stay) => openStayDialog({ stay })"
+        />
 
         <template v-if="scheduleView === 'timeline'">
           <ScheduleDays
-            :days="visibleDays"
+            :days="filters.visibleDays.value"
             :today="today"
             :active-date="paged ? currentDayDate : null"
             :editing-id="editing?.id ?? null"
@@ -703,39 +367,21 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
             @edit-stay="(stay) => openStayDialog({ stay })"
             @extend-stay="extendStay"
           />
-          <nav
+          <DayPager
             v-if="paged && dates.length > 1"
-            class="day-pager"
-            aria-label="Other days"
-            data-testid="day-pager"
-          >
-            <button
-              type="button"
-              class="pager-button"
-              :disabled="activeDayIndex === 0"
-              data-testid="previous-day"
-              @click="showDay(-1)"
-            >
-              <span aria-hidden="true">‹</span>
-              {{ activeDayIndex > 0 ? `Day ${activeDayIndex}` : 'Start' }}
-            </button>
-            <span class="pager-hint">Swipe to change day</span>
-            <button
-              type="button"
-              class="pager-button"
-              :disabled="activeDayIndex >= dates.length - 1"
-              data-testid="next-day"
-              @click="showDay(1)"
-            >
-              {{ activeDayIndex < dates.length - 1 ? `Day ${activeDayIndex + 2}` : 'End' }}
-              <span aria-hidden="true">›</span>
-            </button>
-          </nav>
+            :active-index="activeDayIndex"
+            :day-count="dates.length"
+            @step="showDay"
+          />
         </template>
-        <TableView v-else-if="scheduleView === 'table'" :days="visibleDays" @edit="startEditing" />
+        <TableView
+          v-else-if="scheduleView === 'table'"
+          :days="filters.visibleDays.value"
+          @edit="startEditing"
+        />
         <BoardView
           v-else
-          :days="visibleDays"
+          :days="filters.visibleDays.value"
           :today="today"
           :moving-id="movingId"
           @add="addToDay"
@@ -757,39 +403,10 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         </aside>
       </Transition>
 
-      <div class="fab" :class="{ open: fabOpen }" data-testid="fab-area">
-        <div v-if="fabOpen" class="fab-menu" role="menu" data-testid="fab-menu">
-          <button
-            type="button"
-            role="menuitem"
-            class="fab-option"
-            data-testid="fab-add-activity"
-            @click="fabAddActivity"
-          >
-            🗓 Activity
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            class="fab-option"
-            data-testid="fab-add-stay"
-            @click="fabAddStay"
-          >
-            🛏 Stay
-          </button>
-        </div>
-        <button
-          type="button"
-          class="fab-button"
-          :aria-expanded="fabOpen"
-          aria-haspopup="menu"
-          :aria-label="fabOpen ? 'Close add menu' : 'Add to the trip'"
-          data-testid="fab"
-          @click="fabOpen = !fabOpen"
-        >
-          <span aria-hidden="true">+</span>
-        </button>
-      </div>
+      <AddFab
+        @add-activity="addToDay(currentDayDate)"
+        @add-stay="openStayDialog({ checkIn: currentDayDate })"
+      />
 
       <ActivityDialog
         :open="dialogOpen"
@@ -837,76 +454,6 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
 </template>
 
 <style scoped>
-.stays {
-  margin-bottom: 1.25rem;
-}
-
-.stays-head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.6rem;
-}
-
-.stays-title {
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.stays-hint {
-  font-size: 0.82rem;
-  color: var(--color-muted);
-}
-
-.stays-head .btn {
-  margin-left: auto;
-}
-
-.stay-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 0.6rem;
-  padding: 0;
-  list-style: none;
-}
-
-.stay-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  width: 100%;
-  padding: 0.75rem 0.9rem;
-  font: inherit;
-  text-align: left;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-}
-
-.stay-card:hover {
-  border-color: var(--color-primary);
-}
-
-.stay-card-name {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.stay-card-dates {
-  font-size: 0.82rem;
-  color: var(--color-muted);
-}
-
-.stay-card-foot {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
-}
-
 .page {
   min-height: 100vh;
   padding-bottom: 4.5rem;
@@ -921,146 +468,11 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
   gap: 1rem;
 }
 
-.trip-bar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: rgb(245 242 236 / 0.86);
-  border-bottom: 1px solid var(--color-border);
-  backdrop-filter: saturate(1.4) blur(12px);
-}
-
-.bar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0.85rem clamp(1rem, 3vw, 2rem) 0.7rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.bar-top {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.back-link {
-  flex-shrink: 0;
-  display: inline-grid;
-  place-items: center;
-  width: 2.2rem;
-  height: 2.2rem;
-  color: var(--color-muted);
-  border-radius: 999px;
-  text-decoration: none;
-  transition:
-    color 0.15s,
-    background-color 0.15s;
-}
-
-.status .back-link {
-  width: auto;
-  height: auto;
+.home-link {
   justify-self: start;
   font-weight: 600;
-}
-
-.back-link svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-
-.back-link:hover {
   color: var(--color-primary);
-  background: rgb(31 92 86 / 0.08);
-}
-
-.trip-title {
-  flex: 1;
-  min-width: 0;
-}
-
-h1 {
-  overflow: hidden;
-  font-size: 1.5rem;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trip-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  font-size: 0.85rem;
-  color: var(--color-muted);
-}
-
-.budget {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.15;
-}
-
-.budget-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-subtle);
-}
-
-.budget-value {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.bar-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.bar-bottom {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.bar-bottom .filters {
-  margin-left: auto;
-}
-
-.bar-bottom .day-strip-row {
-  display: none;
-}
-
-.view-toggle {
-  display: inline-flex;
-  padding: 0.2rem;
-  background: rgb(27 36 49 / 0.06);
-  border-radius: 10px;
-}
-
-.view-toggle button {
-  padding: 0.3rem 0.8rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-muted);
-  background: none;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.view-toggle button[aria-pressed='true'] {
-  color: var(--color-text);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
+  text-decoration: none;
 }
 
 .itinerary {
@@ -1115,220 +527,5 @@ h1 {
 
 .loading {
   color: var(--color-muted);
-}
-
-.edit-trip {
-  width: 2.25rem;
-  padding: 0;
-  font-size: 1rem;
-}
-
-.edit-trip-label {
-  display: none;
-}
-
-.stay-cards.collapsed {
-  display: none;
-}
-
-.stays-title {
-  display: none;
-}
-
-.stays-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  align-self: flex-start;
-  padding: 0.45rem 0.8rem;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.stays-toggle-hint {
-  font-size: 0.78rem;
-  color: var(--color-primary);
-}
-
-.fab {
-  position: fixed;
-  right: 1rem;
-  bottom: calc(5rem + env(safe-area-inset-bottom));
-  z-index: 55;
-  display: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.6rem;
-}
-
-.fab-button {
-  display: grid;
-  place-items: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  font-size: 1.9rem;
-  line-height: 1;
-  color: #fff;
-  background: linear-gradient(140deg, #2a6b5f 0%, #1a4f4a 100%);
-  border: 0;
-  border-radius: 50%;
-  box-shadow: 0 10px 24px -8px rgb(31 92 86 / 0.7);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.fab.open .fab-button {
-  transform: rotate(45deg);
-}
-
-.fab-menu {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.45rem;
-}
-
-.fab-option {
-  padding: 0.65rem 1rem;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  box-shadow: var(--shadow-lg);
-  cursor: pointer;
-}
-
-.day-pager {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: 0.9rem;
-}
-
-.pager-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 2.75rem;
-  padding: 0 1rem;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.pager-button span {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.pager-button:disabled {
-  color: var(--color-subtle);
-  cursor: default;
-  opacity: 0.6;
-}
-
-.pager-hint {
-  font-size: 0.75rem;
-  color: var(--color-subtle);
-}
-
-@media (max-width: 720px) {
-  .bar-inner {
-    padding: 0.5rem 0.75rem 0.5rem;
-    gap: 0.45rem;
-  }
-
-  .bar-top {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: 'back title budget actions';
-    gap: 0.5rem;
-  }
-
-  .back-link {
-    grid-area: back;
-  }
-
-  .trip-title {
-    grid-area: title;
-    min-width: 0;
-  }
-
-  h1 {
-    overflow: hidden;
-    font-size: 1.1rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .trip-meta {
-    font-size: 0.72rem;
-  }
-
-  .trip-meta > :nth-child(n + 2) {
-    display: none;
-  }
-
-  .budget {
-    grid-area: budget;
-  }
-
-  .budget-label {
-    font-size: 0.6rem;
-  }
-
-  .budget-value {
-    font-size: 0.95rem;
-  }
-
-  .bar-actions {
-    grid-area: actions;
-  }
-
-  .bar-actions .add-activity {
-    display: none;
-  }
-
-  .bar-bottom {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .bar-inner {
-    padding-bottom: 0.5rem;
-  }
-
-  .bar-bottom .day-strip-row {
-    display: flex;
-    order: 3;
-    flex-basis: 100%;
-  }
-
-  .add-stay {
-    display: none;
-  }
-
-  .stays {
-    margin-bottom: 0.9rem;
-  }
-
-  .fab {
-    display: flex;
-  }
 }
 </style>
