@@ -11,8 +11,6 @@ public class OverviewController(OverviewService overviewService) : ControllerBas
     [HttpGet]
     public async Task<ActionResult<TripOverviewDto>> Get(Guid tripId, CancellationToken cancellationToken)
     {
-        var overview = await overviewService.GetAsync(tripId, cancellationToken);
-
-        return overview is null ? NotFound() : overview;
+        return await overviewService.GetAsync(tripId, cancellationToken);
     }
 }

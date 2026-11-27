@@ -39,9 +39,9 @@ public class OverviewServiceTests
             details: new ActivityDetails(category, booking));
 
     [Test]
-    public async Task GetAsync_UnknownTrip_ReturnsNull()
+    public void GetAsync_UnknownTrip_Throws()
     {
-        Assert.That(await _sut.GetAsync(Guid.NewGuid()), Is.Null);
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.GetAsync(Guid.NewGuid()));
     }
 
     [Test]

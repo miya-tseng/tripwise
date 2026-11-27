@@ -16,6 +16,7 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
         {
             ActivityOverlapException => (StatusCodes.Status409Conflict, "Activity overlap"),
             TripDatesConflictException => (StatusCodes.Status409Conflict, "Trip dates conflict"),
+            TripNotFoundException => (StatusCodes.Status404NotFound, "Trip not found"),
             ActivityNotFoundException => (StatusCodes.Status404NotFound, "Activity not found"),
             StayOverlapException => (StatusCodes.Status409Conflict, "Stay overlap"),
             StayNotFoundException => (StatusCodes.Status404NotFound, "Stay not found"),

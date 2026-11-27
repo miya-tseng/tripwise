@@ -13,24 +13,20 @@ public class StaysController(StayService stayService) : ControllerBase
     {
         var stay = await stayService.AddAsync(tripId, dto, cancellationToken);
 
-        return stay is null
-            ? NotFound()
-            : CreatedAtAction(nameof(ActivitiesController.GetSchedule), "Activities", new { tripId }, stay);
+        return CreatedAtAction(nameof(ActivitiesController.GetSchedule), "Activities", new { tripId }, stay);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<StayDto>> Update(Guid tripId, Guid id, SaveStayDto dto, CancellationToken cancellationToken)
     {
-        var stay = await stayService.UpdateAsync(tripId, id, dto, cancellationToken);
-
-        return stay is null ? NotFound() : stay;
+        return await stayService.UpdateAsync(tripId, id, dto, cancellationToken);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid tripId, Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await stayService.DeleteAsync(tripId, id, cancellationToken);
+        await stayService.DeleteAsync(tripId, id, cancellationToken);
 
-        return deleted ? NoContent() : NotFound();
+        return NoContent();
     }
 }

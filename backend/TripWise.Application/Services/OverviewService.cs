@@ -1,6 +1,7 @@
 using TripWise.Application.Currencies;
 using TripWise.Application.Dtos;
 using TripWise.Domain;
+using TripWise.Application.Mappings;
 
 namespace TripWise.Application.Services;
 
@@ -8,14 +9,9 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
 {
     public const int TopExpenseCount = 5;
 
-    public async Task<TripOverviewDto?> GetAsync(Guid tripId, CancellationToken cancellationToken = default)
+    public async Task<TripOverviewDto> GetAsync(Guid tripId, CancellationToken cancellationToken = default)
     {
-        var trip = await repository.GetByIdAsync(tripId, cancellationToken);
-
-        if (trip is null)
-        {
-            return null;
-        }
+        var trip = await repository.GetRequiredAsync(tripId, cancellationToken);
 
         var rates = await exchangeRateProvider.GetLatestAsync(cancellationToken);
         var overview = TripOverview.For(trip);

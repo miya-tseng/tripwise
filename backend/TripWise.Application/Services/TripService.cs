@@ -1,5 +1,6 @@
 using TripWise.Domain;
 using TripWise.Application.Dtos;
+using TripWise.Application.Mappings;
 
 namespace TripWise.Application.Services;
 
@@ -16,31 +17,26 @@ public class TripService(ITripRepository repository, PlaceResolver placeResolver
 
         await repository.AddAsync(trip, cancellationToken);
 
-        return ToDto(trip);
+        return trip.ToDto();
     }
 
     public async Task<IReadOnlyList<TripDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var trips = await repository.GetAllAsync(cancellationToken);
 
-        return trips.Select(ToDto).ToList();
+        return trips.Select(TripMapping.ToDto).ToList();
     }
 
-    public async Task<TripDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<TripDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var trip = await repository.GetByIdAsync(id, cancellationToken);
+        var trip = await repository.GetRequiredAsync(id, cancellationToken);
 
-        return trip is null ? null : ToDto(trip);
+        return trip.ToDto();
     }
 
-    public async Task<TripDto?> UpdateAsync(Guid id, UpdateTripDto dto, CancellationToken cancellationToken = default)
+    public async Task<TripDto> UpdateAsync(Guid id, UpdateTripDto dto, CancellationToken cancellationToken = default)
     {
-        var trip = await repository.GetByIdAsync(id, cancellationToken);
-
-        if (trip is null)
-        {
-            return null;
-        }
+        var trip = await repository.GetRequiredAsync(id, cancellationToken);
 
         var destination = await placeResolver.ResolveAsync(
             dto.DestinationPlaceId,
@@ -53,33 +49,13 @@ public class TripService(ITripRepository repository, PlaceResolver placeResolver
         trip.ChangeDestination(destination);
         await repository.UpdateAsync(trip, cancellationToken);
 
-        return ToDto(trip);
+        return trip.ToDto();
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var trip = await repository.GetByIdAsync(id, cancellationToken);
-
-        if (trip is null)
-        {
-            return false;
-        }
+        var trip = await repository.GetRequiredAsync(id, cancellationToken);
 
         await repository.DeleteAsync(trip, cancellationToken);
-
-        return true;
-    }
-
-    private static TripDto ToDto(Trip trip)
-    {
-        return new TripDto
-        {
-            Id = trip.Id,
-            Name = trip.Name,
-            StartDate = trip.Period.Start,
-            EndDate = trip.Period.End,
-            Days = trip.Period.Days,
-            Destination = trip.Destination is null ? null : PlaceService.ToDto(trip.Destination),
-        };
     }
 }

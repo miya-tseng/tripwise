@@ -13,17 +13,13 @@ public class ActivitiesController(ActivityService activityService, SuggestionSer
     {
         var activity = await activityService.AddAsync(tripId, dto, cancellationToken);
 
-        return activity is null
-            ? NotFound()
-            : CreatedAtAction(nameof(GetSchedule), new { tripId }, activity);
+        return CreatedAtAction(nameof(GetSchedule), new { tripId }, activity);
     }
 
     [HttpPut("activities/{id:guid}")]
     public async Task<ActionResult<ActivityDto>> Update(Guid tripId, Guid id, SaveActivityDto dto, CancellationToken cancellationToken)
     {
-        var activity = await activityService.UpdateAsync(tripId, id, dto, cancellationToken);
-
-        return activity is null ? NotFound() : activity;
+        return await activityService.UpdateAsync(tripId, id, dto, cancellationToken);
     }
 
     [HttpPatch("activities/{id:guid}/move")]
@@ -33,17 +29,15 @@ public class ActivitiesController(ActivityService activityService, SuggestionSer
         MoveActivityDto dto,
         CancellationToken cancellationToken)
     {
-        var activity = await activityService.MoveAsync(tripId, id, dto, cancellationToken);
-
-        return activity is null ? NotFound() : activity;
+        return await activityService.MoveAsync(tripId, id, dto, cancellationToken);
     }
 
     [HttpDelete("activities/{id:guid}")]
     public async Task<IActionResult> Delete(Guid tripId, Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await activityService.DeleteAsync(tripId, id, cancellationToken);
+        await activityService.DeleteAsync(tripId, id, cancellationToken);
 
-        return deleted ? NoContent() : NotFound();
+        return NoContent();
     }
 
     [HttpGet("activities/{id:guid}/suggestions")]
@@ -54,14 +48,12 @@ public class ActivitiesController(ActivityService activityService, SuggestionSer
     {
         var suggestions = await suggestionService.GetSuggestionsAsync(tripId, id, cancellationToken);
 
-        return suggestions is null ? NotFound() : Ok(suggestions);
+        return Ok(suggestions);
     }
 
     [HttpGet("schedule")]
     public async Task<ActionResult<ScheduleDto>> GetSchedule(Guid tripId, CancellationToken cancellationToken)
     {
-        var schedule = await activityService.GetScheduleAsync(tripId, cancellationToken);
-
-        return schedule is null ? NotFound() : schedule;
+        return await activityService.GetScheduleAsync(tripId, cancellationToken);
     }
 }

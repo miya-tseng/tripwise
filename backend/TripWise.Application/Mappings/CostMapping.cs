@@ -2,7 +2,7 @@ using TripWise.Application.Currencies;
 using TripWise.Application.Dtos;
 using TripWise.Domain;
 
-namespace TripWise.Application.Services;
+namespace TripWise.Application.Mappings;
 
 internal static class CostMapping
 {

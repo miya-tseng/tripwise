@@ -71,11 +71,11 @@ public class ActivityServiceTests
     }
 
     [Test]
-    public async Task AddAsync_WithUnknownTrip_ReturnsNullWithoutSaving()
+    public async Task AddAsync_WithUnknownTrip_ThrowsWithoutSaving()
     {
-        var result = await _sut.AddAsync(Guid.NewGuid(), Dto("Senso-ji", FirstDay, "10:00", "11:00"));
+        Assert.ThrowsAsync<TripNotFoundException>(() =>
+            _sut.AddAsync(Guid.NewGuid(), Dto("Senso-ji", FirstDay, "10:00", "11:00")));
 
-        Assert.That(result, Is.Null);
         await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
     }
 
@@ -106,11 +106,10 @@ public class ActivityServiceTests
     }
 
     [Test]
-    public async Task UpdateAsync_WithUnknownTrip_ReturnsNull()
+    public void UpdateAsync_WithUnknownTrip_Throws()
     {
-        var result = await _sut.UpdateAsync(Guid.NewGuid(), Guid.NewGuid(), Dto("Senso-ji", FirstDay, "10:00", "11:00"));
-
-        Assert.That(result, Is.Null);
+        Assert.ThrowsAsync<TripNotFoundException>(() =>
+            _sut.UpdateAsync(Guid.NewGuid(), Guid.NewGuid(), Dto("Senso-ji", FirstDay, "10:00", "11:00")));
     }
 
     [Test]
@@ -118,22 +117,16 @@ public class ActivityServiceTests
     {
         var activity = _trip.AddActivity("Senso-ji", FirstDay, Slot("10:00", "11:00"));
 
-        var deleted = await _sut.DeleteAsync(_trip.Id, activity.Id);
+        await _sut.DeleteAsync(_trip.Id, activity.Id);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(deleted, Is.True);
-            Assert.That(_trip.Activities, Is.Empty);
-        });
+        Assert.That(_trip.Activities, Is.Empty);
         await _repository.Received(1).UpdateAsync(_trip, Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task DeleteAsync_WithUnknownTrip_ReturnsFalse()
+    public void DeleteAsync_WithUnknownTrip_Throws()
     {
-        var deleted = await _sut.DeleteAsync(Guid.NewGuid(), Guid.NewGuid());
-
-        Assert.That(deleted, Is.False);
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.DeleteAsync(Guid.NewGuid(), Guid.NewGuid()));
     }
 
     [Test]
@@ -174,11 +167,9 @@ public class ActivityServiceTests
     }
 
     [Test]
-    public async Task GetScheduleAsync_WithUnknownTrip_ReturnsNull()
+    public void GetScheduleAsync_WithUnknownTrip_Throws()
     {
-        var schedule = await _sut.GetScheduleAsync(Guid.NewGuid());
-
-        Assert.That(schedule, Is.Null);
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.GetScheduleAsync(Guid.NewGuid()));
     }
 
     [Test]
@@ -448,14 +439,12 @@ public class ActivityServiceTests
     }
 
     [Test]
-    public async Task MoveAsync_WithUnknownTrip_ReturnsNull()
+    public void MoveAsync_WithUnknownTrip_Throws()
     {
-        var result = await _sut.MoveAsync(
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.MoveAsync(
             Guid.NewGuid(),
             Guid.NewGuid(),
-            new MoveActivityDto { Date = FirstDay, StartTime = new TimeOnly(10, 0) });
-
-        Assert.That(result, Is.Null);
+            new MoveActivityDto { Date = FirstDay, StartTime = new TimeOnly(10, 0) }));
     }
 
     [Test]

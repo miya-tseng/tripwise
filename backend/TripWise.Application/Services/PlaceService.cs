@@ -1,6 +1,7 @@
 using TripWise.Application.Dtos;
 using TripWise.Application.Places;
 using TripWise.Domain;
+using TripWise.Application.Mappings;
 
 namespace TripWise.Application.Services;
 
@@ -48,16 +49,6 @@ public class PlaceService(IPlaceSearch placeSearch)
     {
         var place = await placeSearch.GetDetailsAsync(placeId, sessionToken, cancellationToken);
 
-        return place is null ? null : ToDto(place);
+        return place?.ToDto();
     }
-
-    public static PlaceDto ToDto(Place place) => new()
-    {
-        PlaceId = place.PlaceId,
-        Name = place.Name,
-        Address = place.Address,
-        Latitude = place.Latitude,
-        Longitude = place.Longitude,
-        GoogleMapsUri = place.GoogleMapsUri,
-    };
 }

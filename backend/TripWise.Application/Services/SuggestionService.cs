@@ -2,6 +2,7 @@ using TripWise.Application.Dtos;
 using TripWise.Application.Places;
 using TripWise.Application.Suggestions;
 using TripWise.Domain;
+using TripWise.Application.Mappings;
 
 namespace TripWise.Application.Services;
 
@@ -12,17 +13,12 @@ public class SuggestionService(
 {
     public const int MaxSuggestions = 5;
 
-    public async Task<IReadOnlyList<SuggestionDto>?> GetSuggestionsAsync(
+    public async Task<IReadOnlyList<SuggestionDto>> GetSuggestionsAsync(
         Guid tripId,
         Guid activityId,
         CancellationToken cancellationToken = default)
     {
-        var trip = await repository.GetByIdAsync(tripId, cancellationToken);
-
-        if (trip is null)
-        {
-            return null;
-        }
+        var trip = await repository.GetRequiredAsync(tripId, cancellationToken);
 
         var activity = trip.Activities.FirstOrDefault(item => item.Id == activityId)
             ?? throw new ActivityNotFoundException(activityId);
@@ -71,7 +67,7 @@ public class SuggestionService(
 
             suggestions.Add(new SuggestionDto
             {
-                Place = PlaceService.ToDto(place),
+                Place = place.ToDto(),
                 Reason = idea.Reason,
                 SuggestedMinutes = idea.SuggestedMinutes,
             });

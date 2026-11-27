@@ -49,9 +49,9 @@ public class SuggestionServiceTests
     }
 
     [Test]
-    public async Task GetSuggestionsAsync_WithUnknownTrip_ReturnsNull()
+    public void GetSuggestionsAsync_WithUnknownTrip_Throws()
     {
-        Assert.That(await _sut.GetSuggestionsAsync(Guid.NewGuid(), _anchor.Id), Is.Null);
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.GetSuggestionsAsync(Guid.NewGuid(), _anchor.Id));
     }
 
     [Test]

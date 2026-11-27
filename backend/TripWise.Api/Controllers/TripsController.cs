@@ -25,24 +25,20 @@ public class TripsController(TripService tripService) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TripDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var trip = await tripService.GetByIdAsync(id, cancellationToken);
-
-        return trip is null ? NotFound() : trip;
+        return await tripService.GetByIdAsync(id, cancellationToken);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<TripDto>> Update(Guid id, UpdateTripDto dto, CancellationToken cancellationToken)
     {
-        var trip = await tripService.UpdateAsync(id, dto, cancellationToken);
-
-        return trip is null ? NotFound() : trip;
+        return await tripService.UpdateAsync(id, dto, cancellationToken);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await tripService.DeleteAsync(id, cancellationToken);
+        await tripService.DeleteAsync(id, cancellationToken);
 
-        return deleted ? NoContent() : NotFound();
+        return NoContent();
     }
 }

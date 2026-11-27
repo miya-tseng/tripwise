@@ -150,13 +150,11 @@ public class TripServiceTests
     }
 
     [Test]
-    public async Task GetByIdAsync_MissingTrip_ReturnsNull()
+    public void GetByIdAsync_MissingTrip_Throws()
     {
         _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Trip?)null);
 
-        var result = await _sut.GetByIdAsync(Guid.NewGuid());
-
-        Assert.That(result, Is.Null);
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.GetByIdAsync(Guid.NewGuid()));
     }
 
     [Test]
@@ -172,25 +170,23 @@ public class TripServiceTests
     }
 
     [Test]
-    public async Task DeleteAsync_ExistingTrip_DeletesAndReturnsTrue()
+    public async Task DeleteAsync_ExistingTrip_Deletes()
     {
         var trip = Trip.Create("Tokyo", Start, Start);
         _repository.GetByIdAsync(trip.Id, Arg.Any<CancellationToken>()).Returns(trip);
 
-        var deleted = await _sut.DeleteAsync(trip.Id);
+        await _sut.DeleteAsync(trip.Id);
 
-        Assert.That(deleted, Is.True);
         await _repository.Received(1).DeleteAsync(trip, Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task DeleteAsync_MissingTrip_ReturnsFalse()
+    public async Task DeleteAsync_MissingTrip_ThrowsWithoutDeleting()
     {
         _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Trip?)null);
 
-        var deleted = await _sut.DeleteAsync(Guid.NewGuid());
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.DeleteAsync(Guid.NewGuid()));
 
-        Assert.That(deleted, Is.False);
         await _repository.DidNotReceive().DeleteAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
     }
 
@@ -213,13 +209,12 @@ public class TripServiceTests
     }
 
     [Test]
-    public async Task UpdateAsync_WithUnknownTrip_ReturnsNullWithoutSaving()
+    public async Task UpdateAsync_WithUnknownTrip_ThrowsWithoutSaving()
     {
         var dto = new UpdateTripDto { Name = "Osaka", StartDate = Start, EndDate = Start };
 
-        var result = await _sut.UpdateAsync(Guid.NewGuid(), dto);
+        Assert.ThrowsAsync<TripNotFoundException>(() => _sut.UpdateAsync(Guid.NewGuid(), dto));
 
-        Assert.That(result, Is.Null);
         await _repository.DidNotReceive().UpdateAsync(Arg.Any<Trip>(), Arg.Any<CancellationToken>());
     }
 
