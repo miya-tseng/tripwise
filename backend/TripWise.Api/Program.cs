@@ -1,10 +1,13 @@
+using TripWise.Api;
 using TripWise.Api.Middleware;
 using TripWise.Application;
 using TripWise.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();

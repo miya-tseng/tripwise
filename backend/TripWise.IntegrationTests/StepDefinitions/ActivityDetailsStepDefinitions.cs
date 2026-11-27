@@ -28,7 +28,7 @@ public class ActivityDetailsStepDefinitions(HttpClient client, ApiResponse respo
 
         if (response.Message.IsSuccessStatusCode)
         {
-            _added[name] = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+            _added[name] = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
         }
     }
 
@@ -86,7 +86,7 @@ public class ActivityDetailsStepDefinitions(HttpClient client, ApiResponse respo
     public async Task ThenTheActivityInTheScheduleHasDetails(string name, DataTable table)
     {
         var row = table.Rows.Single();
-        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
         var activity = schedule.Days.SelectMany(day => day.Activities).Single(item => item.Name == name);
 
         Assert.Multiple(() =>

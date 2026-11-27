@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using TripWise.Domain;
 
 namespace TripWise.Application.Dtos;
@@ -15,7 +14,6 @@ public class StayDto
     public decimal? CostInTwd { get; set; }
     public PlaceDto? Place { get; set; }
 
-    [JsonConverter(typeof(JsonStringEnumConverter<BookingStatus>))]
     public BookingStatus BookingStatus { get; set; }
 
     public string ConfirmationCode { get; set; } = string.Empty;

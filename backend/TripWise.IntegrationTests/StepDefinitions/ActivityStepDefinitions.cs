@@ -27,7 +27,7 @@ public class ActivityStepDefinitions(
     {
         var created = await client.PostAsJsonAsync(ActivitiesUrl, NewActivity(name, date, start, end));
         created.EnsureSuccessStatusCode();
-        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
+        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
     }
 
     [Given("the trip has an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal}")]
@@ -35,7 +35,7 @@ public class ActivityStepDefinitions(
     {
         var created = await client.PostAsJsonAsync(ActivitiesUrl, NewActivity(name, date, start, end, cost));
         created.EnsureSuccessStatusCode();
-        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
+        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
     }
 
     [When("I add an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal}")]
@@ -57,7 +57,7 @@ public class ActivityStepDefinitions(
     [Then("the response activity costs {decimal}")]
     public async Task ThenTheResponseActivityCosts(decimal cost)
     {
-        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
 
         Assert.That(activity.Cost, Is.EqualTo(cost));
     }
@@ -98,7 +98,7 @@ public class ActivityStepDefinitions(
     {
         var created = await client.PostAsJsonAsync(ActivitiesUrl, NewActivity(name, date, start, end, cost, currency));
         created.EnsureSuccessStatusCode();
-        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
+        _activitiesByName[name] = (await created.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
     }
 
     [When("I add an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly} costing {decimal} {word}")]
@@ -140,7 +140,7 @@ public class ActivityStepDefinitions(
     [Then("the response activity costs {decimal} {word} worth {decimal} TWD")]
     public async Task ThenTheResponseActivityCostsWorth(decimal cost, string currency, decimal costInTwd)
     {
-        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
 
         AssertCost(activity, cost, currency, costInTwd);
     }
@@ -194,7 +194,7 @@ public class ActivityStepDefinitions(
     [Then("the exchange rates are available with {string}")]
     public async Task ThenTheExchangeRatesAreAvailableWith(string currencies)
     {
-        var rates = (await response.Message.Content.ReadFromJsonAsync<ExchangeRatesDto>())!;
+        var rates = (await response.Message.Content.ReadFromJsonAsync<ExchangeRatesDto>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -208,7 +208,7 @@ public class ActivityStepDefinitions(
     [Then("the exchange rates are unavailable with only TWD")]
     public async Task ThenTheExchangeRatesAreUnavailableWithOnlyTwd()
     {
-        var rates = (await response.Message.Content.ReadFromJsonAsync<ExchangeRatesDto>())!;
+        var rates = (await response.Message.Content.ReadFromJsonAsync<ExchangeRatesDto>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -313,7 +313,7 @@ public class ActivityStepDefinitions(
     [Then("the response is an activity {string} on {DateOnly} from {TimeOnly} to {TimeOnly}")]
     public async Task ThenTheResponseIsAnActivity(string name, DateOnly date, TimeOnly start, TimeOnly end)
     {
-        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -345,7 +345,7 @@ public class ActivityStepDefinitions(
     [Then(@"^the schedule has the days (.*)$")]
     public async Task ThenTheScheduleHasTheDays(string expectedDates)
     {
-        var schedule = (await response.Message.Content.ReadFromJsonAsync<ScheduleDto>())!;
+        var schedule = (await response.Message.Content.ReadFromJsonAsync<ScheduleDto>(ApiJson.Options))!;
         var expected = SplitList(expectedDates)
             .Select(date => DateOnly.ParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture));
 
@@ -399,7 +399,7 @@ public class ActivityStepDefinitions(
 
     private async Task<ScheduleDto> GetScheduleAsync()
     {
-        return (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        return (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
     }
 
     private static string[] SplitList(string value) =>

@@ -18,7 +18,7 @@ public class StayStepDefinitions(HttpClient client, ApiResponse response, Scenar
     {
         var created = await client.PostAsJsonAsync(StaysUrl, NewStay(name, checkIn, checkOut, cost, currency));
         created.EnsureSuccessStatusCode();
-        _staysByName[name] = (await created.Content.ReadFromJsonAsync<StayDto>())!;
+        _staysByName[name] = (await created.Content.ReadFromJsonAsync<StayDto>(ApiJson.Options))!;
     }
 
     [When("I add a stay {string} from {DateOnly} to {DateOnly} costing {decimal} {word}")]
@@ -62,7 +62,7 @@ public class StayStepDefinitions(HttpClient client, ApiResponse response, Scenar
     [Then("the response stay {string} has {int} nights")]
     public async Task ThenTheResponseStayHasNights(string name, int nights)
     {
-        var stay = (await response.Message.Content.ReadFromJsonAsync<StayDto>())!;
+        var stay = (await response.Message.Content.ReadFromJsonAsync<StayDto>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -125,7 +125,7 @@ public class StayStepDefinitions(HttpClient client, ApiResponse response, Scenar
     }
 
     private async Task<ScheduleDto> GetScheduleAsync() =>
-        (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
 
     private static SaveStayDto NewStay(string name, DateOnly checkIn, DateOnly checkOut, decimal cost, string currency) => new()
     {

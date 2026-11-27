@@ -27,7 +27,7 @@ public class PlaceStepDefinitions(
     {
         var created = await client.PostAsJsonAsync(ActivitiesUrl, PlaceActivity(placeId, date, start, end));
         created.EnsureSuccessStatusCode();
-        var activity = (await created.Content.ReadFromJsonAsync<ActivityDto>())!;
+        var activity = (await created.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
         _activitiesByName[activity.Name] = activity;
     }
 
@@ -80,7 +80,7 @@ public class PlaceStepDefinitions(
     [Then("the place suggestions are {string}")]
     public async Task ThenThePlaceSuggestionsAre(string names)
     {
-        var suggestions = (await response.Message.Content.ReadFromJsonAsync<List<PlaceSuggestionDto>>())!;
+        var suggestions = (await response.Message.Content.ReadFromJsonAsync<List<PlaceSuggestionDto>>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -93,7 +93,7 @@ public class PlaceStepDefinitions(
     [Then("there are no place suggestions")]
     public async Task ThenThereAreNoPlaceSuggestions()
     {
-        var suggestions = (await response.Message.Content.ReadFromJsonAsync<List<PlaceSuggestionDto>>())!;
+        var suggestions = (await response.Message.Content.ReadFromJsonAsync<List<PlaceSuggestionDto>>(ApiJson.Options))!;
 
         Assert.That(suggestions, Is.Empty);
     }
@@ -101,7 +101,7 @@ public class PlaceStepDefinitions(
     [Then("the place is {string} at {string}")]
     public async Task ThenThePlaceIs(string name, string address)
     {
-        var place = (await response.Message.Content.ReadFromJsonAsync<PlaceDto>())!;
+        var place = (await response.Message.Content.ReadFromJsonAsync<PlaceDto>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -116,7 +116,7 @@ public class PlaceStepDefinitions(
     [Then("the response activity is {string} at the place {string}")]
     public async Task ThenTheResponseActivityIsAtThePlace(string name, string placeId)
     {
-        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>())!;
+        var activity = (await response.Message.Content.ReadFromJsonAsync<ActivityDto>(ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -151,7 +151,7 @@ public class PlaceStepDefinitions(
 
     private async Task<ActivityDto> ScheduledActivityAsync(string name)
     {
-        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
         return schedule.Days.SelectMany(day => day.Activities).Single(activity => activity.Name == name);
     }
 

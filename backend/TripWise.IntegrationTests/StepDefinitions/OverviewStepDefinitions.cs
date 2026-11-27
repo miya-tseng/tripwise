@@ -142,7 +142,7 @@ public class OverviewStepDefinitions(HttpClient client, ApiResponse response, Sc
 
     private async Task<TripOverviewDto> OverviewAsync()
     {
-        _overview ??= await response.Message.Content.ReadFromJsonAsync<TripOverviewDto>();
+        _overview ??= await response.Message.Content.ReadFromJsonAsync<TripOverviewDto>(ApiJson.Options);
         return _overview!;
     }
 }

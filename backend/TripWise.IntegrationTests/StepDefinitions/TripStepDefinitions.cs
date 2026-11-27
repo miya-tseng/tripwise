@@ -16,7 +16,7 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
     {
         var created = await client.PostAsJsonAsync("/api/trips", NewTrip(name, start, end));
         created.EnsureSuccessStatusCode();
-        existing.Trip = (await created.Content.ReadFromJsonAsync<TripDto>())!;
+        existing.Trip = (await created.Content.ReadFromJsonAsync<TripDto>(ApiJson.Options))!;
     }
 
     [When("I create a trip {string} from {DateOnly} to {DateOnly}")]
@@ -62,7 +62,7 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
     [Then("the stored trip destination is {string}")]
     public async Task ThenTheStoredTripDestinationIs(string name)
     {
-        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}"))!;
+        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}", ApiJson.Options))!;
 
         Assert.That(trip.Destination?.Name, Is.EqualTo(name));
     }
@@ -70,7 +70,7 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
     [Then("the stored trip has no destination")]
     public async Task ThenTheStoredTripHasNoDestination()
     {
-        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}"))!;
+        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}", ApiJson.Options))!;
 
         Assert.That(trip.Destination, Is.Null);
     }
@@ -114,7 +114,7 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
     [Then("the stored trip is {string} from {DateOnly} to {DateOnly}")]
     public async Task ThenTheStoredTripIs(string name, DateOnly start, DateOnly end)
     {
-        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}"))!;
+        var trip = (await client.GetFromJsonAsync<TripDto>($"/api/trips/{existing.Trip.Id}", ApiJson.Options))!;
 
         Assert.Multiple(() =>
         {
@@ -162,7 +162,7 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
     [Then("the list contains the trip")]
     public async Task ThenTheListContainsTheTrip()
     {
-        var trips = await response.Message.Content.ReadFromJsonAsync<List<TripDto>>();
+        var trips = await response.Message.Content.ReadFromJsonAsync<List<TripDto>>(ApiJson.Options);
 
         Assert.That(trips!.Select(trip => trip.Id), Does.Contain(existing.Trip.Id));
     }
@@ -177,7 +177,7 @@ public class TripStepDefinitions(HttpClient client, ApiResponse response, Scenar
 
     private async Task<TripDto> ReadResponseTripAsync()
     {
-        _responseTrip ??= await response.Message.Content.ReadFromJsonAsync<TripDto>();
+        _responseTrip ??= await response.Message.Content.ReadFromJsonAsync<TripDto>(ApiJson.Options);
         return _responseTrip!;
     }
 

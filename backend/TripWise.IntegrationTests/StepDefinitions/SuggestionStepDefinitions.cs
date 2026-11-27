@@ -21,7 +21,7 @@ public class SuggestionStepDefinitions(
     [When("I get suggestions for {string}")]
     public async Task WhenIGetSuggestionsFor(string activityName)
     {
-        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
         var activity = schedule.Days.SelectMany(day => day.Activities).Single(item => item.Name == activityName);
 
         response.Message = await client.GetAsync($"/api/trips/{existing.Trip.Id}/activities/{activity.Id}/suggestions");
@@ -80,5 +80,5 @@ public class SuggestionStepDefinitions(
     private List<SuggestionDto>? _suggestions;
 
     private async Task<List<SuggestionDto>> ReadSuggestionsAsync() =>
-        _suggestions ??= (await response.Message.Content.ReadFromJsonAsync<List<SuggestionDto>>())!;
+        _suggestions ??= (await response.Message.Content.ReadFromJsonAsync<List<SuggestionDto>>(ApiJson.Options))!;
 }

@@ -114,7 +114,7 @@ public class ChecklistStepDefinitions(HttpClient client, ApiResponse response, S
     [When("I mark the stay {string} as not booked on the checklist")]
     public async Task WhenIMarkTheStayAsNotBooked(string name)
     {
-        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
         var stay = schedule.Stays.First(candidate => candidate.Name == name);
         await SendAsync(client.PutAsJsonAsync(
             $"{ChecklistUrl}/bookings/stays/{stay.Id}",
@@ -189,7 +189,7 @@ public class ChecklistStepDefinitions(HttpClient client, ApiResponse response, S
     }
 
     private async Task<ChecklistDto> FetchAsync() =>
-        (await client.GetFromJsonAsync<ChecklistDto>(ChecklistUrl))!;
+        (await client.GetFromJsonAsync<ChecklistDto>(ChecklistUrl, ApiJson.Options))!;
 
     private async Task<ChecklistItemDto> ItemAsync(string text)
     {
@@ -198,7 +198,7 @@ public class ChecklistStepDefinitions(HttpClient client, ApiResponse response, S
 
     private async Task<ActivityDto> ActivityAsync(string name)
     {
-        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule"))!;
+        var schedule = (await client.GetFromJsonAsync<ScheduleDto>($"/api/trips/{existing.Trip.Id}/schedule", ApiJson.Options))!;
         return schedule.Days.SelectMany(day => day.Activities).First(activity => activity.Name == name);
     }
 
