@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'
+import { errorMessage } from '@/utils/errors'
 import { RouterLink, routerKey } from 'vue-router'
 import { fetchOverview } from '@/api/overview'
 import CategorySpendChart from '@/components/CategorySpendChart.vue'
@@ -63,7 +64,7 @@ watch(
     try {
       overview.value = await fetchOverview(id)
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Something went wrong.'
+      error.value = errorMessage(e)
     } finally {
       loading.value = false
     }

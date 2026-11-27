@@ -264,27 +264,6 @@ th.numeric .sort-button {
   white-space: nowrap;
 }
 
-.booking-badge {
-  display: inline-flex;
-  padding: 0.05rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  white-space: nowrap;
-  border-radius: 999px;
-  color: var(--color-muted);
-  background: var(--color-surface-muted);
-}
-
-.booking-badge.tone-warning {
-  color: #9a4a1c;
-  background: #fde8d7;
-}
-
-.booking-badge.tone-success {
-  color: #1f5c56;
-  background: #e1efe9;
-}
-
 td.numeric {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

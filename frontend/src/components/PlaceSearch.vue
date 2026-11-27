@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId } from 'vue'
+import { errorMessage } from '@/utils/errors'
+import { useClickOutside } from '@/composables/useClickOutside'
 import { searchPlaces } from '@/api/places'
 import { useFloatingPanel } from '@/composables/useFloatingPanel'
 import {
@@ -54,23 +56,10 @@ const activeOptionId = computed(() =>
   showPanel.value && activeIndex.value >= 0 ? `${listboxId}-${activeIndex.value}` : undefined,
 )
 
-function onDocumentPointerDown(event: PointerEvent) {
-  if (root.value && !root.value.contains(event.target as Node)) {
-    open.value = false
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-  } else {
-    document.removeEventListener('pointerdown', onDocumentPointerDown)
-  }
-})
+useClickOutside(root, open, () => (open.value = false))
 
 onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
 })
 
 async function runSearch(text: string) {
@@ -89,7 +78,7 @@ async function runSearch(text: string) {
     if (requestId === latestRequest) {
       suggestions.value = []
       activeIndex.value = -1
-      error.value = e instanceof Error ? e.message : 'Place search failed.'
+      error.value = errorMessage(e, 'Place search failed.')
     }
   } finally {
     if (requestId === latestRequest) {

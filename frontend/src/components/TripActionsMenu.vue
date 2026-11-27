@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { ref } from 'vue'
+import { useClickOutside } from '@/composables/useClickOutside'
 
 withDefaults(
   defineProps<{
@@ -20,23 +21,7 @@ const emit = defineEmits<{
 const root = ref<HTMLElement | null>(null)
 const open = ref(false)
 
-function onDocumentPointerDown(event: PointerEvent) {
-  if (root.value && !root.value.contains(event.target as Node)) {
-    open.value = false
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-  } else {
-    document.removeEventListener('pointerdown', onDocumentPointerDown)
-  }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-})
+useClickOutside(root, open, () => (open.value = false))
 
 function askToDelete() {
   open.value = false

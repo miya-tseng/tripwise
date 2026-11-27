@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import BaseDialog from '@/components/BaseDialog.vue'
 import { computed, nextTick, ref, useId, watch } from 'vue'
+import { newSessionToken } from '@/utils/sessionToken'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import PlaceSearch from '@/components/PlaceSearch.vue'
 import type { PlaceSuggestion } from '@/types/place'
@@ -30,10 +32,6 @@ const datePickerRange = { partialRange: false, maxRange: MAX_TRIP_DAYS - 1 }
 const datePickerFormats = { input: 'MMM d, yyyy' }
 const datePickerTimeConfig = { enableTimePicker: false }
 const datePickerInputAttrs = { name: 'edit-dates', clearable: false }
-
-function newSessionToken(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
 
 const name = ref('')
 const destination = ref<PlaceSuggestion | null>(null)
@@ -100,113 +98,86 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Transition name="dialog">
-    <div v-if="open" class="backdrop" data-testid="edit-trip-backdrop" @click.self="emit('close')">
-      <form
-        class="dialog"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-        data-testid="edit-trip-dialog"
-        @submit.prevent="onSubmit"
-        @keydown.esc="emit('close')"
-      >
-        <span class="eyebrow">Trip details</span>
-        <h2 :id="titleId" class="title">Edit trip</h2>
+  <BaseDialog
+    :open="open"
+    tag="form"
+    width="440px"
+    :labelledby="titleId"
+    testid="edit-trip-dialog"
+    backdrop-testid="edit-trip-backdrop"
+    @close="emit('close')"
+    @submit="onSubmit"
+  >
+    <span class="eyebrow">Trip details</span>
+    <h2 :id="titleId" class="title">Edit trip</h2>
 
-        <label class="field">
-          <span class="field-label">Name</span>
-          <input
-            ref="nameInput"
-            v-model="name"
-            class="text-input"
-            name="edit-name"
-            type="text"
-            autocomplete="off"
-            required
-            maxlength="100"
-          />
-        </label>
+    <label class="field">
+      <span class="field-label">Name</span>
+      <input
+        ref="nameInput"
+        v-model="name"
+        class="text-input"
+        name="edit-name"
+        type="text"
+        autocomplete="off"
+        required
+        maxlength="100"
+      />
+    </label>
 
-        <div class="field">
-          <label class="field-label" :for="destinationId">
-            Destination
-            <span class="field-hint">Optional</span>
-          </label>
-          <PlaceSearch
-            v-model="destination"
-            :session-token="sessionToken"
-            :input-id="destinationId"
-            kind="destination"
-            placeholder="Search a city, e.g. Tokyo"
-          />
-        </div>
-
-        <div class="field">
-          <span class="field-label">
-            Dates
-            <span class="field-hint" data-testid="edit-dates-hint">{{ datesHint }}</span>
-          </span>
-          <VueDatePicker
-            v-model="dates"
-            :range="datePickerRange"
-            auto-apply
-            model-type="yyyy-MM-dd"
-            placeholder="Select dates"
-            :formats="datePickerFormats"
-            :time-config="datePickerTimeConfig"
-            :input-attrs="datePickerInputAttrs"
-            teleport
-          />
-        </div>
-
-        <div v-if="error" role="alert" class="alert" data-testid="edit-trip-error">
-          {{ error }}
-        </div>
-
-        <div class="actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-testid="cancel-edit-trip"
-            @click="emit('close')"
-          >
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary" :disabled="submitting || !canSubmit">
-            {{ submitting ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
-      </form>
+    <div class="field">
+      <label class="field-label" :for="destinationId">
+        Destination
+        <span class="field-hint">Optional</span>
+      </label>
+      <PlaceSearch
+        v-model="destination"
+        :session-token="sessionToken"
+        :input-id="destinationId"
+        kind="destination"
+        placeholder="Search a city, e.g. Tokyo"
+      />
     </div>
-  </Transition>
+
+    <div class="field">
+      <span class="field-label">
+        Dates
+        <span class="field-hint" data-testid="edit-dates-hint">{{ datesHint }}</span>
+      </span>
+      <VueDatePicker
+        v-model="dates"
+        :range="datePickerRange"
+        auto-apply
+        model-type="yyyy-MM-dd"
+        placeholder="Select dates"
+        :formats="datePickerFormats"
+        :time-config="datePickerTimeConfig"
+        :input-attrs="datePickerInputAttrs"
+        teleport
+      />
+    </div>
+
+    <div v-if="error" role="alert" class="alert" data-testid="edit-trip-error">
+      {{ error }}
+    </div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        data-testid="cancel-edit-trip"
+        @click="emit('close')"
+      >
+        Cancel
+      </button>
+      <button type="submit" class="btn btn-primary" :disabled="submitting || !canSubmit">
+        {{ submitting ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+  </BaseDialog>
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(22 30 40 / 0.42);
-  backdrop-filter: blur(4px);
-}
-
-.dialog {
-  width: 100%;
-  max-width: 440px;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  padding: 1.75rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
 .title {
   margin-top: -0.85rem;
   font-family: var(--font-display);
@@ -219,25 +190,5 @@ async function onSubmit() {
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   margin-top: 0.25rem;
-}
-
-.dialog-enter-active,
-.dialog-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.dialog-enter-active .dialog,
-.dialog-leave-active .dialog {
-  transition: transform 0.2s ease;
-}
-
-.dialog-enter-from,
-.dialog-leave-to {
-  opacity: 0;
-}
-
-.dialog-enter-from .dialog,
-.dialog-leave-to .dialog {
-  transform: scale(0.96) translateY(8px);
 }
 </style>

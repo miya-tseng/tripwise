@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useId } from 'vue'
+import { newSessionToken } from '@/utils/sessionToken'
 import PlaceSearch from '@/components/PlaceSearch.vue'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import TimePicker from '@/components/TimePicker.vue'
@@ -57,10 +58,6 @@ const isEditing = computed(() => props.activity !== null)
 const prefilled = !props.activity ? props.prefill : null
 
 const activityFieldId = useId()
-
-function newSessionToken(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
 
 const name = ref(props.activity?.name ?? '')
 const mode = ref<'place' | 'custom'>(props.activity && !props.activity.place ? 'custom' : 'place')

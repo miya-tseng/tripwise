@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, nextTick, ref, useId } from 'vue'
+import { useClickOutside } from '@/composables/useClickOutside'
 import { useFloatingPanel } from '@/composables/useFloatingPanel'
 
 export interface SelectOption {
@@ -43,23 +44,7 @@ const activeOptionId = computed(() =>
   open.value && activeIndex.value >= 0 ? `${listboxId}-${activeIndex.value}` : undefined,
 )
 
-function onDocumentPointerDown(event: PointerEvent) {
-  if (root.value && !root.value.contains(event.target as Node)) {
-    close()
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-  } else {
-    document.removeEventListener('pointerdown', onDocumentPointerDown)
-  }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-})
+useClickOutside(root, open, () => close())
 
 async function scrollActiveIntoView() {
   await nextTick()

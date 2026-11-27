@@ -49,7 +49,7 @@ describe('ConfirmDialog', () => {
   it('emits cancel when escape is pressed', async () => {
     const wrapper = mountDialog(true)
 
-    await wrapper.find('[role="alertdialog"]').trigger('keydown', { key: 'Escape' })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
 
     expect(wrapper.emitted('cancel')).toHaveLength(1)
   })

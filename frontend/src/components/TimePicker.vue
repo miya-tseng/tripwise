@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, nextTick, ref, useId } from 'vue'
+import { useClickOutside } from '@/composables/useClickOutside'
 import { useFloatingPanel } from '@/composables/useFloatingPanel'
 
 const props = withDefaults(
@@ -45,23 +46,7 @@ const minutes = computed(() => {
   return current && !steps.includes(current) ? [...steps, current].sort() : steps
 })
 
-function onDocumentPointerDown(event: PointerEvent) {
-  if (root.value && !root.value.contains(event.target as Node)) {
-    close()
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-  } else {
-    document.removeEventListener('pointerdown', onDocumentPointerDown)
-  }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-})
+useClickOutside(root, open, () => close())
 
 async function scrollSelectedIntoView() {
   await nextTick()

@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { errorMessage } from '@/utils/errors'
 import {
   addActivity,
   deleteActivity,
@@ -18,10 +19,6 @@ import type { SaveStayInput, Stay } from '@/types/stay'
 import type { Suggestion } from '@/types/suggestion'
 import type { Trip, UpdateTripInput } from '@/types/trip'
 import { withActivity, withoutActivity } from '@/utils/schedule'
-
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.'
-}
 
 export const useScheduleStore = defineStore('schedule', () => {
   const trip = ref<Trip | null>(null)
@@ -75,7 +72,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       trip.value = loadedTrip
       applySchedule(schedule)
     } catch (e) {
-      loadError.value = toMessage(e)
+      loadError.value = errorMessage(e)
     } finally {
       loading.value = false
     }
@@ -93,7 +90,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       days.value = withActivity(days.value, activity)
       return true
     } catch (e) {
-      error.value = toMessage(e)
+      error.value = errorMessage(e)
       return false
     }
   }
@@ -110,7 +107,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       days.value = withActivity(days.value, activity)
       return true
     } catch (e) {
-      error.value = toMessage(e)
+      error.value = errorMessage(e)
       return false
     }
   }
@@ -127,7 +124,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       days.value = withActivity(days.value, activity)
       return true
     } catch (e) {
-      error.value = toMessage(e)
+      error.value = errorMessage(e)
       return false
     }
   }
@@ -144,7 +141,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       await deleteActivity(trip.value.id, activityId)
       days.value = withoutActivity(days.value, activityId)
     } catch (e) {
-      error.value = toMessage(e)
+      error.value = errorMessage(e)
     } finally {
       deletingId.value = null
     }
@@ -166,7 +163,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       applySchedule(await fetchSchedule(trip.value.id))
       return true
     } catch (e) {
-      stayError.value = toMessage(e)
+      stayError.value = errorMessage(e)
       return false
     }
   }
@@ -183,7 +180,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       applySchedule(await fetchSchedule(trip.value.id))
       return true
     } catch (e) {
-      stayError.value = toMessage(e)
+      stayError.value = errorMessage(e)
       return false
     }
   }
@@ -206,7 +203,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       applySchedule(schedule)
       return true
     } catch (e) {
-      editTripError.value = toMessage(e)
+      editTripError.value = errorMessage(e)
       return false
     }
   }
@@ -229,7 +226,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       }
     } catch (e) {
       if (requestId === suggestionsRequest) {
-        suggestionsError.value = toMessage(e)
+        suggestionsError.value = errorMessage(e)
       }
     } finally {
       if (requestId === suggestionsRequest) {

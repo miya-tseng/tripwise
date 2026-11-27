@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { errorMessage } from '@/utils/errors'
 import {
   addChecklistItem,
   deleteChecklistItem,
@@ -15,10 +16,6 @@ import type {
   ChecklistSection,
   SaveChecklistItemInput,
 } from '@/types/checklist'
-
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.'
-}
 
 export const useChecklistStore = defineStore('checklist', () => {
   const checklist = ref<Checklist | null>(null)
@@ -37,7 +34,7 @@ export const useChecklistStore = defineStore('checklist', () => {
       checklist.value = await fetchChecklist(id)
     } catch (e) {
       checklist.value = null
-      loadError.value = toMessage(e)
+      loadError.value = errorMessage(e)
     } finally {
       loading.value = false
     }
@@ -63,7 +60,7 @@ export const useChecklistStore = defineStore('checklist', () => {
       return true
     } catch (e) {
       checklist.value = previous
-      error.value = toMessage(e)
+      error.value = errorMessage(e)
       return false
     }
   }

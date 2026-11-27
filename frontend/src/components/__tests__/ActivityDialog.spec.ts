@@ -95,7 +95,7 @@ describe('ActivityDialog', () => {
   it('closes with escape and the form cancel button', async () => {
     const wrapper = mountDialog()
 
-    await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     await wrapper.find('[data-testid="cancel-edit"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(2)

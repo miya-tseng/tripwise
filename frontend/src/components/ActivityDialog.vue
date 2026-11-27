@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BaseDialog from '@/components/BaseDialog.vue'
 import { computed, ref, useId, watch } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ActivityForm, { type ActivityPrefill } from '@/components/ActivityForm.vue'
@@ -81,77 +82,68 @@ async function save(input: SaveActivityInput): Promise<boolean> {
 </script>
 
 <template>
-  <Transition name="dialog">
-    <div
-      v-if="open"
-      class="backdrop"
-      data-testid="activity-dialog-backdrop"
-      @click.self="emit('close')"
-    >
-      <section
-        class="dialog"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-        data-testid="activity-dialog"
-        @keydown.esc="emit('close')"
+  <BaseDialog
+    :open="open"
+    variant="sheet"
+    :labelledby="titleId"
+    testid="activity-dialog"
+    backdrop-testid="activity-dialog-backdrop"
+    @close="emit('close')"
+  >
+    <header class="dialog-header">
+      <div>
+        <span class="eyebrow">{{ activity ? 'Editing' : 'Plan' }}</span>
+        <h2 :id="titleId" class="section-title">{{ title }}</h2>
+        <p v-if="subtitle && !activity" class="subtitle">{{ subtitle }}</p>
+      </div>
+      <button
+        type="button"
+        class="btn btn-ghost btn-small close"
+        aria-label="Close"
+        data-testid="close-activity-dialog"
+        @click="emit('close')"
       >
-        <header class="dialog-header">
-          <div>
-            <span class="eyebrow">{{ activity ? 'Editing' : 'Plan' }}</span>
-            <h2 :id="titleId" class="section-title">{{ title }}</h2>
-            <p v-if="subtitle && !activity" class="subtitle">{{ subtitle }}</p>
-          </div>
-          <button
-            type="button"
-            class="btn btn-ghost btn-small close"
-            aria-label="Close"
-            data-testid="close-activity-dialog"
-            @click="emit('close')"
-          >
-            ✕
-          </button>
-        </header>
+        ✕
+      </button>
+    </header>
 
-        <div class="dialog-body">
-          <ActivityForm
-            :key="formKey"
-            :dates="dates"
-            :activity="activity"
-            :prefill="prefill"
-            :initial-date="initialDate"
-            :submit="save"
-            :rates="rates"
-            :default-currency="defaultCurrency"
-            :near="near"
-            show-cancel
-            @cancel="emit('close')"
-          />
-          <button
-            v-if="activity && remove"
-            type="button"
-            class="btn btn-ghost btn-small delete-activity"
-            data-testid="dialog-delete-activity"
-            @click="confirmingDelete = true"
-          >
-            Delete this activity
-          </button>
-          <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">
-            <span>{{ error }}</span>
-            <button
-              type="button"
-              class="alert-close"
-              aria-label="Dismiss"
-              data-testid="dismiss-error"
-              @click="emit('dismissError')"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      </section>
+    <div class="dialog-body">
+      <ActivityForm
+        :key="formKey"
+        :dates="dates"
+        :activity="activity"
+        :prefill="prefill"
+        :initial-date="initialDate"
+        :submit="save"
+        :rates="rates"
+        :default-currency="defaultCurrency"
+        :near="near"
+        show-cancel
+        @cancel="emit('close')"
+      />
+      <button
+        v-if="activity && remove"
+        type="button"
+        class="btn btn-ghost btn-small delete-activity"
+        data-testid="dialog-delete-activity"
+        @click="confirmingDelete = true"
+      >
+        Delete this activity
+      </button>
+      <div v-if="error" role="alert" class="alert form-alert" data-testid="schedule-error">
+        <span>{{ error }}</span>
+        <button
+          type="button"
+          class="alert-close"
+          aria-label="Dismiss"
+          data-testid="dismiss-error"
+          @click="emit('dismissError')"
+        >
+          ✕
+        </button>
+      </div>
     </div>
-  </Transition>
+  </BaseDialog>
 
   <ConfirmDialog
     :open="confirmingDelete"
@@ -164,29 +156,6 @@ async function save(input: SaveActivityInput): Promise<boolean> {
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(22 30 40 / 0.42);
-  backdrop-filter: blur(4px);
-}
-
-.dialog {
-  width: 100%;
-  max-width: 460px;
-  max-height: calc(100vh - 2rem);
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
 .dialog-header {
   display: flex;
   align-items: flex-start;
@@ -215,28 +184,6 @@ async function save(input: SaveActivityInput): Promise<boolean> {
   margin-top: 1rem;
 }
 
-.dialog-enter-active,
-.dialog-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.dialog-enter-from,
-.dialog-leave-to {
-  opacity: 0;
-}
-
-@media (max-width: 560px) {
-  .backdrop {
-    place-items: end stretch;
-    padding: 0;
-  }
-
-  .dialog {
-    max-width: none;
-    max-height: 92vh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-}
 .delete-activity {
   align-self: flex-start;
   margin-top: 0.75rem;

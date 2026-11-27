@@ -523,26 +523,6 @@ function onDragEnd() {
   color: #b42318;
 }
 
-.booking-badge {
-  flex-shrink: 0;
-  padding: 0.05rem 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--color-muted);
-  background: var(--color-surface);
-  border-radius: 999px;
-}
-
-.booking-badge.tone-warning {
-  color: #9a4a1c;
-  background: #fde8d7;
-}
-
-.booking-badge.tone-success {
-  color: #1f5c56;
-  background: #e1efe9;
-}
-
 .handle {
   display: grid;
   place-items: center;

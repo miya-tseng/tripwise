@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import { useClickOutside } from '@/composables/useClickOutside'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import type { CategoryMeta } from '@/utils/activityDetails'
 
@@ -22,23 +23,7 @@ const showBooking = computed(() => props.bookingOptions.length > 2 || props.book
 const showCategories = computed(() => props.categories.length > 1 || props.category !== null)
 const activeCount = computed(() => (props.booking !== '' ? 1 : 0) + (props.category ? 1 : 0))
 
-function onDocumentPointerDown(event: PointerEvent) {
-  if (!root.value?.contains(event.target as Node)) {
-    open.value = false
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-  } else {
-    document.removeEventListener('pointerdown', onDocumentPointerDown)
-  }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-})
+useClickOutside(root, open, () => (open.value = false))
 
 function clearAll() {
   emit('update:booking', '')

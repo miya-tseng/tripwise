@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import BaseDialog from '@/components/BaseDialog.vue'
 import { computed, ref, useId, watch } from 'vue'
+import { newSessionToken } from '@/utils/sessionToken'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PlaceSearch from '@/components/PlaceSearch.vue'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
@@ -48,10 +50,6 @@ const emit = defineEmits<{
 
 const titleId = useId()
 const nameFieldId = useId()
-
-function newSessionToken(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
 
 const mode = ref<'place' | 'custom'>('place')
 const name = ref('')
@@ -217,206 +215,198 @@ async function onConfirmDelete() {
 </script>
 
 <template>
-  <Transition name="dialog">
-    <div
-      v-if="open"
-      class="backdrop"
-      data-testid="stay-dialog-backdrop"
-      @click.self="emit('close')"
-    >
-      <section
-        class="dialog"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-        data-testid="stay-dialog"
-        @keydown.esc="emit('close')"
+  <BaseDialog
+    :open="open"
+    variant="sheet"
+    width="480px"
+    :labelledby="titleId"
+    testid="stay-dialog"
+    backdrop-testid="stay-dialog-backdrop"
+    @close="emit('close')"
+  >
+    <header class="dialog-header">
+      <div>
+        <span class="eyebrow">{{ isEditing ? 'Editing' : 'Where you sleep' }}</span>
+        <h2 :id="titleId" class="section-title">{{ title }}</h2>
+      </div>
+      <button
+        type="button"
+        class="btn btn-ghost btn-small close"
+        aria-label="Close"
+        data-testid="close-stay-dialog"
+        @click="emit('close')"
       >
-        <header class="dialog-header">
-          <div>
-            <span class="eyebrow">{{ isEditing ? 'Editing' : 'Where you sleep' }}</span>
-            <h2 :id="titleId" class="section-title">{{ title }}</h2>
-          </div>
+        ✕
+      </button>
+    </header>
+
+    <form class="dialog-body stay-form" data-testid="stay-form" @submit.prevent="onSubmit">
+      <div class="field">
+        <label class="field-label" :for="nameFieldId">Hotel or place</label>
+        <PlaceSearch
+          v-if="mode === 'place'"
+          v-model="selectedPlace"
+          :input-id="nameFieldId"
+          :session-token="sessionToken"
+          :near="near"
+        />
+        <input
+          v-else
+          :id="nameFieldId"
+          v-model="name"
+          class="text-input"
+          name="stayName"
+          type="text"
+          placeholder="e.g. Airbnb in Shinjuku"
+          autocomplete="off"
+          :maxlength="MAX_STAY_NAME_LENGTH"
+        />
+        <button
+          type="button"
+          class="mode-switch"
+          :data-testid="mode === 'place' ? 'use-custom-stay' : 'use-place-stay'"
+          @click="mode === 'place' ? useCustomName() : (mode = 'place')"
+        >
+          {{ mode === 'place' ? 'Not on the map? Type a name' : 'Search a real place instead' }}
+        </button>
+      </div>
+
+      <div class="date-row">
+        <div class="field">
+          <span class="field-label">Check-in</span>
+          <SelectMenu
+            v-model="checkIn"
+            name="checkIn"
+            :options="checkInOptions"
+            data-testid="check-in-select"
+          />
+        </div>
+        <div class="field">
+          <span class="field-label">Check-out</span>
+          <SelectMenu
+            v-model="checkOut"
+            name="checkOut"
+            align="end"
+            :options="checkOutOptions"
+            data-testid="check-out-select"
+          />
+        </div>
+      </div>
+      <div class="nights-row">
+        <p class="nights" data-testid="stay-nights">{{ nightsLabel(nights) }}</p>
+        <div
+          v-if="quickChoices.length > 1"
+          class="quick-nights"
+          role="group"
+          aria-label="Quick check-out"
+        >
           <button
+            v-for="choice in quickChoices"
+            :key="choice.checkOut"
             type="button"
-            class="btn btn-ghost btn-small close"
-            aria-label="Close"
-            data-testid="close-stay-dialog"
-            @click="emit('close')"
+            class="quick-chip"
+            :aria-pressed="checkOut === choice.checkOut"
+            data-testid="quick-check-out"
+            @click="checkOut = choice.checkOut"
           >
-            ✕
+            {{ choice.label }}
           </button>
-        </header>
+        </div>
+      </div>
 
-        <form class="dialog-body stay-form" data-testid="stay-form" @submit.prevent="onSubmit">
-          <div class="field">
-            <label class="field-label" :for="nameFieldId">Hotel or place</label>
-            <PlaceSearch
-              v-if="mode === 'place'"
-              v-model="selectedPlace"
-              :input-id="nameFieldId"
-              :session-token="sessionToken"
-              :near="near"
-            />
-            <input
-              v-else
-              :id="nameFieldId"
-              v-model="name"
-              class="text-input"
-              name="stayName"
-              type="text"
-              placeholder="e.g. Airbnb in Shinjuku"
-              autocomplete="off"
-              :maxlength="MAX_STAY_NAME_LENGTH"
-            />
-            <button
-              type="button"
-              class="mode-switch"
-              :data-testid="mode === 'place' ? 'use-custom-stay' : 'use-place-stay'"
-              @click="mode === 'place' ? useCustomName() : (mode = 'place')"
-            >
-              {{ mode === 'place' ? 'Not on the map? Type a name' : 'Search a real place instead' }}
-            </button>
-          </div>
+      <div class="field">
+        <span class="field-label">
+          Total cost
+          <span class="field-optional">Optional</span>
+        </span>
+        <div class="cost-row" :class="{ invalid: costError }">
+          <input
+            v-model="cost"
+            class="text-input cost-amount"
+            name="stayCost"
+            type="text"
+            inputmode="decimal"
+            placeholder="0.00"
+            autocomplete="off"
+            aria-label="Total cost"
+            :aria-invalid="costError !== ''"
+          />
+          <SelectMenu
+            v-model="currency"
+            class="cost-currency"
+            align="end"
+            name="stayCurrency"
+            :options="currencyOptions"
+            data-testid="stay-currency-select"
+          />
+        </div>
+        <span v-if="costPreview" class="cost-preview" data-testid="stay-cost-preview">
+          {{ costPreview }}
+        </span>
+        <p v-if="costError" class="field-error" data-testid="stay-cost-error">
+          {{ costError }}
+        </p>
+      </div>
 
-          <div class="date-row">
-            <div class="field">
-              <span class="field-label">Check-in</span>
-              <SelectMenu
-                v-model="checkIn"
-                name="checkIn"
-                :options="checkInOptions"
-                data-testid="check-in-select"
-              />
-            </div>
-            <div class="field">
-              <span class="field-label">Check-out</span>
-              <SelectMenu
-                v-model="checkOut"
-                name="checkOut"
-                align="end"
-                :options="checkOutOptions"
-                data-testid="check-out-select"
-              />
-            </div>
-          </div>
-          <div class="nights-row">
-            <p class="nights" data-testid="stay-nights">{{ nightsLabel(nights) }}</p>
-            <div
-              v-if="quickChoices.length > 1"
-              class="quick-nights"
-              role="group"
-              aria-label="Quick check-out"
-            >
-              <button
-                v-for="choice in quickChoices"
-                :key="choice.checkOut"
-                type="button"
-                class="quick-chip"
-                :aria-pressed="checkOut === choice.checkOut"
-                data-testid="quick-check-out"
-                @click="checkOut = choice.checkOut"
-              >
-                {{ choice.label }}
-              </button>
-            </div>
-          </div>
+      <div class="date-row">
+        <div class="field">
+          <span class="field-label">Booking</span>
+          <SelectMenu
+            v-model="bookingStatus"
+            name="stayBookingStatus"
+            :options="bookingOptions"
+            data-testid="stay-booking-select"
+          />
+        </div>
+        <label class="field">
+          <span class="field-label">Confirmation code</span>
+          <input
+            v-model="confirmationCode"
+            class="text-input"
+            name="stayConfirmationCode"
+            type="text"
+            autocomplete="off"
+            :maxlength="MAX_CONFIRMATION_CODE_LENGTH"
+          />
+        </label>
+      </div>
 
-          <div class="field">
-            <span class="field-label">
-              Total cost
-              <span class="field-optional">Optional</span>
-            </span>
-            <div class="cost-row" :class="{ invalid: costError }">
-              <input
-                v-model="cost"
-                class="text-input cost-amount"
-                name="stayCost"
-                type="text"
-                inputmode="decimal"
-                placeholder="0.00"
-                autocomplete="off"
-                aria-label="Total cost"
-                :aria-invalid="costError !== ''"
-              />
-              <SelectMenu
-                v-model="currency"
-                class="cost-currency"
-                align="end"
-                name="stayCurrency"
-                :options="currencyOptions"
-                data-testid="stay-currency-select"
-              />
-            </div>
-            <span v-if="costPreview" class="cost-preview" data-testid="stay-cost-preview">
-              {{ costPreview }}
-            </span>
-            <p v-if="costError" class="field-error" data-testid="stay-cost-error">
-              {{ costError }}
-            </p>
-          </div>
+      <div v-if="error" role="alert" class="alert" data-testid="stay-error">
+        <span>{{ error }}</span>
+        <button
+          type="button"
+          class="alert-close"
+          aria-label="Dismiss"
+          data-testid="dismiss-stay-error"
+          @click="emit('dismissError')"
+        >
+          ✕
+        </button>
+      </div>
 
-          <div class="date-row">
-            <div class="field">
-              <span class="field-label">Booking</span>
-              <SelectMenu
-                v-model="bookingStatus"
-                name="stayBookingStatus"
-                :options="bookingOptions"
-                data-testid="stay-booking-select"
-              />
-            </div>
-            <label class="field">
-              <span class="field-label">Confirmation code</span>
-              <input
-                v-model="confirmationCode"
-                class="text-input"
-                name="stayConfirmationCode"
-                type="text"
-                autocomplete="off"
-                :maxlength="MAX_CONFIRMATION_CODE_LENGTH"
-              />
-            </label>
-          </div>
-
-          <div v-if="error" role="alert" class="alert" data-testid="stay-error">
-            <span>{{ error }}</span>
-            <button
-              type="button"
-              class="alert-close"
-              aria-label="Dismiss"
-              data-testid="dismiss-stay-error"
-              @click="emit('dismissError')"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div class="actions">
-            <button
-              v-if="isEditing && remove"
-              type="button"
-              class="btn btn-ghost danger"
-              data-testid="delete-stay"
-              @click="confirmingDelete = true"
-            >
-              Delete
-            </button>
-            <button type="button" class="btn btn-secondary" @click="emit('close')">Cancel</button>
-            <button
-              type="submit"
-              class="btn btn-primary"
-              data-testid="save-stay"
-              :disabled="submitting || !canSubmit"
-            >
-              <template v-if="isEditing">{{ submitting ? 'Saving...' : 'Save' }}</template>
-              <template v-else>{{ submitting ? 'Adding...' : 'Add stay' }}</template>
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
-  </Transition>
+      <div class="actions">
+        <button
+          v-if="isEditing && remove"
+          type="button"
+          class="btn btn-ghost danger"
+          data-testid="delete-stay"
+          @click="confirmingDelete = true"
+        >
+          Delete
+        </button>
+        <button type="button" class="btn btn-secondary" @click="emit('close')">Cancel</button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          data-testid="save-stay"
+          :disabled="submitting || !canSubmit"
+        >
+          <template v-if="isEditing">{{ submitting ? 'Saving...' : 'Save' }}</template>
+          <template v-else>{{ submitting ? 'Adding...' : 'Add stay' }}</template>
+        </button>
+      </div>
+    </form>
+  </BaseDialog>
 
   <ConfirmDialog
     :open="confirmingDelete"
@@ -429,29 +419,6 @@ async function onConfirmDelete() {
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(22 30 40 / 0.42);
-  backdrop-filter: blur(4px);
-}
-
-.dialog {
-  width: 100%;
-  max-width: 480px;
-  max-height: calc(100vh - 2rem);
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
 .dialog-header {
   display: flex;
   align-items: flex-start;
@@ -595,32 +562,12 @@ async function onConfirmDelete() {
   color: var(--color-danger);
 }
 
-.dialog-enter-active,
-.dialog-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.dialog-enter-from,
-.dialog-leave-to {
-  opacity: 0;
-}
-
 @media (max-width: 560px) {
-  .backdrop {
-    place-items: end stretch;
-    padding: 0;
-  }
-
-  .dialog {
-    max-width: none;
-    max-height: 92vh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-
   .date-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
 @media (max-width: 720px) {
   .actions {
     position: sticky;
