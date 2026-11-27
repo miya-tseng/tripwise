@@ -90,6 +90,7 @@ public class StayTests : SchedulePageTest
         await TypeStayNameAsync("Hotel");
         await SaveStayAsync();
 
+        await Page.GetByTestId("stays-toggle").ClickAsync();
         await Page.GetByTestId("stay-card").ClickAsync();
         await Page.GetByLabel("Hotel or place").FillAsync("Hotel Gracery");
         await ChooseAsync("stay-booking-select", "Booked");
@@ -98,6 +99,7 @@ public class StayTests : SchedulePageTest
         await Expect(Page.GetByTestId("stay-card")).ToContainTextAsync("Booked");
 
         await Page.ReloadAsync();
+        await Page.GetByTestId("stays-toggle").ClickAsync();
         await Page.GetByTestId("stay-card").ClickAsync();
         await Page.GetByTestId("delete-stay").ClickAsync();
         await Page.GetByTestId("confirm-button").ClickAsync();

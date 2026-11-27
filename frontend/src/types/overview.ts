@@ -54,6 +54,7 @@ export interface TripOverview {
   checklistDone: number
   checklistTotal: number
   ratesAvailable: boolean
+  ratesUpdatedAt?: string | null
   totalInTwd: number | null
   activitiesInTwd: number | null
   staysInTwd: number | null

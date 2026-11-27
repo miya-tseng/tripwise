@@ -192,6 +192,19 @@ describe('TripOverviewView', () => {
     })
   })
 
+  it('names the source of the exchange rates', async () => {
+    vi.mocked(fetchOverview).mockResolvedValue({
+      ...overview,
+      ratesUpdatedAt: '2026-01-01T00:00:00Z',
+    })
+
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="rates-source"]').text()).toBe(
+      'Totals in TWD · Rates by Exchange Rate API, updated Jan 1, 2026',
+    )
+  })
+
   it('warns when exchange rates are unavailable', async () => {
     vi.mocked(fetchOverview).mockResolvedValue({
       ...overview,

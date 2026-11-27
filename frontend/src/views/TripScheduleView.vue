@@ -608,7 +608,7 @@ async function saveTrip(input: UpdateTripInput): Promise<boolean> {
         @touchend.passive="onTouchEnd"
       >
         <p
-          v-if="ratesNote"
+          v-if="!ratesAvailable"
           class="rates-note"
           :class="{ warning: !ratesAvailable }"
           data-testid="rates-note"
@@ -1127,8 +1127,16 @@ h1 {
   display: none;
 }
 
-.stays-toggle {
+.stay-cards.collapsed {
   display: none;
+}
+
+.stays-title {
+  display: none;
+}
+
+.stays-toggle {
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   align-self: flex-start;
@@ -1311,25 +1319,12 @@ h1 {
     flex-basis: 100%;
   }
 
-  .rates-note {
-    display: none;
-  }
-
-  .stays-title,
   .add-stay {
     display: none;
   }
 
   .stays {
     margin-bottom: 0.9rem;
-  }
-
-  .stays-toggle {
-    display: inline-flex;
-  }
-
-  .stay-cards.collapsed {
-    display: none;
   }
 
   .fab {

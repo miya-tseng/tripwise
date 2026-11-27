@@ -38,6 +38,20 @@ const booking = computed(() => {
 const activityShare = computed(() =>
   share(overview.value?.activitiesInTwd ?? null, overview.value?.totalInTwd ?? null),
 )
+const ratesSource = computed(() => {
+  const updatedAt = overview.value?.ratesUpdatedAt
+
+  if (!updatedAt) {
+    return ''
+  }
+
+  const updated = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(updatedAt))
+  return `Totals in TWD · Rates by Exchange Rate API, updated ${updated}`
+})
 const hasSpend = computed(() => (overview.value?.totalInTwd ?? 0) > 0)
 
 watch(
@@ -263,6 +277,8 @@ function twd(amount: number | null): string {
           <p v-else class="muted">No costs yet.</p>
         </section>
       </div>
+
+      <p v-if="ratesSource" class="rates-source" data-testid="rates-source">{{ ratesSource }}</p>
     </template>
   </main>
 </template>
@@ -299,6 +315,12 @@ function twd(amount: number | null): string {
 .dates {
   margin-top: 0.3rem;
   color: var(--color-muted);
+}
+
+.rates-source {
+  font-size: 0.78rem;
+  text-align: right;
+  color: var(--color-subtle);
 }
 
 .rates-warning {

@@ -37,6 +37,7 @@ public class OverviewService(ITripRepository repository, IExchangeRateProvider e
             ChecklistDone = trip.Checklist.Count(item => item.Done),
             ChecklistTotal = trip.Checklist.Count,
             RatesAvailable = rates is not null,
+            RatesUpdatedAt = rates?.UpdatedAt,
             TotalInTwd = total,
             ActivitiesInTwd = Total(activityCosts, rates),
             StaysInTwd = Total(stayCosts, rates),

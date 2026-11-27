@@ -359,14 +359,52 @@ describe('TripScheduleView', () => {
     expect(wrapper.find('h1').text()).toBe('Tokyo')
   })
 
-  it('notes where the exchange rates come from', async () => {
+  it('keeps the rates source off the itinerary when rates are available', async () => {
     mockLoadedTrip()
 
     const wrapper = await mountView()
 
-    expect(wrapper.find('[data-testid="rates-note"]').text()).toBe(
+    expect(wrapper.find('[data-testid="rates-note"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="trip-total"]').element.parentElement!.title).toBe(
       'Totals in TWD · Rates by Exchange Rate API, updated Jan 1, 2026',
     )
+  })
+
+  it('collapses the stays into one line until opened', async () => {
+    mockLoadedTrip()
+    vi.mocked(fetchSchedule).mockResolvedValue({
+      tripId: 'tokyo-id',
+      ratesAvailable: true,
+      ratesUpdatedAt: '2026-01-01T00:00:00Z',
+      stays: [
+        {
+          id: 'inn',
+          name: 'Asakusa Inn',
+          checkIn: '2026-12-01',
+          checkOut: '2026-12-02',
+          nights: 1,
+          cost: 0,
+          currency: 'TWD',
+          costInTwd: 0,
+          bookingStatus: 'NotNeeded',
+          confirmationCode: '',
+        },
+      ],
+      days: [
+        { date: '2026-12-01', activities: [] },
+        { date: '2026-12-02', activities: [] },
+      ],
+    })
+    const wrapper = await mountView()
+    const toggle = wrapper.find('[data-testid="stays-toggle"]')
+
+    expect(toggle.text()).toContain('1 stay')
+    expect(wrapper.find('.stay-cards').classes()).toContain('collapsed')
+
+    await toggle.trigger('click')
+
+    expect(wrapper.find('.stay-cards').classes()).not.toContain('collapsed')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
   })
 
   it('warns and shows totals per currency when rates are unavailable', async () => {

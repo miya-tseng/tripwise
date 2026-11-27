@@ -26,6 +26,7 @@ public class TripOverviewDto
     public int ChecklistDone { get; set; }
     public int ChecklistTotal { get; set; }
     public bool RatesAvailable { get; set; }
+    public DateTimeOffset? RatesUpdatedAt { get; set; }
     public decimal? TotalInTwd { get; set; }
     public decimal? ActivitiesInTwd { get; set; }
     public decimal? StaysInTwd { get; set; }

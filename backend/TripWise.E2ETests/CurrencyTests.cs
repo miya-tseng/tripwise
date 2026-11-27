@@ -87,9 +87,14 @@ public class CurrencyTests : SchedulePageTest
     }
 
     [Test]
-    public async Task RatesSource_IsShownWithTheSchedule()
+    public async Task RatesSource_IsShownOnTheOverview()
     {
-        await Expect(Page.GetByTestId("rates-note")).ToContainTextAsync("Rates by Exchange Rate API");
+        await Expect(Page.GetByTestId("rates-note")).ToHaveCountAsync(0);
+        await Expect(Page.GetByTestId("trip-total").Locator("..")).ToHaveAttributeAsync("title", new System.Text.RegularExpressions.Regex("Rates by Exchange Rate API"));
+
+        await Page.GetByTestId("nav-overview").ClickAsync();
+
+        await Expect(Page.GetByTestId("rates-source")).ToContainTextAsync("Rates by Exchange Rate API");
     }
 
     private async Task AddActivityInCurrencyAsync(string name, int day, string start, string end, string cost, string currency)

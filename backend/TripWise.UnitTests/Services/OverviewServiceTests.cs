@@ -58,6 +58,7 @@ public class OverviewServiceTests
         {
             Assert.That(overview.Name, Is.EqualTo("Tokyo"));
             Assert.That(overview.RatesAvailable, Is.True);
+            Assert.That(overview.RatesUpdatedAt, Is.EqualTo(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
             Assert.That(overview.ActivitiesInTwd, Is.EqualTo(700m));
             Assert.That(overview.StaysInTwd, Is.EqualTo(9000m));
             Assert.That(overview.TotalInTwd, Is.EqualTo(9700m));
@@ -138,6 +139,7 @@ public class OverviewServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(overview.RatesAvailable, Is.False);
+            Assert.That(overview.RatesUpdatedAt, Is.Null);
             Assert.That(overview.TotalInTwd, Is.Null);
             Assert.That(overview.AveragePerDayInTwd, Is.Null);
             Assert.That(overview.SpendByCategory[0].AmountInTwd, Is.Null);
