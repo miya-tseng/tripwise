@@ -272,7 +272,9 @@ describe('ScheduleDays', () => {
 
       const links = wrapper.findAll('[data-testid="activity-map-link"]')
       expect(links).toHaveLength(1)
-      expect(links[0]!.attributes('href')).toBe('https://maps.google.com/?cid=Tsukiji')
+      expect(links[0]!.attributes('href')).toBe(
+        'https://www.google.com/maps/search/?api=1&query=Tsukiji%2C+Tsukiji+address&query_place_id=Tsukiji',
+      )
       expect(links[0]!.attributes('target')).toBe('_blank')
       expect(links[0]!.attributes('rel')).toBe('noopener noreferrer')
       expect(links[0]!.attributes('aria-label')).toBe('Open Tsukiji in Google Maps')

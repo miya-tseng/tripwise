@@ -10,12 +10,12 @@ public class MapsLinkTests : SchedulePageTest
     public Task RequireFakePlaces() => RequireFakePlacesAsync();
 
     [Test]
-    public async Task PlaceActivity_LinksToItsGoogleMapsPage()
+    public async Task PlaceActivity_LinksToThePlaceByNameInGoogleMaps()
     {
         await AddPlaceAsync("senso", "Senso-ji", day: 1, "10:00", "11:00");
 
         var link = ActivityItem("Senso-ji").GetByTestId("activity-map-link");
-        await Expect(link).ToHaveAttributeAsync("href", "https://www.google.com/maps/search/?api=1&query=35.714765,139.796655");
+        await Expect(link).ToHaveAttributeAsync("href", "https://www.google.com/maps/search/?api=1&query=Senso-ji%2C+2+Chome-3-1+Asakusa%2C+Taito+City%2C+Tokyo%2C+Japan&query_place_id=fake-senso-ji");
         await Expect(link).ToHaveAttributeAsync("target", "_blank");
         await Expect(link).ToHaveAccessibleNameAsync("Open Senso-ji in Google Maps");
     }

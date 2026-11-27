@@ -23,7 +23,7 @@ public class SuggestionTests : SchedulePageTest
         await Expect(Suggestion("Tokyo Skytree").GetByTestId("suggestion-reason")).ToContainTextAsync("Senso-ji");
         await Expect(Suggestion("Tokyo Skytree").GetByTestId("suggestion-duration")).ToHaveTextAsync("~1 h");
         await Expect(Suggestion("Tokyo Skytree").GetByTestId("suggestion-map-link"))
-            .ToHaveAttributeAsync("href", "https://www.google.com/maps/search/?api=1&query=35.710063,139.8107");
+            .ToHaveAttributeAsync("href", "https://www.google.com/maps/search/?api=1&query=Tokyo+Skytree%2C+1+Chome-1-2+Oshiage%2C+Sumida+City%2C+Tokyo%2C+Japan&query_place_id=fake-tokyo-skytree");
     }
 
     [Test]

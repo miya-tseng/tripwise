@@ -43,8 +43,19 @@ function params(url: string): URLSearchParams {
 }
 
 describe('placeLink', () => {
-  it('opens the Google Maps page of the place', () => {
-    expect(placeLink(sensoji)).toBe('https://maps.google.com/?cid=senso-ji')
+  it('searches the place by name and address with its place id', () => {
+    const url = placeLink(sensoji)
+
+    expect(url.startsWith('https://www.google.com/maps/search/?')).toBe(true)
+    expect(params(url).get('api')).toBe('1')
+    expect(params(url).get('query')).toBe('senso-ji, senso-ji address')
+    expect(params(url).get('query_place_id')).toBe('senso-ji')
+  })
+
+  it('does not repeat the name when the address already starts with it', () => {
+    const url = placeLink({ ...sensoji, address: 'senso-ji, 2-3-1 Asakusa, Taito City' })
+
+    expect(params(url).get('query')).toBe('senso-ji, 2-3-1 Asakusa, Taito City')
   })
 })
 

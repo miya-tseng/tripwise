@@ -1,6 +1,7 @@
 import type { Activity } from '@/types/activity'
 import type { Place } from '@/types/place'
 
+const MAPS_SEARCH_URL = 'https://www.google.com/maps/search/'
 const MAPS_DIRECTIONS_URL = 'https://www.google.com/maps/dir/'
 const MAX_ROUTE_WAYPOINTS = 9
 
@@ -8,8 +9,20 @@ function coordinates(place: Place): string {
   return `${place.latitude},${place.longitude}`
 }
 
+function searchText(place: Place): string {
+  return place.address.startsWith(`${place.name},`)
+    ? place.address
+    : `${place.name}, ${place.address}`
+}
+
 export function placeLink(place: Place): string {
-  return place.googleMapsUri
+  const params = new URLSearchParams({
+    api: '1',
+    query: searchText(place),
+    query_place_id: place.placeId,
+  })
+
+  return `${MAPS_SEARCH_URL}?${params}`
 }
 
 export function directionsLink(from: Place, to: Place): string {

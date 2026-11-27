@@ -90,7 +90,9 @@ describe('SuggestionsPanel', () => {
       wrapper.findAll('[data-testid="suggestion-duration"]').map((item) => item.text()),
     ).toEqual(['~1 h 30 min', '~45 min', '~2 h'])
     const link = items[0]!.find('[data-testid="suggestion-map-link"]')
-    expect(link.attributes('href')).toBe('https://maps.google.com/?q=Tokyo Skytree')
+    expect(link.attributes('href')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=Tokyo+Skytree%2C+Tokyo+Skytree+address&query_place_id=Tokyo+Skytree-id',
+    )
     expect(link.attributes('target')).toBe('_blank')
     expect(wrapper.text()).toContain('Suggested by AI, matched to real places on Google.')
   })
