@@ -1,7 +1,12 @@
 import { MAX_COST, type ScheduleDay } from '@/types/activity'
 import type { Stay } from '@/types/stay'
 import { countDays } from './date'
-import { HOME_CURRENCY, type CurrencyAmount, type ExchangeRates } from '@/types/currency'
+import {
+  COMMON_CURRENCIES,
+  HOME_CURRENCY,
+  type CurrencyAmount,
+  type ExchangeRates,
+} from '@/types/currency'
 
 const costPattern = /^\d+(\.\d{1,2})?$/
 const currencyFormatters = new Map<string, Intl.NumberFormat>()
@@ -163,4 +168,15 @@ export function parseCost(input: string): CostParseResult {
   }
 
   return { ok: true, value }
+}
+
+export function currencySelectOptions(
+  current: string,
+  rates: ExchangeRates | null,
+): { value: string; label: string; hint: string }[] {
+  const available = rates?.available ? new Set(rates.currencies) : null
+  const codes: string[] = COMMON_CURRENCIES.filter((code) => !available || available.has(code))
+  const withCurrent = codes.includes(current) ? codes : [...codes, current]
+
+  return withCurrent.map((code) => ({ value: code, label: code, hint: currencyName(code) }))
 }

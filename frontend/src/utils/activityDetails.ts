@@ -28,6 +28,11 @@ export const BOOKING_STATUSES: BookingStatusMeta[] = [
   { value: 'Paid', label: 'Paid', tone: 'success' },
 ]
 
+export const BOOKING_OPTIONS = BOOKING_STATUSES.map((status) => ({
+  value: status.value,
+  label: status.label,
+}))
+
 export const DEFAULT_DETAILS: ActivityDetails = {
   category: 'Other',
   bookingStatus: 'NotNeeded',

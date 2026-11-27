@@ -3,16 +3,17 @@ import BaseDialog from '@/components/BaseDialog.vue'
 import { computed, ref, useId, watch } from 'vue'
 import { newSessionToken } from '@/utils/sessionToken'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import PlaceSearch from '@/components/PlaceSearch.vue'
+import CostField from '@/components/CostField.vue'
+import PlaceNameField, { type PlaceNameMode } from '@/components/PlaceNameField.vue'
 import SelectMenu, { type SelectOption } from '@/components/SelectMenu.vue'
 import type { BookingStatus } from '@/types/activity'
-import { COMMON_CURRENCIES, HOME_CURRENCY, type ExchangeRates } from '@/types/currency'
+import { HOME_CURRENCY, type ExchangeRates } from '@/types/currency'
 import type { GeoPoint, PlaceSuggestion } from '@/types/place'
 import { MAX_STAY_NAME_LENGTH, type SaveStayInput, type Stay } from '@/types/stay'
 import { MAX_CONFIRMATION_CODE_LENGTH } from '@/types/activity'
-import { BOOKING_STATUSES } from '@/utils/activityDetails'
+import { BOOKING_OPTIONS } from '@/utils/activityDetails'
 import { countDays, formatDayLabel } from '@/utils/date'
-import { currencyName, formatCurrency, formatTwd, parseCost, toTwd } from '@/utils/money'
+import { formatCurrency, formatTwd, parseCost, toTwd } from '@/utils/money'
 import { checkOutDates, nextCheckInAfter, nightsLabel, quickCheckOuts } from '@/utils/stays'
 
 const props = withDefaults(
@@ -51,7 +52,7 @@ const emit = defineEmits<{
 const titleId = useId()
 const nameFieldId = useId()
 
-const mode = ref<'place' | 'custom'>('place')
+const mode = ref<PlaceNameMode>('place')
 const name = ref('')
 const selectedPlace = ref<PlaceSuggestion | null>(null)
 const sessionToken = ref(newSessionToken())
@@ -134,19 +135,6 @@ const nights = computed(() =>
   checkIn.value && checkOut.value ? countDays(checkIn.value, checkOut.value) - 1 : 0,
 )
 
-const bookingOptions = BOOKING_STATUSES.map((status) => ({
-  value: status.value,
-  label: status.label,
-}))
-
-const currencyOptions = computed<SelectOption[]>(() => {
-  const available = props.rates?.available ? new Set(props.rates.currencies) : null
-  const codes: string[] = COMMON_CURRENCIES.filter((code) => !available || available.has(code))
-  const withCurrent = codes.includes(currency.value) ? codes : [...codes, currency.value]
-
-  return withCurrent.map((code) => ({ value: code, label: code, hint: currencyName(code) }))
-})
-
 const parsedCost = computed(() => parseCost(cost.value))
 const costError = computed(() => (parsedCost.value.ok ? '' : parsedCost.value.error))
 const costPreview = computed(() => {
@@ -173,13 +161,6 @@ const canSubmit = computed(
   () =>
     hasName.value && checkIn.value !== '' && checkOut.value > checkIn.value && parsedCost.value.ok,
 )
-
-function useCustomName() {
-  mode.value = 'custom'
-  if (selectedPlace.value && name.value.trim() === '') {
-    name.value = selectedPlace.value.name
-  }
-}
 
 async function onSubmit() {
   if (!canSubmit.value || !parsedCost.value.ok) {
@@ -241,35 +222,21 @@ async function onConfirmDelete() {
     </header>
 
     <form class="dialog-body stay-form" data-testid="stay-form" @submit.prevent="onSubmit">
-      <div class="field">
-        <label class="field-label" :for="nameFieldId">Hotel or place</label>
-        <PlaceSearch
-          v-if="mode === 'place'"
-          v-model="selectedPlace"
-          :input-id="nameFieldId"
-          :session-token="sessionToken"
-          :near="near"
-        />
-        <input
-          v-else
-          :id="nameFieldId"
-          v-model="name"
-          class="text-input"
-          name="stayName"
-          type="text"
-          placeholder="e.g. Airbnb in Shinjuku"
-          autocomplete="off"
-          :maxlength="MAX_STAY_NAME_LENGTH"
-        />
-        <button
-          type="button"
-          class="mode-switch"
-          :data-testid="mode === 'place' ? 'use-custom-stay' : 'use-place-stay'"
-          @click="mode === 'place' ? useCustomName() : (mode = 'place')"
-        >
-          {{ mode === 'place' ? 'Not on the map? Type a name' : 'Search a real place instead' }}
-        </button>
-      </div>
+      <PlaceNameField
+        v-model:mode="mode"
+        v-model:place="selectedPlace"
+        v-model:name="name"
+        label="Hotel or place"
+        :input-id="nameFieldId"
+        input-name="stayName"
+        :session-token="sessionToken"
+        :near="near"
+        placeholder="e.g. Airbnb in Shinjuku"
+        :maxlength="MAX_STAY_NAME_LENGTH"
+        custom-label="Not on the map? Type a name"
+        custom-testid="use-custom-stay"
+        place-testid="use-place-stay"
+      />
 
       <div class="date-row">
         <div class="field">
@@ -314,39 +281,19 @@ async function onConfirmDelete() {
         </div>
       </div>
 
-      <div class="field">
-        <span class="field-label">
-          Total cost
-          <span class="field-optional">Optional</span>
-        </span>
-        <div class="cost-row" :class="{ invalid: costError }">
-          <input
-            v-model="cost"
-            class="text-input cost-amount"
-            name="stayCost"
-            type="text"
-            inputmode="decimal"
-            placeholder="0.00"
-            autocomplete="off"
-            aria-label="Total cost"
-            :aria-invalid="costError !== ''"
-          />
-          <SelectMenu
-            v-model="currency"
-            class="cost-currency"
-            align="end"
-            name="stayCurrency"
-            :options="currencyOptions"
-            data-testid="stay-currency-select"
-          />
-        </div>
-        <span v-if="costPreview" class="cost-preview" data-testid="stay-cost-preview">
-          {{ costPreview }}
-        </span>
-        <p v-if="costError" class="field-error" data-testid="stay-cost-error">
-          {{ costError }}
-        </p>
-      </div>
+      <CostField
+        v-model:amount="cost"
+        v-model:currency="currency"
+        label="Total cost"
+        amount-name="stayCost"
+        currency-field-name="stayCurrency"
+        currency-testid="stay-currency-select"
+        preview-testid="stay-cost-preview"
+        error-testid="stay-cost-error"
+        :rates="rates"
+        :preview="costPreview"
+        :error="costError"
+      />
 
       <div class="date-row">
         <div class="field">
@@ -354,7 +301,7 @@ async function onConfirmDelete() {
           <SelectMenu
             v-model="bookingStatus"
             name="stayBookingStatus"
-            :options="bookingOptions"
+            :options="BOOKING_OPTIONS"
             data-testid="stay-booking-select"
           />
         </div>
@@ -491,60 +438,6 @@ async function onConfirmDelete() {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-muted);
-}
-
-.mode-switch {
-  align-self: flex-start;
-  padding: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.mode-switch:hover {
-  text-decoration: underline;
-}
-
-.field-optional {
-  font-weight: 500;
-  color: var(--color-subtle);
-}
-
-.field-error {
-  font-size: 0.85rem;
-  color: var(--color-danger);
-}
-
-.cost-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 7.5rem;
-  gap: 0.5rem;
-}
-
-.cost-amount {
-  font-variant-numeric: tabular-nums;
-}
-
-.cost-row.invalid .cost-amount {
-  border-color: var(--color-danger);
-}
-
-.cost-currency :deep(.select-menu) {
-  width: 15rem;
-}
-
-.cost-currency :deep(.select-hint) {
-  display: none;
-}
-
-.cost-preview {
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-primary);
 }
 
 .actions {

@@ -3,6 +3,7 @@ import type { Activity, ScheduleDay } from '@/types/activity'
 import type { ExchangeRates } from '@/types/currency'
 import {
   currencyName,
+  currencySelectOptions,
   dayTotalInTwd,
   formatCurrency,
   formatTotals,
@@ -179,6 +180,46 @@ describe('parseCost', () => {
     expect(parseCost('10000000000')).toEqual({
       ok: false,
       error: 'Cost cannot exceed 9,999,999,999.99.',
+    })
+  })
+})
+
+describe('currencySelectOptions', () => {
+  const rates = {
+    baseCurrency: 'TWD',
+    available: true,
+    updatedAt: null,
+    currencies: ['TWD', 'JPY'],
+    unitsPerBaseCurrency: { TWD: 1, JPY: 4.7 },
+  }
+
+  it('lists every common currency when no rates are known', () => {
+    const codes = currencySelectOptions('TWD', null).map((option) => option.value)
+
+    expect(codes).toContain('JPY')
+    expect(codes).toContain('EUR')
+  })
+
+  it('keeps only currencies the rates cover', () => {
+    expect(currencySelectOptions('TWD', rates).map((option) => option.value)).toEqual([
+      'TWD',
+      'JPY',
+    ])
+  })
+
+  it('keeps the current currency even when the rates do not cover it', () => {
+    expect(currencySelectOptions('EUR', rates).map((option) => option.value)).toEqual([
+      'TWD',
+      'JPY',
+      'EUR',
+    ])
+  })
+
+  it('names each currency in the hint', () => {
+    expect(currencySelectOptions('TWD', rates)[1]).toEqual({
+      value: 'JPY',
+      label: 'JPY',
+      hint: 'Japanese Yen',
     })
   })
 })
